@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the **current implemented state** of the codebase. For planned future work, see `docs/local/implementation-plan.md`.
+This document describes the **current implemented state** of the codebase.
 
 ## Repository layout
 
@@ -10,12 +10,19 @@ npm workspaces monorepo with three packages:
 habitsapp/
 ├── backend/                Express API
 │   ├── src/
-│   │   ├── app.ts          createApp() factory (Express setup)
-│   │   ├── index.ts        bootstrap (calls listen)
+│   │   ├── app.ts          createApp() factory (Express setup, mounts routers)
+│   │   ├── index.ts        bootstrap (runs migrations, calls listen)
 │   │   ├── db/
 │   │   │   ├── index.ts    Drizzle connection (better-sqlite3)
-│   │   │   └── schema.ts   table definitions (currently empty)
+│   │   │   ├── migrate.ts  programmatic migration runner
+│   │   │   └── schema.ts   table definitions
+│   │   ├── users/          Slice 1: users feature
+│   │   │   ├── repository.ts  CRUD against the users table (transactions)
+│   │   │   ├── routes.ts      Express router for /users
+│   │   │   └── __tests__/
+│   │   ├── test/setup.ts   Vitest setup: in-memory DB + table reset per test
 │   │   └── __tests__/      Vitest + supertest
+│   ├── drizzle/            generated SQL migrations
 │   ├── drizzle.config.ts
 │   └── .env.example
 ├── frontend/               React SPA
@@ -23,15 +30,22 @@ habitsapp/
 │   │   ├── main.tsx        entry; mounts providers + router
 │   │   ├── App.tsx         routes
 │   │   ├── components/
-│   │   │   ├── Header.tsx  sticky header, conditional nav
-│   │   │   ├── ui/         shadcn/ui primitives (Button, Input, Select, Dialog)
+│   │   │   ├── Header.tsx  sticky header, conditional nav, embeds UserSwitcher
+│   │   │   ├── ui/         shadcn/ui primitives (Button, Input, Select, Dialog, DropdownMenu)
 │   │   │   └── __tests__/
+│   │   ├── users/          Slice 1: users feature
+│   │   │   ├── UserContext.tsx   active user state + localStorage persistence
+│   │   │   ├── UserSwitcher.tsx  header dropdown (visible only when >1 user)
+│   │   │   ├── UsersSection.tsx  Settings panel (list, add, rename, set default, delete)
+│   │   │   └── queries.ts        TanStack Query hooks
 │   │   ├── pages/          Home, Metrics, Settings
 │   │   ├── lib/
 │   │   │   ├── api.ts      apiFetch wrapper
 │   │   │   ├── utils.ts    cn() class merger
 │   │   │   └── __tests__/
-│   │   ├── test/setup.ts   Vitest + Testing Library setup
+│   │   ├── test/
+│   │   │   ├── setup.ts        Vitest + Testing Library setup
+│   │   │   └── test-utils.tsx  TestProviders helper (QueryClient + Router + UserProvider)
 │   │   ├── index.css       Tailwind v4 + shadcn theme variables
 │   │   └── vite-env.d.ts
 │   ├── components.json     shadcn config
@@ -46,7 +60,9 @@ habitsapp/
 - **Runtime**: Node.js (ESM, `"type": "module"`)
 - **Framework**: Express 4 with `cors` and `express.json()`
 - **Pattern**: `createApp()` factory in `src/app.ts` separates the Express instance from the listener in `src/index.ts`. This makes the app testable via `supertest` without binding to a port.
-- **Endpoints implemented**: `GET /health` → `{ ok: true }`
+- **Endpoints implemented**:
+  - `GET /health` → `{ ok: true }`
+  - `GET /users`, `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
 - **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`).
 - **Dev runner**: `tsx watch src/index.ts`
 
@@ -58,8 +74,8 @@ habitsapp/
   - Opens the DB file from `DATABASE_URL`
   - Applies `journal_mode = WAL` and `foreign_keys = ON`
   - Exports a `db` instance with the schema attached
-- **Schema** (`src/db/schema.ts`): empty placeholder. Tables will be added in Slice 1+.
-- **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`.
+- **Schema** (`src/db/schema.ts`): currently `users` table (`id`, `name`, `is_default`, `created_at`).
+- **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/db/migrate.ts`.
 
 ## Frontend
 
@@ -128,8 +144,8 @@ habitsapp/
 
 ## Testing
 
-- **Backend**: Vitest + supertest. Tests live in `backend/src/__tests__/`. Covers `/health` (status, body, content type) by importing `createApp()` directly.
-- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers and per-test cleanup. Tests live in `src/**/__tests__/`. Covers the `Header` component (route-conditional rendering) and `apiFetch` (parses JSON, serializes body, throws on error).
+- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates the users table before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health` and the full Users API (CRUD, default-user invariants).
+- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers and per-test cleanup. `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + Router + UserProvider) used by component tests. Tests live in `src/**/__tests__/`. Covers the `Header` component (route-conditional rendering, switcher visibility based on user count) and `apiFetch` (parses JSON, serializes body, throws on error).
 
 ## Commands
 

@@ -1,6 +1,6 @@
 # Product Status
 
-This document describes **what the app actually does today**, not what it's planned to do. For the full product vision and design decisions, see `docs/local/project-scope.md`. For the slice-by-slice roadmap, see `docs/local/implementation-plan.md`.
+This document describes **what the app actually does today**, not what it's planned to do.
 
 ## Vision (one paragraph)
 
@@ -11,7 +11,7 @@ A mobile-first web app for tracking habits across multiple unauthenticated users
 | Slice | Status | What it delivers |
 |---|---|---|
 | 0 — Foundation | ✅ Done | Both apps run, navigate, and talk to each other |
-| 1 — Users | Planned | Manage user names, default user, header switcher |
+| 1 — Users | ✅ Done | Manage user names, default user, header switcher |
 | 2 — Habit Definitions | Planned | CRUD for habit definitions + seeded examples |
 | 3 — Log Entry + List | Planned | Core logging loop with infinite-scroll history |
 | 4 — Home Metrics Summary | Planned | Top habits and totals on Home |
@@ -23,13 +23,15 @@ A mobile-first web app for tracking habits across multiple unauthenticated users
 - **Three navigable routes**: `/` (Home), `/metrics`, `/settings`
 - **Mobile-friendly header** with route-conditional navigation (icons on Home, back arrow elsewhere)
 - **End-to-end connectivity**: Home calls the backend's `/health` endpoint via TanStack Query and renders the live API status
+- **User management** in Settings: add users, rename inline, delete, mark one as default
+- **Active user persists** across reloads via `localStorage`; the first created user is auto-set as default; deleting the default promotes the next user
+- **Header user switcher** appears automatically when more than one user exists
 
 ## What does not work yet
 
-- No user management — there are no users in the system
 - No habit definitions — nothing to log
 - No log button, no log form, no entries list
-- Metrics and Settings pages are placeholder text
+- Metrics page is placeholder text
 - No data export
 
 ## Product decisions worth knowing

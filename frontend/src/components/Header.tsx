@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BarChart3, Settings as SettingsIcon } from 'lucide-react';
+import { UserSwitcher } from '@/users/UserSwitcher';
 
 export function Header() {
   const location = useLocation();
@@ -23,24 +24,27 @@ export function Header() {
         </button>
       )}
 
-      {isHome && (
-        <nav className="flex items-center gap-1">
-          <Link
-            to="/metrics"
-            aria-label="Metrics"
-            className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-neutral-100"
-          >
-            <BarChart3 className="h-5 w-5" />
-          </Link>
-          <Link
-            to="/settings"
-            aria-label="Settings"
-            className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-neutral-100"
-          >
-            <SettingsIcon className="h-5 w-5" />
-          </Link>
-        </nav>
-      )}
+      <div className="flex items-center gap-1">
+        <UserSwitcher />
+        {isHome && (
+          <nav className="flex items-center gap-1">
+            <Link
+              to="/metrics"
+              aria-label="Metrics"
+              className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-neutral-100"
+            >
+              <BarChart3 className="h-5 w-5" />
+            </Link>
+            <Link
+              to="/settings"
+              aria-label="Settings"
+              className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-neutral-100"
+            >
+              <SettingsIcon className="h-5 w-5" />
+            </Link>
+          </nav>
+        )}
+      </div>
     </header>
   );
 }
