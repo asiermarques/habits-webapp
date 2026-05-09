@@ -27,20 +27,22 @@ export function Home() {
   return (
     <div className="space-y-6 p-4">
       <div className="flex justify-end">
-        <div className="w-44">
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger aria-label="Filter by habit">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_HABITS}>All habits</SelectItem>
-              {sortedHabits.map((h) => (
-                <SelectItem key={h.id} value={String(h.id)}>
-                  {h.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid">
+          <div className="col-start-1 row-start-1">
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-full" aria-label="Filter by habit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_HABITS}>All habits</SelectItem>
+                {sortedHabits.map((h) => (
+                  <SelectItem key={h.id} value={String(h.id)}>
+                    {h.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
