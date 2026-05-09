@@ -3,13 +3,6 @@ import { Pencil, Trash2 } from 'lucide-react';
 import type { Entry, HabitDefinition } from '@habitsapp/shared';
 import { Button } from '@/components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -24,29 +17,23 @@ import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useDeleteEntry, useEntriesInfinite } from './queries';
 import { formatDate } from './date';
 
-const ALL_HABITS = 'all';
-
 type EntriesListProps = {
   onEdit: (entry: Entry) => void;
+  habitDefinitionId?: number;
 };
 
-export function EntriesList({ onEdit }: EntriesListProps) {
+export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
   const { activeUser } = useUserContext();
   const { data: habits = [] } = useHabitDefinitionsQuery();
-  const [filter, setFilter] = useState<string>(ALL_HABITS);
   const [pendingDelete, setPendingDelete] = useState<Entry | null>(null);
   const deleteEntry = useDeleteEntry();
 
   const habitsById = useMemo(() => new Map(habits.map((h) => [h.id, h])), [habits]);
-  const sortedHabits = useMemo(
-    () => [...habits].sort((a, b) => a.name.localeCompare(b.name)),
-    [habits],
-  );
 
   const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage } =
     useEntriesInfinite({
       userId: activeUser?.id ?? 0,
-      habitDefinitionId: filter === ALL_HABITS ? undefined : Number(filter),
+      habitDefinitionId,
     });
 
   if (!activeUser) {
@@ -59,24 +46,7 @@ export function EntriesList({ onEdit }: EntriesListProps) {
 
   return (
     <section className="space-y-3">
-      <header className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Recent entries</h2>
-        <div className="w-44">
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger aria-label="Filter by habit">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_HABITS}>All habits</SelectItem>
-              {sortedHabits.map((h) => (
-                <SelectItem key={h.id} value={String(h.id)}>
-                  {h.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </header>
+      <h2 className="text-lg font-semibold">Recent entries</h2>
 
       {isFetching && entries.length === 0 && (
         <p className="text-sm text-neutral-500">Loading…</p>

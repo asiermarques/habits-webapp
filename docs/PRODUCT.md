@@ -14,7 +14,7 @@ A mobile-first web app for tracking habits across multiple unauthenticated users
 | 1 — Users | ✅ Done | Manage user names, default user, header switcher |
 | 2 — Habit Definitions | ✅ Done | CRUD for habit definitions + seeded examples |
 | 3 — Log Entry + List | ✅ Done | Core logging loop with infinite-scroll history |
-| 4 — Home Metrics Summary | Planned | Top habits and totals on Home |
+| 4 — Home Metrics Summary | ✅ Done | Top habits and totals on Home |
 | 5 — Metrics View | Planned | Bar charts and heatmaps |
 | 6 — CSV Export | Planned | Date-ranged export per user |
 
@@ -29,9 +29,10 @@ A mobile-first web app for tracking habits across multiple unauthenticated users
 - **Habit definitions management** in Settings: list grouped by type (Workout / Writing / Custom), add/edit/delete via a modal form, positive toggle visible only for Custom habits, type selector locked once entries exist
 - **First-run seeding**: on a fresh database, eight example habits are auto-inserted (running, rowing, writing, reading, meat consuming, fast food consuming, cooking, social interactions) with rotating colors from a positive palette (red reserved for negative habits)
 - **Log entries** from Home: prominent Log button opens a modal with habit picker (alphabetical), date picker (defaults to today, supports backfill), and dynamic fields per habit type (Workout: duration/distance/weight/amount/notes; Writing: words/time; Custom: number/amount/duration/binary)
-- **Recent entries list** on Home with cursor-based infinite scroll ("Load more" button), filterable by habit, sorted newest-first by date
+- **Recent entries list** on Home with cursor-based infinite scroll ("Load more" button), sorted newest-first by date. The habit filter is shared with the weekly chart and lives directly under the Log button
 - **Edit and delete entries**: edit reuses the same modal pre-filled (habit locked, date and data editable); delete shows a confirmation dialog
 - **Habit-definition guards now active**: a definition with existing entries cannot be deleted (409) and its type cannot be changed (409)
+- **Home weekly chart**: the Home screen shows a full-width Nivo stacked bar chart of entries per day for the current week (Mon–Sun), reacting to the same habit filter as the entries list
 
 ## What does not work yet
 

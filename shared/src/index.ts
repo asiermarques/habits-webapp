@@ -104,3 +104,23 @@ export type UpdateEntryBody = {
   date?: string;
   data?: EntryData;
 };
+
+// --- Metrics ---
+
+export type HabitCount = {
+  habitDefinitionId: number;
+  count: number;
+};
+
+export type WeekDayMetrics = {
+  date: string; // YYYY-MM-DD
+  // Sparse: only habits with at least one entry on this date appear here.
+  counts: HabitCount[];
+};
+
+export type WeeklyMetrics = {
+  weekStart: string; // Monday, YYYY-MM-DD
+  weekEnd: string;   // Sunday, YYYY-MM-DD
+  // Always 7 entries, Mon..Sun.
+  days: WeekDayMetrics[];
+};

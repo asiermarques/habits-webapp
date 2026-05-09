@@ -40,6 +40,7 @@ export function useEntriesInfinite({ userId, habitDefinitionId }: Filters) {
 
 function invalidateEntries(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ['entries'] });
+  qc.invalidateQueries({ queryKey: ['metrics'] });
 }
 
 export function useCreateEntry() {

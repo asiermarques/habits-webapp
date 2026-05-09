@@ -130,6 +130,10 @@ habitsapp/
 │   │   │   ├── repository.ts  cursor-paginated list, parent + child-table CRUD in transactions
 │   │   │   ├── routes.ts      Express router for /entries (cursor encoded as base64url JSON)
 │   │   │   └── __tests__/
+│   │   ├── metrics/        Slice 4: home metrics summary
+│   │   │   ├── repository.ts  per-day aggregation across the current Mon–Sun week, with optional habit filter
+│   │   │   ├── routes.ts      Express router for /metrics/weekly
+│   │   │   └── __tests__/
 │   │   ├── test/setup.ts   Vitest setup: in-memory DB + table reset per test
 │   │   └── __tests__/      Vitest + supertest
 │   ├── drizzle/            generated SQL migrations
@@ -157,7 +161,11 @@ habitsapp/
 │   │   │   ├── EntryForm.tsx     log/edit modal with dynamic per-type fields
 │   │   │   ├── EntriesList.tsx   filterable list with infinite scroll + delete confirm
 │   │   │   ├── date.ts           todayIso() + formatDate() helpers
-│   │   │   ├── queries.ts        TanStack Query hooks (useInfiniteQuery)
+│   │   │   ├── queries.ts        TanStack Query hooks (useInfiniteQuery; entry mutations also invalidate ['metrics'])
+│   │   │   └── __tests__/
+│   │   ├── metrics/        Slice 4: home metrics summary
+│   │   │   ├── WeekChartSection.tsx  Nivo stacked-bar chart (Mon–Sun) reacting to the home filter
+│   │   │   ├── queries.ts            useWeeklyMetrics hook
 │   │   │   └── __tests__/
 │   │   ├── pages/          Home, Metrics, Settings
 │   │   ├── lib/
@@ -186,6 +194,7 @@ habitsapp/
   - `GET /users`, `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
   - `GET /habit-definitions`, `POST /habit-definitions`, `PUT /habit-definitions/:id`, `DELETE /habit-definitions/:id`
   - `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT /entries/:id`, `DELETE /entries/:id`
+  - `GET /metrics/weekly?userId=&habitDefinitionId=&today=` — current week (Mon–Sun) bucketed per day with sparse `counts` per habit definition. `habitDefinitionId` and `today` are optional; `today` (YYYY-MM-DD) anchors the week and is used by tests.
 - **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`).
 - **Dev runner**: `tsx watch src/index.ts`
 
@@ -276,8 +285,8 @@ habitsapp/
 
 ## Testing
 
-- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users` and `habit_definitions` before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, the Users API (CRUD + default-user invariants), and the Habit Definitions API (CRUD, color rotation, positive-flag enforcement, seeding behavior).
-- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (Radix UI primitives need it). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + Router + UserProvider) used by component tests. Tests live in `src/**/__tests__/`. Covers the `Header` (route-conditional rendering, switcher visibility), `apiFetch` (parses JSON, serializes body, throws on error), and `HabitForm` (positive-toggle visibility per type, name trimming, type-lock behavior).
+- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users`, `habit_definitions`, and the entries tables before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, Users (CRUD + default-user invariants), Habit Definitions (CRUD, color rotation, positive-flag enforcement, seeding), Entries (CRUD per archetype, cursor pagination, type-lock/delete-block guards), and `/metrics/weekly` (Mon–Sun range, per-day aggregation, habit filter, user isolation).
+- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (Radix UI primitives need it). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + Router + UserProvider) used by component tests. Tests live in `src/**/__tests__/`. Covers the `Header`, `apiFetch`, `HabitForm`, `EntryForm`, and `WeekChartSection` (Nivo `ResponsiveBar` is mocked so the test asserts on the chart model — keys, data, colors, and empty state).
 
 ## Commands
 

@@ -12,10 +12,9 @@ A simple, mobile-first web app for tracking habits across multiple users — wit
 - CSV export for any user and date range
 - Pre-seeded example habits to start logging immediately
 
-## Docs
+## Documentation
 
-See the ./docs directory to more details about the architecture and product features
-
+See the [docs](./docs) directory to more details about the architecture and product features
 
 
 ## Project structure
@@ -74,11 +73,6 @@ npm run db:generate     # generate migrations from schema changes
 npm run db:migrate      # apply pending migrations
 ```
 
-## Documentation
-
-- [`project-scope.md`](./project-scope.md) — product decisions and feature scope
-- [`tech-stack.md`](./tech-stack.md) — library choices and reasoning
-- [`implementation-plan.md`](./implementation-plan.md) — vertical slices and progress
 
 ## License
 

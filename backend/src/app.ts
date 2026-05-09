@@ -4,6 +4,7 @@ import type { HealthResponse } from '@habitsapp/shared';
 import { usersRouter } from './users/routes.js';
 import { habitDefinitionsRouter } from './habit-definitions/routes.js';
 import { entriesRouter } from './entries/routes.js';
+import { metricsRouter } from './metrics/routes.js';
 
 export function createApp() {
   const app = express();
@@ -20,6 +21,7 @@ export function createApp() {
   app.use('/users', usersRouter);
   app.use('/habit-definitions', habitDefinitionsRouter);
   app.use('/entries', entriesRouter);
+  app.use('/metrics', metricsRouter);
 
   return app;
 }
