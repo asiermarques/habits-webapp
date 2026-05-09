@@ -2,6 +2,106 @@
 
 This document describes the **current implemented state** of the codebase.
 
+## Domain model
+
+Three core entities. **User** and **HabitDefinition** are implemented; **HabitEntry** lands in Slice 3.
+
+```
+User (1) ─────┐
+              ├──< HabitEntry >── (N) HabitDefinition
+              │                         │ type: workout | writing | custom
+              │                         │
+              │                         └─ has one type-specific payload:
+              │                            WorkoutData | WritingData | CustomData
+              │
+              └─ "active user" is selected one at a time on the client
+```
+
+### User — implemented
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | integer PK | autoincrement |
+| `name` | text | display name |
+| `isDefault` | boolean | exactly one user is the default at any time |
+| `createdAt` | text | timestamp |
+
+Invariants enforced in `backend/src/users/repository.ts` (all run inside transactions):
+- The first user created is automatically default
+- Setting a user as default un-sets all others
+- Deleting the default promotes the next-oldest user
+- The last remaining user cannot be deleted → HTTP 409
+
+### HabitDefinition — implemented
+
+A globally-shared catalogue of habits. All users see the same definitions.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | integer PK | autoincrement |
+| `name` | text | display name |
+| `type` | enum | `workout` \| `writing` \| `custom` |
+| `positive` | boolean | direction; drives metric framing and heatmap color |
+| `color` | text | hex; auto-assigned at creation |
+| `createdAt` | text | timestamp |
+
+Invariants enforced in `backend/src/habit-definitions/repository.ts`:
+- Workout and Writing are **always** positive (`positive` is forced to true regardless of input)
+- Custom is the only type with a meaningful `positive` flag
+- Color is auto-assigned at creation:
+  - Negative → red (`#ef4444`)
+  - Positive → next color in the rotating 8-color palette, based on the count of existing positive habits
+- Type cannot change once entries reference the definition → HTTP 409
+- Definitions with existing entries cannot be deleted → HTTP 409
+- The last two checks call a `hasEntriesForDefinition()` placeholder that returns `false` until Slice 3 wires up the entries table
+
+### HabitEntry — planned (Slice 3)
+
+A single logged occurrence of a habit by a specific user on a specific date. Multiple entries for the same `(user, definition, date)` are allowed.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | integer PK | |
+| `habitDefinitionId` | integer FK | references HabitDefinition |
+| `userId` | integer FK | references User |
+| `date` | text | `d-m-Y` |
+| `createdAt` | text | timestamp |
+
+The data fields are split into a child table per archetype so each row only carries its valid columns:
+
+**WorkoutData** (`entry_workout_data`)
+| Field | Required |
+|---|---|
+| `duration` | yes |
+| `distance` | optional |
+| `weight` | optional |
+| `amount` | optional |
+| `notes` | optional |
+
+**WritingData** (`entry_writing_data`)
+| Field | Required |
+|---|---|
+| `words` | yes |
+| `time` | optional |
+
+**CustomData** (`entry_custom_data`)
+| Field | Required |
+|---|---|
+| `number` | optional |
+| `amount` | optional |
+| `duration` | optional |
+| `binary` | optional |
+
+(`name` and `positive` for Custom live on the parent HabitDefinition, not on the entry.)
+
+### Cross-cutting rules
+
+- **No goals or targets** — metrics are raw counts only
+- **No categories** — explicitly cut from MVP scope
+- **Habit definitions are global**, not per-user
+- **Active user is selected one at a time** on the client; persisted in `localStorage`; metrics are always single-user
+- **Periods**: week starts Monday; month = rolling 30 days; Metrics view = last 3 months
+
 ## Repository layout
 
 npm workspaces monorepo with three packages:
@@ -19,6 +119,12 @@ habitsapp/
 │   │   ├── users/          Slice 1: users feature
 │   │   │   ├── repository.ts  CRUD against the users table (transactions)
 │   │   │   ├── routes.ts      Express router for /users
+│   │   │   └── __tests__/
+│   │   ├── habit-definitions/ Slice 2: habit definitions feature
+│   │   │   ├── colors.ts      positive palette + red for negative; pickColor()
+│   │   │   ├── repository.ts  CRUD with type-lock and entry-protection placeholders
+│   │   │   ├── routes.ts      Express router for /habit-definitions
+│   │   │   ├── seed.ts        first-run seed of eight example habits
 │   │   │   └── __tests__/
 │   │   ├── test/setup.ts   Vitest setup: in-memory DB + table reset per test
 │   │   └── __tests__/      Vitest + supertest
@@ -38,6 +144,11 @@ habitsapp/
 │   │   │   ├── UserSwitcher.tsx  header dropdown (visible only when >1 user)
 │   │   │   ├── UsersSection.tsx  Settings panel (list, add, rename, set default, delete)
 │   │   │   └── queries.ts        TanStack Query hooks
+│   │   ├── habits/         Slice 2: habit definitions feature
+│   │   │   ├── HabitForm.tsx     shared form for add and edit (modal)
+│   │   │   ├── HabitsSection.tsx Settings panel grouped by type
+│   │   │   ├── queries.ts        TanStack Query hooks
+│   │   │   └── __tests__/
 │   │   ├── pages/          Home, Metrics, Settings
 │   │   ├── lib/
 │   │   │   ├── api.ts      apiFetch wrapper
@@ -63,6 +174,7 @@ habitsapp/
 - **Endpoints implemented**:
   - `GET /health` → `{ ok: true }`
   - `GET /users`, `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
+  - `GET /habit-definitions`, `POST /habit-definitions`, `PUT /habit-definitions/:id`, `DELETE /habit-definitions/:id`
 - **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`).
 - **Dev runner**: `tsx watch src/index.ts`
 
@@ -74,8 +186,11 @@ habitsapp/
   - Opens the DB file from `DATABASE_URL`
   - Applies `journal_mode = WAL` and `foreign_keys = ON`
   - Exports a `db` instance with the schema attached
-- **Schema** (`src/db/schema.ts`): currently `users` table (`id`, `name`, `is_default`, `created_at`).
+- **Schema** (`src/db/schema.ts`):
+  - `users` (`id`, `name`, `is_default`, `created_at`)
+  - `habit_definitions` (`id`, `name`, `type` enum: workout/writing/custom, `positive`, `color`, `created_at`)
 - **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/db/migrate.ts`.
+- **Seeding**: on backend startup, after migrations, `seedHabitDefinitions()` runs and inserts the eight example habits if the table is empty.
 
 ## Frontend
 
@@ -119,7 +234,7 @@ habitsapp/
 ### UI primitives
 
 `src/components/ui/` contains shadcn components installed via `npx shadcn@latest add`:
-- `button.tsx`, `input.tsx`, `select.tsx`, `dialog.tsx`
+- `button.tsx`, `input.tsx`, `select.tsx`, `dialog.tsx`, `dropdown-menu.tsx`, `switch.tsx`, `label.tsx`
 - Use `cn()` from `@/lib/utils` (clsx + tailwind-merge) to compose classes
 - Use the `radix-ui` umbrella package for primitives (Slot, Dialog, Select)
 
@@ -144,8 +259,8 @@ habitsapp/
 
 ## Testing
 
-- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates the users table before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health` and the full Users API (CRUD, default-user invariants).
-- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers and per-test cleanup. `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + Router + UserProvider) used by component tests. Tests live in `src/**/__tests__/`. Covers the `Header` component (route-conditional rendering, switcher visibility based on user count) and `apiFetch` (parses JSON, serializes body, throws on error).
+- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users` and `habit_definitions` before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, the Users API (CRUD + default-user invariants), and the Habit Definitions API (CRUD, color rotation, positive-flag enforcement, seeding behavior).
+- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (Radix UI primitives need it). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + Router + UserProvider) used by component tests. Tests live in `src/**/__tests__/`. Covers the `Header` (route-conditional rendering, switcher visibility), `apiFetch` (parses JSON, serializes body, throws on error), and `HabitForm` (positive-toggle visibility per type, name trimming, type-lock behavior).
 
 ## Commands
 

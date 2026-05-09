@@ -8,6 +8,13 @@
       "when": 1778345217342,
       "tag": "0000_colossal_nehzno",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1778346362931,
+      "tag": "0001_cool_ultimatum",
+      "breakpoints": true
     }
   ]
 }

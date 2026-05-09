@@ -12,7 +12,7 @@ A mobile-first web app for tracking habits across multiple unauthenticated users
 |---|---|---|
 | 0 — Foundation | ✅ Done | Both apps run, navigate, and talk to each other |
 | 1 — Users | ✅ Done | Manage user names, default user, header switcher |
-| 2 — Habit Definitions | Planned | CRUD for habit definitions + seeded examples |
+| 2 — Habit Definitions | ✅ Done | CRUD for habit definitions + seeded examples |
 | 3 — Log Entry + List | Planned | Core logging loop with infinite-scroll history |
 | 4 — Home Metrics Summary | Planned | Top habits and totals on Home |
 | 5 — Metrics View | Planned | Bar charts and heatmaps |
@@ -26,11 +26,12 @@ A mobile-first web app for tracking habits across multiple unauthenticated users
 - **User management** in Settings: add users, rename inline, delete, mark one as default
 - **Active user persists** across reloads via `localStorage`; the first created user is auto-set as default; deleting the default promotes the next user
 - **Header user switcher** appears automatically when more than one user exists
+- **Habit definitions management** in Settings: list grouped by type (Workout / Writing / Custom), add/edit/delete via a modal form, positive toggle visible only for Custom habits, type selector locked when entries exist (placeholder for now)
+- **First-run seeding**: on a fresh database, eight example habits are auto-inserted (running, rowing, writing, reading, meat consuming, fast food consuming, cooking, social interactions) with rotating colors from a positive palette (red reserved for negative habits)
 
 ## What does not work yet
 
-- No habit definitions — nothing to log
-- No log button, no log form, no entries list
+- No log button, no log form, no entries list — nothing to record
 - Metrics page is placeholder text
 - No data export
 
