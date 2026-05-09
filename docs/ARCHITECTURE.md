@@ -53,9 +53,9 @@ Invariants enforced in `backend/src/habit-definitions/repository.ts`:
   - Positive → next color in the rotating 8-color palette, based on the count of existing positive habits
 - Type cannot change once entries reference the definition → HTTP 409
 - Definitions with existing entries cannot be deleted → HTTP 409
-- The last two checks call a `hasEntriesForDefinition()` placeholder that returns `false` until Slice 3 wires up the entries table
+- The last two checks call `hasEntriesForDefinition(id)` (in `entries/repository.ts`) which counts rows in the `entries` table for that definition; both rules are enforced as of Slice 3
 
-### HabitEntry — planned (Slice 3)
+### HabitEntry — implemented
 
 A single logged occurrence of a habit by a specific user on a specific date. Multiple entries for the same `(user, definition, date)` are allowed.
 
@@ -122,9 +122,13 @@ habitsapp/
 │   │   │   └── __tests__/
 │   │   ├── habit-definitions/ Slice 2: habit definitions feature
 │   │   │   ├── colors.ts      positive palette + red for negative; pickColor()
-│   │   │   ├── repository.ts  CRUD with type-lock and entry-protection placeholders
+│   │   │   ├── repository.ts  CRUD with type-lock and delete-block (calls hasEntriesForDefinition)
 │   │   │   ├── routes.ts      Express router for /habit-definitions
 │   │   │   ├── seed.ts        first-run seed of eight example habits
+│   │   │   └── __tests__/
+│   │   ├── entries/        Slice 3: log entries feature
+│   │   │   ├── repository.ts  cursor-paginated list, parent + child-table CRUD in transactions
+│   │   │   ├── routes.ts      Express router for /entries (cursor encoded as base64url JSON)
 │   │   │   └── __tests__/
 │   │   ├── test/setup.ts   Vitest setup: in-memory DB + table reset per test
 │   │   └── __tests__/      Vitest + supertest
@@ -148,6 +152,12 @@ habitsapp/
 │   │   │   ├── HabitForm.tsx     shared form for add and edit (modal)
 │   │   │   ├── HabitsSection.tsx Settings panel grouped by type
 │   │   │   ├── queries.ts        TanStack Query hooks
+│   │   │   └── __tests__/
+│   │   ├── entries/        Slice 3: log entries feature
+│   │   │   ├── EntryForm.tsx     log/edit modal with dynamic per-type fields
+│   │   │   ├── EntriesList.tsx   filterable list with infinite scroll + delete confirm
+│   │   │   ├── date.ts           todayIso() + formatDate() helpers
+│   │   │   ├── queries.ts        TanStack Query hooks (useInfiniteQuery)
 │   │   │   └── __tests__/
 │   │   ├── pages/          Home, Metrics, Settings
 │   │   ├── lib/
@@ -175,6 +185,7 @@ habitsapp/
   - `GET /health` → `{ ok: true }`
   - `GET /users`, `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
   - `GET /habit-definitions`, `POST /habit-definitions`, `PUT /habit-definitions/:id`, `DELETE /habit-definitions/:id`
+  - `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT /entries/:id`, `DELETE /entries/:id`
 - **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`).
 - **Dev runner**: `tsx watch src/index.ts`
 
@@ -189,6 +200,12 @@ habitsapp/
 - **Schema** (`src/db/schema.ts`):
   - `users` (`id`, `name`, `is_default`, `created_at`)
   - `habit_definitions` (`id`, `name`, `type` enum: workout/writing/custom, `positive`, `color`, `created_at`)
+  - `entries` (`id`, `habit_definition_id` FK→restrict, `user_id` FK→cascade, `date` text, `created_at`)
+  - Type-specific child tables, each with `entry_id` PK FK→cascade:
+    - `entry_workout_data` — `duration` (int, required), `distance` (real), `weight` (real), `amount` (real), `notes` (text)
+    - `entry_writing_data` — `words` (int, required), `time` (int)
+    - `entry_custom_data` — `number` (real), `amount` (real), `duration` (int), `binary` (boolean)
+- **Pagination**: `GET /entries` uses cursor pagination ordered by `(date DESC, id DESC)`. The cursor is `{ date, id }` of the last item in the previous page, base64url-encoded as JSON. Default page size is 20.
 - **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/db/migrate.ts`.
 - **Seeding**: on backend startup, after migrations, `seedHabitDefinitions()` runs and inserts the eight example habits if the table is empty.
 
@@ -234,7 +251,7 @@ habitsapp/
 ### UI primitives
 
 `src/components/ui/` contains shadcn components installed via `npx shadcn@latest add`:
-- `button.tsx`, `input.tsx`, `select.tsx`, `dialog.tsx`, `dropdown-menu.tsx`, `switch.tsx`, `label.tsx`
+- `button.tsx`, `input.tsx`, `select.tsx`, `dialog.tsx`, `dropdown-menu.tsx`, `switch.tsx`, `label.tsx`, `alert-dialog.tsx`
 - Use `cn()` from `@/lib/utils` (clsx + tailwind-merge) to compose classes
 - Use the `radix-ui` umbrella package for primitives (Slot, Dialog, Select)
 

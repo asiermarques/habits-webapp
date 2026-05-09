@@ -8,6 +8,8 @@ import {
 
 export const usersRouter = Router();
 
+const MAX_NAME_LENGTH = 100;
+
 usersRouter.get('/', (_req, res) => {
   res.json(listUsers());
 });
@@ -16,6 +18,10 @@ usersRouter.post('/', (req, res) => {
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   if (!name) {
     res.status(400).json({ error: 'name is required' });
+    return;
+  }
+  if (name.length > MAX_NAME_LENGTH) {
+    res.status(400).json({ error: `name must be ${MAX_NAME_LENGTH} characters or fewer` });
     return;
   }
   res.status(201).json(createUser(name));
@@ -33,6 +39,10 @@ usersRouter.put('/:id', (req, res) => {
     const trimmed = req.body.name.trim();
     if (!trimmed) {
       res.status(400).json({ error: 'name cannot be empty' });
+      return;
+    }
+    if (trimmed.length > MAX_NAME_LENGTH) {
+      res.status(400).json({ error: `name must be ${MAX_NAME_LENGTH} characters or fewer` });
       return;
     }
     patch.name = trimmed;

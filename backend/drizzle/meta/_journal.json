@@ -15,6 +15,13 @@
       "when": 1778346362931,
       "tag": "0001_cool_ultimatum",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778347567140,
+      "tag": "0002_abandoned_chat",
+      "breakpoints": true
     }
   ]
 }

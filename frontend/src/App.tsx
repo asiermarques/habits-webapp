@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { Header } from '@/components/Header';
 import { Home } from '@/pages/Home';
 import { Metrics } from '@/pages/Metrics';
@@ -17,6 +18,7 @@ export function App() {
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
+        <Toaster richColors position="top-center" />
       </div>
     </UserProvider>
   );

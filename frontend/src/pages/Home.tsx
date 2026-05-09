@@ -1,25 +1,80 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
-import type { HealthResponse } from '@habitsapp/shared';
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import type { Entry } from '@habitsapp/shared';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useUserContext } from '@/users/UserContext';
+import { useHabitDefinitionsQuery } from '@/habits/queries';
+import { EntryForm } from '@/entries/EntryForm';
+import { EntriesList } from '@/entries/EntriesList';
+import { useCreateEntry, useUpdateEntry } from '@/entries/queries';
+
+type DialogState = { kind: 'closed' } | { kind: 'log' } | { kind: 'edit'; entry: Entry };
 
 export function Home() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['health'],
-    queryFn: () => apiFetch<HealthResponse>('/health'),
-  });
+  const { activeUser } = useUserContext();
+  const { data: habits = [] } = useHabitDefinitionsQuery();
+  const createEntry = useCreateEntry();
+  const updateEntry = useUpdateEntry();
+  const [dialog, setDialog] = useState<DialogState>({ kind: 'closed' });
+
+  const closeDialog = () => setDialog({ kind: 'closed' });
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-semibold">Home</h1>
-      <p className="mt-2 text-sm text-neutral-600">
-        Log button, metrics summary and entries list will live here (Slices 3–4).
-      </p>
-      <div className="mt-4 rounded-md border border-neutral-200 p-3 text-sm">
-        <div className="font-medium">API status</div>
-        {isLoading && <div className="text-neutral-500">Checking…</div>}
-        {error && <div className="text-red-600">Unreachable: {String(error)}</div>}
-        {data && <div className="text-emerald-600">ok: {String(data.ok)}</div>}
-      </div>
+    <div className="space-y-6 p-4">
+      <Button
+        size="lg"
+        className="w-full"
+        onClick={() => setDialog({ kind: 'log' })}
+        disabled={!activeUser || habits.length === 0}
+      >
+        <Plus className="h-5 w-5" />
+        Log entry
+      </Button>
+
+      <EntriesList onEdit={(entry) => setDialog({ kind: 'edit', entry })} />
+
+      <Dialog open={dialog.kind !== 'closed'} onOpenChange={(o) => !o && closeDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{dialog.kind === 'edit' ? 'Edit entry' : 'Log entry'}</DialogTitle>
+          </DialogHeader>
+
+          {dialog.kind === 'log' && activeUser && (
+            <EntryForm
+              habits={habits}
+              pending={createEntry.isPending}
+              onSubmit={(values) => {
+                createEntry.mutate(
+                  { ...values, userId: activeUser.id },
+                  { onSuccess: closeDialog },
+                );
+              }}
+              onCancel={closeDialog}
+            />
+          )}
+
+          {dialog.kind === 'edit' && activeUser && (
+            <EntryForm
+              habits={habits}
+              initial={dialog.entry}
+              pending={updateEntry.isPending}
+              onSubmit={(values) => {
+                updateEntry.mutate(
+                  { id: dialog.entry.id, date: values.date, data: values.data },
+                  { onSuccess: closeDialog },
+                );
+              }}
+              onCancel={closeDialog}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

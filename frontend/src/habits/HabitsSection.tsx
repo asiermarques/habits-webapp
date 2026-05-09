@@ -13,6 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { HabitForm } from './HabitForm';
 import {
   useCreateHabitDefinition,
@@ -38,6 +48,7 @@ export function HabitsSection() {
   const updateHabit = useUpdateHabitDefinition();
   const deleteHabit = useDeleteHabitDefinition();
   const [dialog, setDialog] = useState<DialogState>({ kind: 'closed' });
+  const [pendingDelete, setPendingDelete] = useState<HabitDefinition | null>(null);
 
   const grouped = HABIT_TYPES.map((type) => ({
     type,
@@ -82,7 +93,7 @@ export function HabitsSection() {
                     key={habit.id}
                     habit={habit}
                     onEdit={() => setDialog({ kind: 'edit', habit })}
-                    onDelete={() => deleteHabit.mutate(habit.id)}
+                    onDelete={() => setPendingDelete(habit)}
                     deletePending={deleteHabit.isPending}
                   />
                 ))}
@@ -118,6 +129,7 @@ export function HabitsSection() {
             <HabitForm
               initial={dialog.habit}
               submitLabel="Save changes"
+              typeLocked={dialog.habit.hasEntries}
               pending={updateHabit.isPending}
               onSubmit={(values) => {
                 updateHabit.mutate(
@@ -130,6 +142,37 @@ export function HabitsSection() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {pendingDelete?.name ?? 'this habit'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete?.hasEntries
+                ? 'This habit has logged entries and cannot be deleted.'
+                : 'This action cannot be undone. The habit will be removed for all users.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingDelete) deleteHabit.mutate(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+              disabled={pendingDelete?.hasEntries}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

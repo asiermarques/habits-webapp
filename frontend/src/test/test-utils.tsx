@@ -25,7 +25,10 @@ export function TestProviders({
 }: TestProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
+      <MemoryRouter
+        initialEntries={[initialPath]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <UserProvider>{children}</UserProvider>
       </MemoryRouter>
     </QueryClientProvider>

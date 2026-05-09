@@ -51,6 +51,11 @@ describe('Users API', () => {
       expect(r1.status).toBe(400);
       expect(r2.status).toBe(400);
     });
+
+    it('rejects names longer than 100 characters', async () => {
+      const res = await request(app).post('/users').send({ name: 'a'.repeat(101) });
+      expect(res.status).toBe(400);
+    });
   });
 
   describe('PUT /users/:id', () => {

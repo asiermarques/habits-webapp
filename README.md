@@ -12,13 +12,11 @@ A simple, mobile-first web app for tracking habits across multiple users — wit
 - CSV export for any user and date range
 - Pre-seeded example habits to start logging immediately
 
-## Tech stack
+## Docs
 
-- **Frontend**: React + TypeScript, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query, React Router, Nivo
-- **Backend**: Express + TypeScript, Drizzle ORM, SQLite
-- **Tooling**: npm workspaces, tsx, drizzle-kit
+See the ./docs directory to more details about the architecture and product features
 
-See [`tech-stack.md`](./tech-stack.md) for the full breakdown and rationale.
+
 
 ## Project structure
 

@@ -9,6 +9,8 @@ import {
 
 export const habitDefinitionsRouter = Router();
 
+const MAX_NAME_LENGTH = 100;
+
 function isHabitType(value: unknown): value is HabitType {
   return typeof value === 'string' && (HABIT_TYPES as readonly string[]).includes(value);
 }
@@ -21,6 +23,10 @@ habitDefinitionsRouter.post('/', (req, res) => {
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   if (!name) {
     res.status(400).json({ error: 'name is required' });
+    return;
+  }
+  if (name.length > MAX_NAME_LENGTH) {
+    res.status(400).json({ error: `name must be ${MAX_NAME_LENGTH} characters or fewer` });
     return;
   }
   if (!isHabitType(req.body?.type)) {
@@ -47,7 +53,12 @@ habitDefinitionsRouter.put('/:id', (req, res) => {
       res.status(400).json({ error: 'name cannot be empty' });
       return;
     }
-    patch.name = req.body.name.trim();
+    const trimmed = req.body.name.trim();
+    if (trimmed.length > MAX_NAME_LENGTH) {
+      res.status(400).json({ error: `name must be ${MAX_NAME_LENGTH} characters or fewer` });
+      return;
+    }
+    patch.name = trimmed;
   }
 
   if (req.body?.type !== undefined) {

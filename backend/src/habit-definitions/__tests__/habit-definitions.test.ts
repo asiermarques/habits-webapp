@@ -66,6 +66,13 @@ describe('Habit Definitions API', () => {
       const r = await request(app).post('/habit-definitions').send({ name: 'X', type: 'cardio' });
       expect(r.status).toBe(400);
     });
+
+    it('rejects names longer than 100 characters', async () => {
+      const r = await request(app)
+        .post('/habit-definitions')
+        .send({ name: 'a'.repeat(101), type: 'custom' });
+      expect(r.status).toBe(400);
+    });
   });
 
   describe('PUT /habit-definitions/:id', () => {

@@ -1,10 +1,11 @@
 import { asc, eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { habitDefinitions, type DbHabitDefinition } from '../db/schema.js';
+import { entries, habitDefinitions, type DbHabitDefinition } from '../db/schema.js';
 import type { HabitDefinition, HabitType } from '@habitsapp/shared';
 import { pickColor } from './colors.js';
+import { hasEntriesForDefinition } from '../entries/repository.js';
 
-function toHabitDefinition(row: DbHabitDefinition): HabitDefinition {
+function toHabitDefinition(row: DbHabitDefinition, hasEntries = false): HabitDefinition {
   return {
     id: row.id,
     name: row.name,
@@ -12,7 +13,16 @@ function toHabitDefinition(row: DbHabitDefinition): HabitDefinition {
     positive: row.positive,
     color: row.color,
     createdAt: row.createdAt,
+    hasEntries,
   };
+}
+
+function definitionsWithEntries(): Set<number> {
+  const rows = db
+    .selectDistinct({ id: entries.habitDefinitionId })
+    .from(entries)
+    .all();
+  return new Set(rows.map((r) => r.id));
 }
 
 // Workout and Writing are always positive — Custom is the only type with an explicit flag.
@@ -22,12 +32,13 @@ function resolvePositive(type: HabitType, positive?: boolean): boolean {
 }
 
 export function listHabitDefinitions(): HabitDefinition[] {
-  return db
+  const rows = db
     .select()
     .from(habitDefinitions)
     .orderBy(asc(habitDefinitions.id))
-    .all()
-    .map(toHabitDefinition);
+    .all();
+  const withEntries = definitionsWithEntries();
+  return rows.map((row) => toHabitDefinition(row, withEntries.has(row.id)));
 }
 
 export type CreateInput = {
@@ -53,7 +64,7 @@ export function createHabitDefinition(input: CreateInput): HabitDefinition {
       .returning()
       .get();
 
-    return toHabitDefinition(inserted);
+    return toHabitDefinition(inserted, false);
   });
 }
 
@@ -77,8 +88,9 @@ export function updateHabitDefinition(id: number, patch: UpdateInput): UpdateRes
       .get();
     if (!existing) return { status: 'not_found' as const };
 
+    const hasEntries = hasEntriesForDefinition(id, tx);
     const typeChanging = patch.type !== undefined && patch.type !== existing.type;
-    if (typeChanging && hasEntriesForDefinition(id)) {
+    if (typeChanging && hasEntries) {
       return { status: 'type_locked' as const };
     }
 
@@ -89,10 +101,10 @@ export function updateHabitDefinition(id: number, patch: UpdateInput): UpdateRes
     const updates: Partial<DbHabitDefinition> = {};
     if (patch.name !== undefined) updates.name = patch.name;
     if (patch.type !== undefined) updates.type = patch.type;
-    updates.positive = newPositive;
+    if (newPositive !== existing.positive) updates.positive = newPositive;
 
     if (Object.keys(updates).length === 0) {
-      return { status: 'ok' as const, definition: toHabitDefinition(existing) };
+      return { status: 'ok' as const, definition: toHabitDefinition(existing, hasEntries) };
     }
 
     const updated = tx
@@ -102,7 +114,7 @@ export function updateHabitDefinition(id: number, patch: UpdateInput): UpdateRes
       .returning()
       .get();
 
-    return { status: 'ok' as const, definition: toHabitDefinition(updated) };
+    return { status: 'ok' as const, definition: toHabitDefinition(updated, hasEntries) };
   });
 }
 
@@ -117,15 +129,10 @@ export function deleteHabitDefinition(id: number): DeleteResult {
       .get();
     if (!existing) return 'not_found';
 
-    if (hasEntriesForDefinition(id)) return 'has_entries';
+    if (hasEntriesForDefinition(id, tx)) return 'has_entries';
 
     tx.delete(habitDefinitions).where(eq(habitDefinitions.id, id)).run();
     return 'ok';
   });
 }
 
-// Placeholder until Slice 3 introduces the entries table.
-// Once entries land, this should query the entries table for any row referencing `id`.
-function hasEntriesForDefinition(_id: number): boolean {
-  return false;
-}
