@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserProvider } from '@/users/UserContext';
+import { LogEntryDialogProvider } from '@/entries/LogEntryDialog';
 
 export function makeQueryClient() {
   return new QueryClient({
@@ -29,7 +30,9 @@ export function TestProviders({
         initialEntries={[initialPath]}
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
-        <UserProvider>{children}</UserProvider>
+        <UserProvider>
+          <LogEntryDialogProvider>{children}</LogEntryDialogProvider>
+        </UserProvider>
       </MemoryRouter>
     </QueryClientProvider>
   );

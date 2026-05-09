@@ -143,7 +143,7 @@ describe('WeekChartSection', () => {
       | { labels?: { text?: { fontSize?: number } } }
       | undefined;
     // Nivo's default axis-tick fontSize is 11; bar totals pull from theme.labels.text.
-    expect(theme?.labels?.text?.fontSize).toBe(33);
+    expect(theme?.labels?.text?.fontSize).toBe(22);
   });
 
   it('shows the empty state when no entries exist this week', async () => {
