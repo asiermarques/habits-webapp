@@ -89,4 +89,6 @@ $RECYCLE.BIN/
 .local/
 docs/local
 TODO.local.md
+.workflow/*
+!.workflow/purpose.md
 
