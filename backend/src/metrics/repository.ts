@@ -159,7 +159,14 @@ export function getHeatmapMetrics({ userId, today }: RangeInput): HeatmapMetrics
     days.sort((a, b) => a.date.localeCompare(b.date));
     habits.push({ habitDefinitionId, days });
   }
-  habits.sort((a, b) => a.habitDefinitionId - b.habitDefinitionId);
+  // Most recently active first (within the heatmap range). Habits with no
+  // entries sink to the bottom; ties break by id for stability.
+  habits.sort((a, b) => {
+    const aLatest = a.days.length ? a.days[a.days.length - 1].date : '';
+    const bLatest = b.days.length ? b.days[b.days.length - 1].date : '';
+    if (aLatest !== bLatest) return bLatest.localeCompare(aLatest);
+    return a.habitDefinitionId - b.habitDefinitionId;
+  });
 
   return { rangeStart, rangeEnd, habits };
 }

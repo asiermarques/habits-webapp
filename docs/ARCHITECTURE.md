@@ -198,7 +198,7 @@ habitsapp/
   - `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT /entries/:id`, `DELETE /entries/:id`
   - `GET /metrics/weekly?userId=&habitDefinitionId=&today=` — current week (Mon–Sun) bucketed per day with sparse `counts` per habit definition. `habitDefinitionId` and `today` are optional; `today` (YYYY-MM-DD) anchors the week and is used by tests.
   - `GET /metrics/by-type?userId=&today=` — entry counts per archetype (workout/writing/custom) per week across the 13-week range (Mon–Sun aligned) that ends with the anchor week. Always returns 13 ordered weeks (oldest first), zero-filled.
-  - `GET /metrics/heatmap?userId=&today=` — for every habit definition, a sparse `{ date, count }[]` over the rolling 26-week range (~6 months, Mon–Sun aligned) that ends with the anchor week. Habits with zero matching entries are still listed with an empty `days` array so the UI can render a grey grid for them.
+  - `GET /metrics/heatmap?userId=&today=` — for every habit definition, a sparse `{ date, count }[]` over the rolling 26-week range (~6 months, Mon–Sun aligned) that ends with the anchor week. Habits are ordered by their most recent in-range entry (newest first); habits with no in-range entries are listed last with an empty `days` array.
 - **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`).
 - **Dev runner**: `tsx watch src/index.ts`
 

@@ -241,6 +241,29 @@ describe('GET /metrics/heatmap', () => {
     expect(aliceDays).toHaveLength(1);
     expect(bobDays).toHaveLength(2);
   });
+
+  it('orders habits by most recent entry first; empty habits last', async () => {
+    const user = await createUser('Alice');
+    const oldest = await createHabit('Oldest', 'custom');
+    const newest = await createHabit('Newest', 'custom');
+    const middle = await createHabit('Middle', 'custom');
+    const empty = await createHabit('Empty', 'custom');
+
+    await logEntry(oldest, user.id, '2026-03-01');
+    await logEntry(middle, user.id, '2026-04-15');
+    await logEntry(newest, user.id, '2026-05-09');
+
+    const body = (
+      await request(app).get(`/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
+    ).body as HeatmapMetrics;
+
+    expect(body.habits.map((h) => h.habitDefinitionId)).toEqual([
+      newest.id,
+      middle.id,
+      oldest.id,
+      empty.id,
+    ]);
+  });
 });
 
 function addOneDay(iso: string): string {
