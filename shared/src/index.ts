@@ -124,3 +124,40 @@ export type WeeklyMetrics = {
   // Always 7 entries, Mon..Sun.
   days: WeekDayMetrics[];
 };
+
+// --- Last 3 months metrics (Slice 5) ---
+//
+// Range is 13 complete Mon..Sun weeks ending with the week that contains the
+// anchor day (today by default). That gives ~91 days, the closest week-aligned
+// approximation of "last 3 months".
+
+export type ByTypeWeek = {
+  weekStart: string; // Monday, YYYY-MM-DD
+  weekEnd: string;   // Sunday, YYYY-MM-DD
+  workout: number;
+  writing: number;
+  custom: number;
+};
+
+export type ByTypeMetrics = {
+  rangeStart: string; // Monday of the earliest week
+  rangeEnd: string;   // Sunday of the latest week
+  weeks: ByTypeWeek[]; // length 13, oldest first
+};
+
+export type HeatmapDay = {
+  date: string; // YYYY-MM-DD
+  count: number;
+};
+
+export type HabitHeatmap = {
+  habitDefinitionId: number;
+  // Sparse: only days with at least one entry are listed.
+  days: HeatmapDay[];
+};
+
+export type HeatmapMetrics = {
+  rangeStart: string; // Monday of the earliest week
+  rangeEnd: string;   // Sunday of the latest week
+  habits: HabitHeatmap[];
+};

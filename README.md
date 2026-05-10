@@ -47,9 +47,9 @@ The review skills are orchestrated by the `project-reviewer` agent and are not m
 - Log habits across three archetypes: **Workout**, **Writing**, and **Custom**
 - Multiple named users on the same instance (no auth)
 - Editable past entries and backfill for any date
-- Home dashboard with top habits and totals
-- Dedicated metrics view with bar charts and per-habit heatmaps
-- CSV export for any user and date range
+- Home dashboard with a weekly chart and an infinite-scroll history of entries
+- Dedicated metrics view: stacked bar chart of entries per archetype over the last 13 weeks, plus per-habit heatmaps over the last 26 weeks (one column on mobile, two on tablet+)
+- CSV export for any user and date range *(planned — Slice 6)*
 - Pre-seeded example habits to start logging immediately
 
 ### Documentation

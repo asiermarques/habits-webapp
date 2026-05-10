@@ -130,9 +130,9 @@ habitsapp/
 │   │   │   ├── repository.ts  cursor-paginated list, parent + child-table CRUD in transactions
 │   │   │   ├── routes.ts      Express router for /entries (cursor encoded as base64url JSON)
 │   │   │   └── __tests__/
-│   │   ├── metrics/        Slice 4: home metrics summary
-│   │   │   ├── repository.ts  per-day aggregation across the current Mon–Sun week, with optional habit filter
-│   │   │   ├── routes.ts      Express router for /metrics/weekly
+│   │   ├── metrics/        Slices 4–5: metrics
+│   │   │   ├── repository.ts  weekly per-day aggregation + 13-week by-type and 26-week per-habit heatmap aggregations
+│   │   │   ├── routes.ts      Express router for /metrics/weekly, /metrics/by-type, /metrics/heatmap
 │   │   │   └── __tests__/
 │   │   ├── test/setup.ts   Vitest setup: in-memory DB + table reset per test
 │   │   └── __tests__/      Vitest + supertest
@@ -163,9 +163,11 @@ habitsapp/
 │   │   │   ├── date.ts           todayIso() + formatDate() helpers
 │   │   │   ├── queries.ts        TanStack Query hooks (useInfiniteQuery; entry mutations also invalidate ['metrics'])
 │   │   │   └── __tests__/
-│   │   ├── metrics/        Slice 4: home metrics summary
-│   │   │   ├── WeekChartSection.tsx  Nivo stacked-bar chart (Mon–Sun) reacting to the home filter
-│   │   │   ├── queries.ts            useWeeklyMetrics hook
+│   │   ├── metrics/        Slices 4–5: metrics
+│   │   │   ├── WeekChartSection.tsx     Nivo stacked-bar chart (Mon–Sun) reacting to the home filter
+│   │   │   ├── ByTypeChartSection.tsx   Nivo stacked-bar chart of entries per archetype across 13 weeks (Metrics page)
+│   │   │   ├── HeatmapSection.tsx       Custom 13×7 grid heatmap per habit definition (Metrics page)
+│   │   │   ├── queries.ts               useWeeklyMetrics, useByTypeMetrics, useHeatmapMetrics hooks
 │   │   │   └── __tests__/
 │   │   ├── pages/          Home, Metrics, Settings
 │   │   ├── lib/
@@ -195,6 +197,8 @@ habitsapp/
   - `GET /habit-definitions`, `POST /habit-definitions`, `PUT /habit-definitions/:id`, `DELETE /habit-definitions/:id`
   - `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT /entries/:id`, `DELETE /entries/:id`
   - `GET /metrics/weekly?userId=&habitDefinitionId=&today=` — current week (Mon–Sun) bucketed per day with sparse `counts` per habit definition. `habitDefinitionId` and `today` are optional; `today` (YYYY-MM-DD) anchors the week and is used by tests.
+  - `GET /metrics/by-type?userId=&today=` — entry counts per archetype (workout/writing/custom) per week across the 13-week range (Mon–Sun aligned) that ends with the anchor week. Always returns 13 ordered weeks (oldest first), zero-filled.
+  - `GET /metrics/heatmap?userId=&today=` — for every habit definition, a sparse `{ date, count }[]` over the rolling 26-week range (~6 months, Mon–Sun aligned) that ends with the anchor week. Habits with zero matching entries are still listed with an empty `days` array so the UI can render a grey grid for them.
 - **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`).
 - **Dev runner**: `tsx watch src/index.ts`
 
@@ -238,7 +242,7 @@ habitsapp/
 | Path | Component | Purpose |
 |---|---|---|
 | `/` | `Home` | Default; demonstrates API connectivity by calling `/health` |
-| `/metrics` | `Metrics` | Placeholder for Slice 5 |
+| `/metrics` | `Metrics` | Last-3-months bar chart by archetype + per-habit heatmaps |
 | `/settings` | `Settings` | Placeholder for Slices 1–2 |
 
 ### Header
@@ -285,8 +289,8 @@ habitsapp/
 
 ## Testing
 
-- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users`, `habit_definitions`, and the entries tables before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, Users (CRUD + default-user invariants), Habit Definitions (CRUD, color rotation, positive-flag enforcement, seeding), Entries (CRUD per archetype, cursor pagination, type-lock/delete-block guards), and `/metrics/weekly` (Mon–Sun range, per-day aggregation, habit filter, user isolation).
-- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (Radix UI primitives need it). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + Router + UserProvider) used by component tests. Tests live in `src/**/__tests__/`. Covers the `Header`, `apiFetch`, `HabitForm`, `EntryForm`, and `WeekChartSection` (Nivo `ResponsiveBar` is mocked so the test asserts on the chart model — keys, data, colors, and empty state).
+- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users`, `habit_definitions`, and the entries tables before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, Users (CRUD + default-user invariants), Habit Definitions (CRUD, color rotation, positive-flag enforcement, seeding), Entries (CRUD per archetype, cursor pagination, type-lock/delete-block guards), `/metrics/weekly` (Mon–Sun range, per-day aggregation, habit filter, user isolation), and `/metrics/by-type` + `/metrics/heatmap` (13-week range, archetype/per-habit aggregation, range edge exclusion, user isolation).
+- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (Radix UI primitives need it). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + Router + UserProvider) used by component tests. Tests live in `src/**/__tests__/`. Covers the `Header`, `apiFetch`, `HabitForm`, `EntryForm`, `WeekChartSection`, `ByTypeChartSection` (Nivo `ResponsiveBar` is mocked so tests assert on the chart model — keys, data, colors, and empty state), and `HeatmapSection` (asserts the 26×7 grid, totals, and per-habit color choice).
 
 ## Commands
 

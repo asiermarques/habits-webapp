@@ -1,12 +1,31 @@
-import { Router } from 'express';
-import { getWeeklyMetrics, isValidIsoDate } from './repository.js';
+import { Router, type Request } from 'express';
+import {
+  getByTypeMetrics,
+  getHeatmapMetrics,
+  getWeeklyMetrics,
+  isValidIsoDate,
+} from './repository.js';
 
 export const metricsRouter = Router();
 
-metricsRouter.get('/weekly', (req, res) => {
+function parseUserId(req: Request): number | { error: string } {
   const userId = Number(req.query.userId);
-  if (!Number.isInteger(userId)) {
-    res.status(400).json({ error: 'userId is required' });
+  if (!Number.isInteger(userId)) return { error: 'userId is required' };
+  return userId;
+}
+
+function parseToday(req: Request): string | undefined | { error: string } {
+  if (req.query.today === undefined) return undefined;
+  if (typeof req.query.today !== 'string' || !isValidIsoDate(req.query.today)) {
+    return { error: 'today must be YYYY-MM-DD' };
+  }
+  return req.query.today;
+}
+
+metricsRouter.get('/weekly', (req, res) => {
+  const userId = parseUserId(req);
+  if (typeof userId === 'object') {
+    res.status(400).json(userId);
     return;
   }
 
@@ -20,14 +39,43 @@ metricsRouter.get('/weekly', (req, res) => {
     habitDefinitionId = parsed;
   }
 
-  let today: string | undefined;
-  if (req.query.today !== undefined) {
-    if (typeof req.query.today !== 'string' || !isValidIsoDate(req.query.today)) {
-      res.status(400).json({ error: 'today must be YYYY-MM-DD' });
-      return;
-    }
-    today = req.query.today;
+  const today = parseToday(req);
+  if (typeof today === 'object' && today !== undefined) {
+    res.status(400).json(today);
+    return;
   }
 
   res.json(getWeeklyMetrics({ userId, habitDefinitionId, today }));
+});
+
+metricsRouter.get('/by-type', (req, res) => {
+  const userId = parseUserId(req);
+  if (typeof userId === 'object') {
+    res.status(400).json(userId);
+    return;
+  }
+
+  const today = parseToday(req);
+  if (typeof today === 'object' && today !== undefined) {
+    res.status(400).json(today);
+    return;
+  }
+
+  res.json(getByTypeMetrics({ userId, today }));
+});
+
+metricsRouter.get('/heatmap', (req, res) => {
+  const userId = parseUserId(req);
+  if (typeof userId === 'object') {
+    res.status(400).json(userId);
+    return;
+  }
+
+  const today = parseToday(req);
+  if (typeof today === 'object' && today !== undefined) {
+    res.status(400).json(today);
+    return;
+  }
+
+  res.json(getHeatmapMetrics({ userId, today }));
 });

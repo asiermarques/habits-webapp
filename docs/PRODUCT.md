@@ -15,7 +15,7 @@ A mobile-first web app for tracking habits across multiple unauthenticated users
 | 2 — Habit Definitions | ✅ Done | CRUD for habit definitions + seeded examples |
 | 3 — Log Entry + List | ✅ Done | Core logging loop with infinite-scroll history |
 | 4 — Home Metrics Summary | ✅ Done | Top habits and totals on Home |
-| 5 — Metrics View | Planned | Bar charts and heatmaps |
+| 5 — Metrics View | ✅ Done | Bar charts and heatmaps over the last 3 months |
 | 6 — CSV Export | Planned | Date-ranged export per user |
 
 ## What works right now
@@ -33,10 +33,12 @@ A mobile-first web app for tracking habits across multiple unauthenticated users
 - **Edit and delete entries**: edit reuses the same modal pre-filled (habit locked, date and data editable); delete shows a confirmation dialog
 - **Habit-definition guards now active**: a definition with existing entries cannot be deleted (409) and its type cannot be changed (409)
 - **Home weekly chart**: the Home screen shows a full-width Nivo stacked bar chart of entries per day for the current week (Mon–Sun), reacting to the same habit filter as the entries list
+- **Metrics page**: dedicated `/metrics` view. It contains:
+  - A stacked bar chart of entries by archetype (Workout / Writing / Custom) over the last 13 weeks (Mon–Sun aligned, ~3 months)
+  - One heatmap per habit definition over the last 26 weeks (~6 months) — a 26×7 grid where opacity indicates the per-day count. On `md+` viewports cards are arranged in two columns; cells fill the available width via CSS grid. Positive habits use their assigned color, negative habits use red. Habits with no entries still render an empty grid
 
 ## What does not work yet
 
-- Metrics page is placeholder text
 - No data export
 
 ## Product decisions worth knowing
