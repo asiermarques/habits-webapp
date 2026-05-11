@@ -6,7 +6,7 @@ import { HabitForm } from '../HabitForm';
 describe('HabitForm', () => {
   it('hides the positive toggle for workout type', () => {
     render(<HabitForm submitLabel="Add" onSubmit={vi.fn()} initial={{
-      id: 1, name: 'Run', type: 'workout', positive: true, color: '#000', createdAt: '', hasEntries: false,
+      id: 1, userId: 1, name: 'Run', type: 'workout', positive: true, color: '#000', createdAt: '', hasEntries: false,
     }} />);
 
     expect(screen.queryByLabelText('Positive habit')).not.toBeInTheDocument();
@@ -14,7 +14,7 @@ describe('HabitForm', () => {
 
   it('shows the positive toggle for custom type', () => {
     render(<HabitForm submitLabel="Add" onSubmit={vi.fn()} initial={{
-      id: 1, name: 'Reading', type: 'custom', positive: true, color: '#000', createdAt: '', hasEntries: false,
+      id: 1, userId: 1, name: 'Reading', type: 'custom', positive: true, color: '#000', createdAt: '', hasEntries: false,
     }} />);
 
     expect(screen.getByLabelText('Positive habit')).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe('HabitForm', () => {
         submitLabel="Save"
         onSubmit={vi.fn()}
         typeLocked
-        initial={{ id: 1, name: 'Run', type: 'workout', positive: true, color: '#000', createdAt: '', hasEntries: false }}
+        initial={{ id: 1, userId: 1, name: 'Run', type: 'workout', positive: true, color: '#000', createdAt: '', hasEntries: false }}
       />,
     );
 

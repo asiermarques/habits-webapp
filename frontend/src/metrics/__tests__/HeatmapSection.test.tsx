@@ -16,11 +16,11 @@ const users: User[] = [
 ];
 
 const reading: HabitDefinition = {
-  id: 10, name: 'Reading', type: 'custom', positive: true,
+  id: 10, userId: 1, name: 'Reading', type: 'custom', positive: true,
   color: '#3b82f6', createdAt: 'now', hasEntries: true,
 };
 const fastFood: HabitDefinition = {
-  id: 11, name: 'Fast food', type: 'custom', positive: false,
+  id: 11, userId: 1, name: 'Fast food', type: 'custom', positive: false,
   color: '#ef4444', createdAt: 'now', hasEntries: true,
 };
 const habits = [reading, fastFood];

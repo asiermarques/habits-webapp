@@ -15,7 +15,7 @@ function jsonResponse(body: unknown) {
 const aUser: User = { id: 1, name: 'Alice', isDefault: true, createdAt: 'now' };
 const bUser: User = { id: 2, name: 'Bob', isDefault: false, createdAt: 'now' };
 const aHabit: HabitDefinition = {
-  id: 10, name: 'Reading', type: 'custom', positive: true,
+  id: 10, userId: 1, name: 'Reading', type: 'custom', positive: true,
   color: '#3b82f6', createdAt: 'now', hasEntries: false,
 };
 

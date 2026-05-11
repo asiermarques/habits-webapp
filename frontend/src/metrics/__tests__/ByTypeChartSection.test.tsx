@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import type { ByHabitMetrics, HabitDefinition, User } from '@habitsapp/shared';
+import type { ByHabitMetrics, ByHabitWeek, HabitDefinition, User } from '@habitsapp/shared';
 import { ByTypeChartSection } from '../ByTypeChartSection';
 import { TestProviders } from '@/test/test-utils';
 
@@ -24,12 +24,12 @@ const users: User[] = [
 ];
 
 const habitDefs: HabitDefinition[] = [
-  { id: 10, name: 'Running', type: 'workout', positive: true, color: '#16a34a', createdAt: '', hasEntries: true },
-  { id: 11, name: 'Journal', type: 'writing', positive: true, color: '#2563eb', createdAt: '', hasEntries: true },
+  { id: 10, userId: 1, name: 'Running', type: 'workout', positive: true, color: '#16a34a', createdAt: '', hasEntries: true },
+  { id: 11, userId: 1, name: 'Journal', type: 'writing', positive: true, color: '#2563eb', createdAt: '', hasEntries: true },
 ];
 
 function makeWeeks(): ByHabitMetrics {
-  const weeks = [];
+  const weeks: ByHabitWeek[] = [];
   const start = new Date(Date.UTC(2026, 1, 9)); // 2026-02-09 Mon
   for (let i = 0; i < 13; i++) {
     const ws = new Date(start);

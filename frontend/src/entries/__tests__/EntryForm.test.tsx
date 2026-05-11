@@ -5,9 +5,9 @@ import type { HabitDefinition } from '@habitsapp/shared';
 import { EntryForm } from '../EntryForm';
 
 const habits: HabitDefinition[] = [
-  { id: 1, name: 'Running', type: 'workout', positive: true, color: '#000', createdAt: '', hasEntries: false },
-  { id: 2, name: 'Journal', type: 'writing', positive: true, color: '#000', createdAt: '', hasEntries: false },
-  { id: 3, name: 'Reading', type: 'custom', positive: true, color: '#000', createdAt: '', hasEntries: false },
+  { id: 1, userId: 1, name: 'Running', type: 'workout', positive: true, color: '#000', createdAt: '', hasEntries: false },
+  { id: 2, userId: 1, name: 'Journal', type: 'writing', positive: true, color: '#000', createdAt: '', hasEntries: false },
+  { id: 3, userId: 1, name: 'Reading', type: 'custom', positive: true, color: '#000', createdAt: '', hasEntries: false },
 ];
 
 describe('EntryForm', () => {
