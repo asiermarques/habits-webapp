@@ -4,43 +4,6 @@ A simple, mobile-first web app for tracking habits across multiple users — wit
 
 This is also a **demo project used in talks and training sessions** about Claude Code harness engineering. The codebase is intentionally kept simple but real and functional so that the workflow patterns demonstrated here reflect actual development conditions.
 
-## Claude Code workflow
-
-This repo demonstrates a Claude Code workflow built around **agents**, **skills**, and **memory**.
-
-### Agent: `project-reviewer`
-
-A custom sub-agent defined in `.claude/agents/project-reviewer.md`. When invoked, it performs a structured multi-dimensional review of recently modified code — covering code quality, tests, performance, product alignment, security, and documentation accuracy. It writes its report to `.workflow/review/project-review.md` and maintains persistent memory in `.claude/agent-memory/project-reviewer/`.
-
-### Skills
-
-Skills are reusable prompt modules that can be composed or invoked in conversation:
-
-| Skill | Purpose |
-|-------|---------|
-| `demo-take-requirements` | Reads product/architecture docs, asks clarifying questions, and writes a requirements file to `.workflow/requisites/<feature-slug>.md` |
-| `demo-create-implementation-plan` | Turns a requirements file into a vertical-slice plan with user story files under `.workflow/tasks/<feature-slug>/` |
-| `project-review-methodology` | Applies the standard review checklist across six dimensions |
-| `project-review-security` | Focuses on input validation, multi-user data isolation, XSS, and SQL safety |
-| `project-review-testing` | Audits test coverage for edge cases, error paths, and vertical-slice completeness |
-| `project-review-docs-consistency` | Checks whether `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, and READMEs match the actual implementation |
-
-The review skills are orchestrated by the `project-reviewer` agent and are not meant to be invoked directly.
-
-### Workflow directory
-
-`.workflow/` holds the output produced by agents and skills. Subdirectories are created on demand the first time a given skill or agent runs:
-
-- `requisites/` — feature requirement files (written by `demo-take-requirements`)
-- `tasks/` — user story files per feature (written by `demo-create-implementation-plan`)
-- `review/` — review reports (written by the `project-reviewer` agent)
-
-The directory may also contain ad-hoc working files (for example, `implementation-plan.md`) that aren't produced by any specific skill.
-
----
-
-## The app
-
 ### Features
 
 - Log habits across three archetypes: **Workout**, **Writing**, and **Custom**

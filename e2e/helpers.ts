@@ -10,7 +10,7 @@ export async function createUser(page: Page, name: string) {
   const existing = page.getByRole('listitem').filter({ hasText: new RegExp(`^${name}`) });
   if (await existing.first().isVisible({ timeout: 1000 }).catch(() => false)) return;
   await page.getByLabel('New user name').fill(name);
-  await page.getByRole('button', { name: 'Add' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(existing.first()).toBeVisible();
 }
 
