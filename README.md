@@ -1,5 +1,7 @@
 # Habits
 
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/asiermarques/habits-webapp/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/asiermarques/habits-webapp/tree/main)
+
 A simple, mobile-first web app for tracking habits across multiple users — without accounts, logins, or paywalls. Built to consolidate the habits that no single off-the-shelf tracker handled well, and to surface weekly and monthly summaries that inform real lifestyle changes.
 
 This is also a **demo project used in talks and training sessions** about Claude Code harness engineering. The codebase is intentionally kept simple but real and functional so that the workflow patterns demonstrated here reflect actual development conditions.
