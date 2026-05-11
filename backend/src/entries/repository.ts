@@ -158,6 +158,7 @@ export type CreateResult =
   | { status: 'ok'; entry: Entry }
   | { status: 'definition_not_found' }
   | { status: 'user_not_found' }
+  | { status: 'wrong_user' }
   | { status: 'invalid_data'; reason: string };
 
 export function createEntry(input: CreateInput): CreateResult {
@@ -171,6 +172,10 @@ export function createEntry(input: CreateInput): CreateResult {
 
     const user = tx.select().from(users).where(eq(users.id, input.userId)).get();
     if (!user) return { status: 'user_not_found' as const };
+
+    if (definition.userId !== input.userId) {
+      return { status: 'wrong_user' as const };
+    }
 
     const validation = validateData(definition.type, input.data);
     if (validation) return { status: 'invalid_data' as const, reason: validation };

@@ -6,6 +6,7 @@ import type {
   ByTypeMetrics,
   HabitDefinition,
   HeatmapMetrics,
+  SummaryMetrics,
   User,
 } from '@habitsapp/shared';
 import { BY_TYPE_WEEKS, byTypeRange, heatmapRange } from '../repository.js';
@@ -18,10 +19,11 @@ async function createUser(name: string): Promise<User> {
 }
 
 async function createHabit(
+  userId: number,
   name: string,
   type: 'workout' | 'writing' | 'custom',
 ): Promise<HabitDefinition> {
-  const res = await request(app).post('/habit-definitions').send({ name, type });
+  const res = await request(app).post('/habit-definitions').send({ userId, name, type });
   return res.body as HabitDefinition;
 }
 
@@ -73,9 +75,9 @@ describe('GET /metrics/by-type', () => {
 
   it('aggregates entries per archetype per week', async () => {
     const user = await createUser('Alice');
-    const running = await createHabit('Running', 'workout');
-    const journal = await createHabit('Journal', 'writing');
-    const reading = await createHabit('Reading', 'custom');
+    const running = await createHabit(user.id, 'Running', 'workout');
+    const journal = await createHabit(user.id, 'Journal', 'writing');
+    const reading = await createHabit(user.id, 'Reading', 'custom');
 
     // current week (2026-05-04..2026-05-10)
     await logEntry(running, user.id, '2026-05-04');
@@ -104,7 +106,7 @@ describe('GET /metrics/by-type', () => {
 
   it('excludes entries outside the 3-month range', async () => {
     const user = await createUser('Alice');
-    const running = await createHabit('Running', 'workout');
+    const running = await createHabit(user.id, 'Running', 'workout');
 
     const { rangeStart, rangeEnd, weekStarts } = byTypeRange(ANCHOR);
     // One day before the range, one day after.
@@ -129,11 +131,12 @@ describe('GET /metrics/by-type', () => {
   it('isolates results per user', async () => {
     const alice = await createUser('Alice');
     const bob = await createUser('Bob');
-    const running = await createHabit('Running', 'workout');
+    const aliceRunning = await createHabit(alice.id, 'Running', 'workout');
+    const bobRunning = await createHabit(bob.id, 'Running', 'workout');
 
-    await logEntry(running, alice.id, '2026-05-04');
-    await logEntry(running, bob.id, '2026-05-04');
-    await logEntry(running, bob.id, '2026-05-05');
+    await logEntry(aliceRunning, alice.id, '2026-05-04');
+    await logEntry(bobRunning, bob.id, '2026-05-04');
+    await logEntry(bobRunning, bob.id, '2026-05-05');
 
     const aliceBody = (
       await request(app).get(`/metrics/by-type?userId=${alice.id}&today=${ANCHOR}`)
@@ -151,9 +154,9 @@ describe('GET /metrics/by-type', () => {
 
   it('sums repetitions across workout and custom entries', async () => {
     const user = await createUser('Alice');
-    const running = await createHabit('Running', 'workout');
-    const pushups = await createHabit('Pushups', 'custom');
-    const journal = await createHabit('Journal', 'writing');
+    const running = await createHabit(user.id, 'Running', 'workout');
+    const pushups = await createHabit(user.id, 'Pushups', 'custom');
+    const journal = await createHabit(user.id, 'Journal', 'writing');
 
     await request(app).post('/entries').send({
       habitDefinitionId: running.id,
@@ -190,8 +193,8 @@ describe('GET /metrics/heatmap', () => {
 
   it('returns one entry per habit definition (sparse, sorted by date)', async () => {
     const user = await createUser('Alice');
-    const reading = await createHabit('Reading', 'custom');
-    const writing = await createHabit('Journal', 'writing');
+    const reading = await createHabit(user.id, 'Reading', 'custom');
+    const writing = await createHabit(user.id, 'Journal', 'writing');
 
     await logEntry(reading, user.id, '2026-05-04');
     await logEntry(reading, user.id, '2026-05-04'); // same day, +1
@@ -218,8 +221,8 @@ describe('GET /metrics/heatmap', () => {
 
   it('includes habits with zero entries (empty days array)', async () => {
     const user = await createUser('Alice');
-    const reading = await createHabit('Reading', 'custom');
-    const _writing = await createHabit('Journal', 'writing');
+    const reading = await createHabit(user.id, 'Reading', 'custom');
+    const _writing = await createHabit(user.id, 'Journal', 'writing');
 
     await logEntry(reading, user.id, '2026-05-04');
 
@@ -234,7 +237,7 @@ describe('GET /metrics/heatmap', () => {
 
   it('excludes entries outside the 12-month range', async () => {
     const user = await createUser('Alice');
-    const reading = await createHabit('Reading', 'custom');
+    const reading = await createHabit(user.id, 'Reading', 'custom');
 
     const { rangeStart, rangeEnd } = heatmapRange(ANCHOR);
     await logEntry(reading, user.id, subtractOneDay(rangeStart));
@@ -255,11 +258,12 @@ describe('GET /metrics/heatmap', () => {
   it('isolates results per user', async () => {
     const alice = await createUser('Alice');
     const bob = await createUser('Bob');
-    const reading = await createHabit('Reading', 'custom');
+    const aliceReading = await createHabit(alice.id, 'Reading', 'custom');
+    const bobReading = await createHabit(bob.id, 'Reading', 'custom');
 
-    await logEntry(reading, alice.id, '2026-05-04');
-    await logEntry(reading, bob.id, '2026-05-04');
-    await logEntry(reading, bob.id, '2026-05-05');
+    await logEntry(aliceReading, alice.id, '2026-05-04');
+    await logEntry(bobReading, bob.id, '2026-05-04');
+    await logEntry(bobReading, bob.id, '2026-05-05');
 
     const aliceBody = (
       await request(app).get(`/metrics/heatmap?userId=${alice.id}&today=${ANCHOR}`)
@@ -268,8 +272,8 @@ describe('GET /metrics/heatmap', () => {
       await request(app).get(`/metrics/heatmap?userId=${bob.id}&today=${ANCHOR}`)
     ).body as HeatmapMetrics;
 
-    const aliceDays = aliceBody.habits.find((h) => h.habitDefinitionId === reading.id)!.days;
-    const bobDays = bobBody.habits.find((h) => h.habitDefinitionId === reading.id)!.days;
+    const aliceDays = aliceBody.habits.find((h) => h.habitDefinitionId === aliceReading.id)!.days;
+    const bobDays = bobBody.habits.find((h) => h.habitDefinitionId === bobReading.id)!.days;
 
     expect(aliceDays).toHaveLength(1);
     expect(bobDays).toHaveLength(2);
@@ -277,8 +281,8 @@ describe('GET /metrics/heatmap', () => {
 
   it('sums repetitions per day for workout and custom heatmaps', async () => {
     const user = await createUser('Alice');
-    const running = await createHabit('Running', 'workout');
-    const pushups = await createHabit('Pushups', 'custom');
+    const running = await createHabit(user.id, 'Running', 'workout');
+    const pushups = await createHabit(user.id, 'Pushups', 'custom');
 
     await request(app).post('/entries').send({
       habitDefinitionId: running.id,
@@ -311,10 +315,10 @@ describe('GET /metrics/heatmap', () => {
 
   it('orders habits by most recent entry first; empty habits last', async () => {
     const user = await createUser('Alice');
-    const oldest = await createHabit('Oldest', 'custom');
-    const newest = await createHabit('Newest', 'custom');
-    const middle = await createHabit('Middle', 'custom');
-    const empty = await createHabit('Empty', 'custom');
+    const oldest = await createHabit(user.id, 'Oldest', 'custom');
+    const newest = await createHabit(user.id, 'Newest', 'custom');
+    const middle = await createHabit(user.id, 'Middle', 'custom');
+    const empty = await createHabit(user.id, 'Empty', 'custom');
 
     await logEntry(oldest, user.id, '2026-03-01');
     await logEntry(middle, user.id, '2026-04-15');
@@ -341,8 +345,8 @@ describe('GET /metrics/by-habit', () => {
 
   it(`emits ${BY_TYPE_WEEKS} weeks with sparse habit counts`, async () => {
     const user = await createUser('Alice');
-    const running = await createHabit('Running', 'workout');
-    const journal = await createHabit('Journal', 'writing');
+    const running = await createHabit(user.id, 'Running', 'workout');
+    const journal = await createHabit(user.id, 'Journal', 'writing');
 
     await logEntry(running, user.id, '2026-05-04');
     await logEntry(running, user.id, '2026-05-05');
@@ -372,7 +376,7 @@ describe('GET /metrics/by-habit', () => {
 
   it('sums repetitions per week', async () => {
     const user = await createUser('Alice');
-    const pushups = await createHabit('Pushups', 'custom');
+    const pushups = await createHabit(user.id, 'Pushups', 'custom');
 
     await request(app).post('/entries').send({
       habitDefinitionId: pushups.id, userId: user.id,
@@ -394,11 +398,12 @@ describe('GET /metrics/by-habit', () => {
   it('isolates results per user', async () => {
     const alice = await createUser('Alice');
     const bob = await createUser('Bob');
-    const running = await createHabit('Running', 'workout');
+    const aliceRunning = await createHabit(alice.id, 'Running', 'workout');
+    const bobRunning = await createHabit(bob.id, 'Running', 'workout');
 
-    await logEntry(running, alice.id, '2026-05-04');
-    await logEntry(running, bob.id, '2026-05-04');
-    await logEntry(running, bob.id, '2026-05-05');
+    await logEntry(aliceRunning, alice.id, '2026-05-04');
+    await logEntry(bobRunning, bob.id, '2026-05-04');
+    await logEntry(bobRunning, bob.id, '2026-05-05');
 
     const aliceBody = (
       await request(app).get(`/metrics/by-habit?userId=${alice.id}&today=${ANCHOR}`)
@@ -416,6 +421,144 @@ describe('GET /metrics/by-habit', () => {
 
     expect(aliceTotal).toBe(1);
     expect(bobTotal).toBe(2);
+  });
+});
+
+describe('GET /metrics/summary', () => {
+  it('returns 400 when userId is missing', async () => {
+    const res = await request(app).get('/metrics/summary');
+    expect(res.status).toBe(400);
+  });
+
+  it('returns zero-valued cards when the user has no habits', async () => {
+    const user = await createUser('Alice');
+    const body = (
+      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+    ).body as SummaryMetrics;
+    expect(body.mostRegistered).toBeNull();
+    expect(body.leastRegistered).toBeNull();
+    expect(body.badHabitsTotalCost).toBe(0);
+    expect(body.activeHabitsCount).toBe(0);
+  });
+
+  it('picks most/least registered and sums bad-habit cost across the last 30 days', async () => {
+    const user = await createUser('Alice');
+    const running = await createHabit(user.id, 'Running', 'workout');
+    const journal = await createHabit(user.id, 'Journal', 'writing');
+    const fastFood = await request(app).post('/habit-definitions').send({
+      userId: user.id, name: 'Fast food', type: 'custom', positive: false,
+    });
+    const fastFoodHabit = fastFood.body as HabitDefinition;
+
+    // running: 10 + 5 = 15 reps inside window
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id, userId: user.id,
+      date: '2026-05-04', data: { duration: 30, number: 10 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id, userId: user.id,
+      date: '2026-05-09', data: { duration: 20, number: 5 },
+    });
+    // journal: 1 entry (writing has no `number`, counts as 1)
+    await request(app).post('/entries').send({
+      habitDefinitionId: journal.id, userId: user.id,
+      date: '2026-05-09', data: { words: 200 },
+    });
+    // fastFood: 12 + 8 = 20 in amount (cost) — drives the bad-habits total cost
+    await request(app).post('/entries').send({
+      habitDefinitionId: fastFoodHabit.id, userId: user.id,
+      date: '2026-05-05', data: { number: 3, amount: 12 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: fastFoodHabit.id, userId: user.id,
+      date: '2026-05-06', data: { number: 2, amount: 8 },
+    });
+
+    const body = (
+      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+    ).body as SummaryMetrics;
+
+    expect(body.mostRegistered).toEqual({ habitDefinitionId: running.id, count: 15 });
+    expect(body.badHabitsTotalCost).toBe(20);
+    expect(body.activeHabitsCount).toBe(3);
+    // Least-registered is journal (count 1), the smallest non-zero — there are
+    // no zero-entry habits in this fixture so journal wins.
+    expect(body.leastRegistered).toEqual({ habitDefinitionId: journal.id, count: 1 });
+  });
+
+  it('ignores cost from bad-habit entries that have no amount field', async () => {
+    const user = await createUser('Alice');
+    const fastFood = (
+      await request(app).post('/habit-definitions').send({
+        userId: user.id, name: 'Fast food', type: 'custom', positive: false,
+      })
+    ).body as HabitDefinition;
+
+    // No amount → contributes 0 cost despite logging the entry
+    await request(app).post('/entries').send({
+      habitDefinitionId: fastFood.id, userId: user.id,
+      date: '2026-05-05', data: { number: 5 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: fastFood.id, userId: user.id,
+      date: '2026-05-06', data: { amount: 7 },
+    });
+
+    const body = (
+      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+    ).body as SummaryMetrics;
+    expect(body.badHabitsTotalCost).toBe(7);
+  });
+
+  it('excludes amount from positive habits', async () => {
+    const user = await createUser('Alice');
+    const reading = await createHabit(user.id, 'Reading', 'custom'); // positive
+
+    await request(app).post('/entries').send({
+      habitDefinitionId: reading.id, userId: user.id,
+      date: '2026-05-05', data: { number: 1, amount: 99 },
+    });
+
+    const body = (
+      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+    ).body as SummaryMetrics;
+    expect(body.badHabitsTotalCost).toBe(0);
+  });
+
+  it('lets a zero-entry habit win the least-registered card', async () => {
+    const user = await createUser('Alice');
+    const running = await createHabit(user.id, 'Running', 'workout');
+    const idle = await createHabit(user.id, 'Idle', 'custom');
+
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id, userId: user.id,
+      date: '2026-05-09', data: { duration: 30 },
+    });
+
+    const body = (
+      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+    ).body as SummaryMetrics;
+    expect(body.leastRegistered).toEqual({ habitDefinitionId: idle.id, count: 0 });
+  });
+
+  it('ignores entries older than 30 days', async () => {
+    const user = await createUser('Alice');
+    const running = await createHabit(user.id, 'Running', 'workout');
+
+    // Anchor is 2026-05-09; window starts 2026-04-10. 2026-04-09 is outside.
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id, userId: user.id,
+      date: '2026-04-09', data: { duration: 30, number: 99 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id, userId: user.id,
+      date: '2026-04-10', data: { duration: 30, number: 1 },
+    });
+
+    const body = (
+      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+    ).body as SummaryMetrics;
+    expect(body.mostRegistered).toEqual({ habitDefinitionId: running.id, count: 1 });
   });
 });
 

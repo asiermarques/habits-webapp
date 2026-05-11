@@ -12,10 +12,11 @@ async function createUser(name: string): Promise<User> {
 }
 
 async function createHabit(
+  userId: number,
   name: string,
   type: 'workout' | 'writing' | 'custom',
 ): Promise<HabitDefinition> {
-  const res = await request(app).post('/habit-definitions').send({ name, type });
+  const res = await request(app).post('/habit-definitions').send({ userId, name, type });
   return res.body as HabitDefinition;
 }
 
@@ -61,7 +62,7 @@ describe('GET /metrics/weekly', () => {
 
   it('returns the Mon..Sun range with 7 empty day buckets when no entries exist', async () => {
     const user = await createUser('Alice');
-    await createHabit('Reading', 'custom');
+    await createHabit(user.id, 'Reading', 'custom');
 
     const res = await getWeekly(user.id, ANCHOR);
     expect(res.status).toBe(200);
@@ -85,8 +86,8 @@ describe('GET /metrics/weekly', () => {
 
   it('aggregates counts per habit per day inside the week', async () => {
     const user = await createUser('Alice');
-    const reading = await createHabit('Reading', 'custom');
-    const writing = await createHabit('Journal', 'writing');
+    const reading = await createHabit(user.id, 'Reading', 'custom');
+    const writing = await createHabit(user.id, 'Journal', 'writing');
 
     await logEntry(reading, user.id, '2026-05-04'); // Mon
     await logEntry(reading, user.id, '2026-05-04'); // Mon (×2)
@@ -112,7 +113,7 @@ describe('GET /metrics/weekly', () => {
 
   it('excludes entries outside the anchor week', async () => {
     const user = await createUser('Alice');
-    const reading = await createHabit('Reading', 'custom');
+    const reading = await createHabit(user.id, 'Reading', 'custom');
 
     await logEntry(reading, user.id, '2026-05-03'); // Sun before
     await logEntry(reading, user.id, '2026-05-11'); // Mon after
@@ -128,8 +129,8 @@ describe('GET /metrics/weekly', () => {
 
   it('filters by habitDefinitionId when provided', async () => {
     const user = await createUser('Alice');
-    const reading = await createHabit('Reading', 'custom');
-    const writing = await createHabit('Journal', 'writing');
+    const reading = await createHabit(user.id, 'Reading', 'custom');
+    const writing = await createHabit(user.id, 'Journal', 'writing');
 
     await logEntry(reading, user.id, '2026-05-04');
     await logEntry(writing, user.id, '2026-05-04');
@@ -144,9 +145,9 @@ describe('GET /metrics/weekly', () => {
 
   it('sums repetitions instead of entries for workout and custom habits', async () => {
     const user = await createUser('Alice');
-    const running = await createHabit('Running', 'workout');
-    const pushups = await createHabit('Pushups', 'custom');
-    const journal = await createHabit('Journal', 'writing');
+    const running = await createHabit(user.id, 'Running', 'workout');
+    const pushups = await createHabit(user.id, 'Pushups', 'custom');
+    const journal = await createHabit(user.id, 'Journal', 'writing');
 
     await request(app).post('/entries').send({
       habitDefinitionId: running.id,
@@ -191,11 +192,12 @@ describe('GET /metrics/weekly', () => {
   it('isolates results per user', async () => {
     const alice = await createUser('Alice');
     const bob = await createUser('Bob');
-    const reading = await createHabit('Reading', 'custom');
+    const aliceReading = await createHabit(alice.id, 'Reading', 'custom');
+    const bobReading = await createHabit(bob.id, 'Reading', 'custom');
 
-    await logEntry(reading, alice.id, '2026-05-04');
-    await logEntry(reading, bob.id, '2026-05-04');
-    await logEntry(reading, bob.id, '2026-05-05');
+    await logEntry(aliceReading, alice.id, '2026-05-04');
+    await logEntry(bobReading, bob.id, '2026-05-04');
+    await logEntry(bobReading, bob.id, '2026-05-05');
 
     const aliceBody = (await getWeekly(alice.id, ANCHOR)).body as WeeklyMetrics;
     const bobBody = (await getWeekly(bob.id, ANCHOR)).body as WeeklyMetrics;

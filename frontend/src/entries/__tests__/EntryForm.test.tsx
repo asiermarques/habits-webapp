@@ -25,9 +25,14 @@ describe('EntryForm', () => {
   it('renders the custom fields when a custom habit is selected', () => {
     render(<EntryForm habits={[habits[2]]} onSubmit={vi.fn()} />);
     expect(screen.getByLabelText('Repetitions')).toBeInTheDocument();
-    expect(screen.getByLabelText('Cost spent')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Cost spent \(EUR\)/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Duration \(min\)/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Done?')).not.toBeInTheDocument();
+  });
+
+  it('shows the configured currency in the Cost spent label', () => {
+    render(<EntryForm habits={[habits[2]]} currency="USD" onSubmit={vi.fn()} />);
+    expect(screen.getByLabelText(/Cost spent \(USD\)/)).toBeInTheDocument();
   });
 
   it('locks the habit selector when editing an existing entry', () => {

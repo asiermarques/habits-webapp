@@ -3,6 +3,7 @@ import type {
   ByHabitMetrics,
   ByTypeMetrics,
   HeatmapMetrics,
+  SummaryMetrics,
   WeeklyMetrics,
 } from '@habitsapp/shared';
 import { apiFetch } from '@/lib/api';
@@ -18,6 +19,9 @@ export const byHabitMetricsKey = (userId: number) =>
 
 export const heatmapMetricsKey = (userId: number) =>
   ['metrics', 'heatmap', userId] as const;
+
+export const summaryMetricsKey = (userId: number) =>
+  ['metrics', 'summary', userId] as const;
 
 export function useWeeklyMetrics(userId: number, habitDefinitionId?: number) {
   return useQuery({
@@ -48,6 +52,15 @@ export function useByHabitMetrics(userId: number) {
     enabled: userId > 0,
     queryFn: () =>
       apiFetch<ByHabitMetrics>(`/metrics/by-habit?userId=${userId}`),
+  });
+}
+
+export function useSummaryMetrics(userId: number) {
+  return useQuery({
+    queryKey: summaryMetricsKey(userId),
+    enabled: userId > 0,
+    queryFn: () =>
+      apiFetch<SummaryMetrics>(`/metrics/summary?userId=${userId}`),
   });
 }
 

@@ -15,11 +15,22 @@ function isHabitType(value: unknown): value is HabitType {
   return typeof value === 'string' && (HABIT_TYPES as readonly string[]).includes(value);
 }
 
-habitDefinitionsRouter.get('/', (_req, res) => {
-  res.json(listHabitDefinitions());
+habitDefinitionsRouter.get('/', (req, res) => {
+  const userId = Number(req.query.userId);
+  if (!Number.isInteger(userId)) {
+    res.status(400).json({ error: 'userId is required' });
+    return;
+  }
+  res.json(listHabitDefinitions(userId));
 });
 
 habitDefinitionsRouter.post('/', (req, res) => {
+  const userId = Number(req.body?.userId);
+  if (!Number.isInteger(userId)) {
+    res.status(400).json({ error: 'userId is required' });
+    return;
+  }
+
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   if (!name) {
     res.status(400).json({ error: 'name is required' });
@@ -35,8 +46,12 @@ habitDefinitionsRouter.post('/', (req, res) => {
   }
 
   const positive = typeof req.body?.positive === 'boolean' ? req.body.positive : undefined;
-  const created = createHabitDefinition({ name, type: req.body.type, positive });
-  res.status(201).json(created);
+  const result = createHabitDefinition({ userId, name, type: req.body.type, positive });
+  if (result.status === 'user_not_found') {
+    res.status(404).json({ error: 'user not found' });
+    return;
+  }
+  res.status(201).json(result.definition);
 });
 
 habitDefinitionsRouter.put('/:id', (req, res) => {

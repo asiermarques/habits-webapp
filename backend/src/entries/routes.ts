@@ -98,6 +98,10 @@ entriesRouter.post('/', (req, res) => {
     res.status(404).json({ error: 'user not found' });
     return;
   }
+  if (result.status === 'wrong_user') {
+    res.status(403).json({ error: 'habit definition belongs to a different user' });
+    return;
+  }
   if (result.status === 'invalid_data') {
     res.status(400).json({ error: result.reason });
     return;

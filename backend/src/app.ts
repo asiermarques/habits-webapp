@@ -6,6 +6,7 @@ import { habitDefinitionsRouter } from './habit-definitions/routes.js';
 import { entriesRouter } from './entries/routes.js';
 import { metricsRouter } from './metrics/routes.js';
 import { exportRouter } from './export/routes.js';
+import { settingsRouter } from './settings/routes.js';
 
 export function createApp() {
   const app = express();
@@ -24,6 +25,7 @@ export function createApp() {
   app.use('/entries', entriesRouter);
   app.use('/metrics', metricsRouter);
   app.use('/export', exportRouter);
+  app.use('/settings', settingsRouter);
 
   return app;
 }

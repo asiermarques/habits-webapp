@@ -10,7 +10,7 @@ export function Header() {
   const navigate = useNavigate();
   const isHome = location.pathname === '/';
   const { activeUser } = useUserContext();
-  const { data: habits = [] } = useHabitDefinitionsQuery();
+  const { data: habits = [] } = useHabitDefinitionsQuery(activeUser?.id ?? 0);
   const { openLog } = useLogEntryDialog();
   const canLog = !!activeUser && habits.length > 0;
 

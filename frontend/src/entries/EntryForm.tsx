@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import type {
+  CurrencyCode,
   CustomData,
   Entry,
   EntryData,
@@ -29,6 +30,7 @@ type EntryFormProps = {
   habits: HabitDefinition[];
   initial?: Entry;
   pending?: boolean;
+  currency?: CurrencyCode;
   onSubmit: (values: FormValues) => void;
   onCancel?: () => void;
 };
@@ -51,7 +53,7 @@ function isDataValid(type: HabitDefinition['type'], data: EntryData): boolean {
   return true;
 }
 
-export function EntryForm({ habits, initial, pending = false, onSubmit, onCancel }: EntryFormProps) {
+export function EntryForm({ habits, initial, pending = false, currency = 'EUR', onSubmit, onCancel }: EntryFormProps) {
   const sortedHabits = useMemo(
     () => [...habits].sort((a, b) => a.name.localeCompare(b.name)),
     [habits],
@@ -125,7 +127,7 @@ export function EntryForm({ habits, initial, pending = false, onSubmit, onCancel
       </div>
 
       {selectedHabit && (
-        <DataFields type={selectedHabit.type} data={data} onChange={setData} />
+        <DataFields type={selectedHabit.type} data={data} onChange={setData} currency={currency} />
       )}
 
       <div className="flex justify-end gap-2">
@@ -146,6 +148,7 @@ type DataFieldsProps = {
   type: HabitDefinition['type'];
   data: EntryData;
   onChange: (data: EntryData) => void;
+  currency: CurrencyCode;
 };
 
 function NumField({
@@ -189,7 +192,7 @@ function NumField({
   );
 }
 
-function DataFields({ type, data, onChange }: DataFieldsProps) {
+function DataFields({ type, data, onChange, currency }: DataFieldsProps) {
   if (type === 'workout') {
     const d = data as WorkoutData;
     return (
@@ -225,7 +228,7 @@ function DataFields({ type, data, onChange }: DataFieldsProps) {
   return (
     <div className="space-y-3">
       <NumField id="number" label="Repetitions" min="0" step="1" value={d.number} onChange={(v) => onChange({ ...d, number: v })} />
-      <NumField id="custom-amount" label="Cost spent" step="0.01" value={d.amount} onChange={(v) => onChange({ ...d, amount: v })} />
+      <NumField id="custom-amount" label={`Cost spent (${currency})`} step="0.01" value={d.amount} onChange={(v) => onChange({ ...d, amount: v })} />
       <NumField id="custom-duration" label="Duration (min)" min="0" value={d.duration} onChange={(v) => onChange({ ...d, duration: v })} />
     </div>
   );

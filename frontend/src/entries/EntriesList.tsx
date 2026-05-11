@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
-import type { Entry, HabitDefinition } from '@habitsapp/shared';
+import type { CurrencyCode, Entry, HabitDefinition } from '@habitsapp/shared';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
+import { useSettingsQuery } from '@/settings/queries';
+import { formatCurrency } from '@/lib/currency';
 import { useDeleteEntry, useEntriesInfinite } from './queries';
 import { formatDate } from './date';
 
@@ -24,7 +26,9 @@ type EntriesListProps = {
 
 export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
   const { activeUser } = useUserContext();
-  const { data: habits = [] } = useHabitDefinitionsQuery();
+  const { data: habits = [] } = useHabitDefinitionsQuery(activeUser?.id ?? 0);
+  const { data: settings } = useSettingsQuery();
+  const currency = settings?.currency ?? 'EUR';
   const [pendingDelete, setPendingDelete] = useState<Entry | null>(null);
   const deleteEntry = useDeleteEntry();
 
@@ -64,6 +68,7 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
             key={entry.id}
             entry={entry}
             habit={habitsById.get(entry.habitDefinitionId)}
+            currency={currency}
             onEdit={() => onEdit(entry)}
             onDelete={() => setPendingDelete(entry)}
           />
@@ -112,11 +117,12 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
 type EntryCardProps = {
   entry: Entry;
   habit?: HabitDefinition;
+  currency: CurrencyCode;
   onEdit: () => void;
   onDelete: () => void;
 };
 
-function EntryCard({ entry, habit, onEdit, onDelete }: EntryCardProps) {
+function EntryCard({ entry, habit, currency, onEdit, onDelete }: EntryCardProps) {
   return (
     <li className="flex items-center justify-between gap-3 rounded-md border border-neutral-200 bg-white px-3 py-2.5">
       <div className="min-w-0 flex-1">
@@ -129,7 +135,7 @@ function EntryCard({ entry, habit, onEdit, onDelete }: EntryCardProps) {
             {entry.type}
           </span>
         </div>
-        <EntrySummary entry={entry} />
+        <EntrySummary entry={entry} currency={currency} />
       </div>
       <div className="flex shrink-0 items-center">
         <Button size="icon" variant="ghost" onClick={onEdit} aria-label="Edit entry">
@@ -149,7 +155,7 @@ function EntryCard({ entry, habit, onEdit, onDelete }: EntryCardProps) {
   );
 }
 
-function EntrySummary({ entry }: { entry: Entry }) {
+function EntrySummary({ entry, currency }: { entry: Entry; currency: CurrencyCode }) {
   const parts: string[] = [];
   const d = entry.data as Record<string, unknown>;
 
@@ -163,7 +169,7 @@ function EntrySummary({ entry }: { entry: Entry }) {
     if (typeof d.time === 'number') parts.push(`${d.time} min`);
   } else {
     if (typeof d.number === 'number') parts.push(`${d.number} reps`);
-    if (typeof d.amount === 'number') parts.push(`cost ${d.amount}`);
+    if (typeof d.amount === 'number') parts.push(`cost ${formatCurrency(d.amount, currency)}`);
     if (typeof d.duration === 'number') parts.push(`${d.duration} min`);
   }
 

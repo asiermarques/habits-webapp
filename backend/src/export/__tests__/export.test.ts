@@ -11,12 +11,13 @@ async function createUser(name: string): Promise<User> {
 }
 
 async function createHabit(
+  userId: number,
   body: Partial<HabitDefinition> & {
     name: string;
     type: 'workout' | 'writing' | 'custom';
   },
 ): Promise<HabitDefinition> {
-  const res = await request(app).post('/habit-definitions').send(body);
+  const res = await request(app).post('/habit-definitions').send({ userId, ...body });
   return res.body as HabitDefinition;
 }
 
@@ -110,9 +111,9 @@ describe('GET /export/csv', () => {
 
   it('emits one row per entry with archetype-appropriate columns filled', async () => {
     const user = await createUser('Alice');
-    const running = await createHabit({ name: 'Running', type: 'workout' });
-    const journal = await createHabit({ name: 'Journal', type: 'writing' });
-    const fastFood = await createHabit({
+    const running = await createHabit(user.id, { name: 'Running', type: 'workout' });
+    const journal = await createHabit(user.id, { name: 'Journal', type: 'writing' });
+    const fastFood = await createHabit(user.id, {
       name: 'Fast food',
       type: 'custom',
       positive: false,
@@ -157,7 +158,7 @@ describe('GET /export/csv', () => {
 
   it('escapes commas, quotes and newlines in text fields', async () => {
     const user = await createUser('Alice');
-    const tricky = await createHabit({
+    const tricky = await createHabit(user.id, {
       name: 'Run, fast',
       type: 'workout',
     });
@@ -178,12 +179,13 @@ describe('GET /export/csv', () => {
   it('filters by date range and isolates per user', async () => {
     const alice = await createUser('Alice');
     const bob = await createUser('Bob');
-    const reading = await createHabit({ name: 'Reading', type: 'custom' });
+    const aliceReading = await createHabit(alice.id, { name: 'Reading', type: 'custom' });
+    const bobReading = await createHabit(bob.id, { name: 'Reading', type: 'custom' });
 
-    await logEntry(reading.id, alice.id, '2025-12-31', { number: 1 });
-    await logEntry(reading.id, alice.id, '2026-01-15', { number: 2 });
-    await logEntry(reading.id, alice.id, '2026-02-01', { number: 3 });
-    await logEntry(reading.id, bob.id, '2026-01-20', { number: 9 });
+    await logEntry(aliceReading.id, alice.id, '2025-12-31', { number: 1 });
+    await logEntry(aliceReading.id, alice.id, '2026-01-15', { number: 2 });
+    await logEntry(aliceReading.id, alice.id, '2026-02-01', { number: 3 });
+    await logEntry(bobReading.id, bob.id, '2026-01-20', { number: 9 });
 
     const res = await request(app).get(
       `/export/csv?userId=${alice.id}&from=2026-01-01&to=2026-01-31`,

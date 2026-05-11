@@ -46,7 +46,7 @@ const heatmap: HeatmapMetrics = {
 function makeFetch(body: HeatmapMetrics) {
   return vi.fn().mockImplementation((input: string) => {
     if (input.endsWith('/users')) return Promise.resolve(jsonResponse(users));
-    if (input.endsWith('/habit-definitions')) return Promise.resolve(jsonResponse(habits));
+    if (input.includes('/habit-definitions')) return Promise.resolve(jsonResponse(habits));
     if (input.includes('/metrics/heatmap')) return Promise.resolve(jsonResponse(body));
     return Promise.resolve(jsonResponse({}));
   });

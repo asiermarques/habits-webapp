@@ -26,7 +26,7 @@ type WeekChartSectionProps = {
 
 export function WeekChartSection({ habitDefinitionId }: WeekChartSectionProps) {
   const { activeUser } = useUserContext();
-  const { data: habits = [] } = useHabitDefinitionsQuery();
+  const { data: habits = [] } = useHabitDefinitionsQuery(activeUser?.id ?? 0);
   const { data: weekly, isLoading } = useWeeklyMetrics(
     activeUser?.id ?? 0,
     habitDefinitionId,

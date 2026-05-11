@@ -1,6 +1,6 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { entries, habitDefinitions, type DbHabitDefinition } from '../db/schema.js';
+import { entries, habitDefinitions, users, type DbHabitDefinition } from '../db/schema.js';
 import type { HabitDefinition, HabitType } from '@habitsapp/shared';
 import { pickColor } from './colors.js';
 import { hasEntriesForDefinition } from '../entries/repository.js';
@@ -8,6 +8,7 @@ import { hasEntriesForDefinition } from '../entries/repository.js';
 function toHabitDefinition(row: DbHabitDefinition, hasEntries = false): HabitDefinition {
   return {
     id: row.id,
+    userId: row.userId!,
     name: row.name,
     type: row.type,
     positive: row.positive,
@@ -31,10 +32,11 @@ function resolvePositive(type: HabitType, positive?: boolean): boolean {
   return positive ?? true;
 }
 
-export function listHabitDefinitions(): HabitDefinition[] {
+export function listHabitDefinitions(userId: number): HabitDefinition[] {
   const rows = db
     .select()
     .from(habitDefinitions)
+    .where(eq(habitDefinitions.userId, userId))
     .orderBy(asc(habitDefinitions.id))
     .all();
   const withEntries = definitionsWithEntries();
@@ -42,29 +44,37 @@ export function listHabitDefinitions(): HabitDefinition[] {
 }
 
 export type CreateInput = {
+  userId: number;
   name: string;
   type: HabitType;
   positive?: boolean;
 };
 
-export function createHabitDefinition(input: CreateInput): HabitDefinition {
+export type CreateResult =
+  | { status: 'ok'; definition: HabitDefinition }
+  | { status: 'user_not_found' };
+
+export function createHabitDefinition(input: CreateInput): CreateResult {
   return db.transaction((tx) => {
+    const user = tx.select().from(users).where(eq(users.id, input.userId)).get();
+    if (!user) return { status: 'user_not_found' as const };
+
     const positive = resolvePositive(input.type, input.positive);
     const positiveCount = tx
       .select()
       .from(habitDefinitions)
-      .where(eq(habitDefinitions.positive, true))
+      .where(and(eq(habitDefinitions.userId, input.userId), eq(habitDefinitions.positive, true)))
       .all().length;
 
     const color = pickColor(positive, positiveCount);
 
     const inserted = tx
       .insert(habitDefinitions)
-      .values({ name: input.name, type: input.type, positive, color })
+      .values({ userId: input.userId, name: input.name, type: input.type, positive, color })
       .returning()
       .get();
 
-    return toHabitDefinition(inserted, false);
+    return { status: 'ok' as const, definition: toHabitDefinition(inserted, false) };
   });
 }
 
@@ -135,4 +145,3 @@ export function deleteHabitDefinition(id: number): DeleteResult {
     return 'ok';
   });
 }
-

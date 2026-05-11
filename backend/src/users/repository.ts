@@ -2,6 +2,7 @@ import { eq, ne, asc } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { users, type DbUser } from '../db/schema.js';
 import type { User } from '@habitsapp/shared';
+import { seedHabitDefinitionsForUser } from '../habit-definitions/seed.js';
 
 function toUser(row: DbUser): User {
   return {
@@ -22,18 +23,26 @@ export function getUser(id: number): User | undefined {
 }
 
 export function createUser(name: string): User {
-  return db.transaction((tx) => {
+  const inserted = db.transaction((tx) => {
     const existing = tx.select().from(users).all();
     const isFirstUser = existing.length === 0;
 
-    const inserted = tx
+    return tx
       .insert(users)
       .values({ name, isDefault: isFirstUser })
       .returning()
       .get();
-
-    return toUser(inserted);
   });
+
+  // Seed the eight example habit definitions for the new user. Done outside
+  // the user-insert transaction so the user row is committed first and the
+  // seed calls can open their own transactions. Skipped in tests so each test
+  // can assert exact habit counts.
+  if (process.env.NODE_ENV !== 'test') {
+    seedHabitDefinitionsForUser(inserted.id);
+  }
+
+  return toUser(inserted);
 }
 
 export function updateUser(id: number, patch: { name?: string; isDefault?: boolean }): User | undefined {

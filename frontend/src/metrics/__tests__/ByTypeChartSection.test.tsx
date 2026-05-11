@@ -65,7 +65,7 @@ const empty: ByHabitMetrics = {
 function makeFetch(body: ByHabitMetrics) {
   return vi.fn().mockImplementation((input: string) => {
     if (input.endsWith('/users')) return Promise.resolve(jsonResponse(users));
-    if (input.endsWith('/habit-definitions')) return Promise.resolve(jsonResponse(habitDefs));
+    if (input.includes('/habit-definitions')) return Promise.resolve(jsonResponse(habitDefs));
     if (input.includes('/metrics/by-habit')) return Promise.resolve(jsonResponse(body));
     return Promise.resolve(jsonResponse({}));
   });

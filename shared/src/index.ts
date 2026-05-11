@@ -5,6 +5,18 @@ export type HealthResponse = {
   ok: boolean;
 };
 
+// Global app settings shared across all users.
+export const SUPPORTED_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD'] as const;
+export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number];
+
+export type AppSettings = {
+  currency: CurrencyCode;
+};
+
+export type UpdateCurrencyBody = {
+  currency: CurrencyCode;
+};
+
 export type User = {
   id: number;
   name: string;
@@ -27,6 +39,7 @@ export const HABIT_TYPES: HabitType[] = ['workout', 'writing', 'custom'];
 
 export type HabitDefinition = {
   id: number;
+  userId: number;
   name: string;
   type: HabitType;
   positive: boolean;
@@ -36,6 +49,7 @@ export type HabitDefinition = {
 };
 
 export type CreateHabitDefinitionBody = {
+  userId: number;
   name: string;
   type: HabitType;
   positive?: boolean;
@@ -171,4 +185,24 @@ export type HeatmapMetrics = {
   rangeStart: string; // Monday of the earliest week
   rangeEnd: string;   // Sunday of the latest week
   habits: HabitHeatmap[];
+};
+
+// Last 30 days summary — drives the four score cards on the Metrics page.
+//
+// `mostRegistered`: highest non-zero repetition count in the window, or null
+//                   if there are no entries.
+// `leastRegistered`: lowest count across *all* the user's habit definitions —
+//                    habits with zero entries can win this card (count: 0).
+//                    Null only if the user has no habits at all.
+// `badHabitsTotalCost`: sum of the `amount` (cost) field across custom entries
+//                       belonging to negative ("bad") habits. Only custom
+//                       habits can be negative and `amount` is custom-only.
+// `activeHabitsCount`: number of distinct habits with at least one entry.
+export type SummaryMetrics = {
+  rangeStart: string; // inclusive, YYYY-MM-DD
+  rangeEnd: string;   // inclusive (anchor day)
+  mostRegistered: HabitCount | null;
+  leastRegistered: HabitCount | null;
+  badHabitsTotalCost: number;
+  activeHabitsCount: number;
 };

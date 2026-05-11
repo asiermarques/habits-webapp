@@ -15,6 +15,7 @@ export type DbInsertUser = typeof users.$inferInsert;
 
 export const habitDefinitions = sqliteTable('habit_definitions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   type: text('type', { enum: ['workout', 'writing', 'custom'] }).notNull(),
   positive: integer('positive', { mode: 'boolean' }).notNull().default(true),
@@ -70,4 +71,11 @@ export const entryCustomData = sqliteTable('entry_custom_data', {
   number: real('number'),
   amount: real('amount'),
   duration: integer('duration'), // minutes
+});
+
+// Singleton key/value store for app-wide settings (shared across all users).
+// Currently used for the bad-habit cost currency code.
+export const appSettings = sqliteTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
 });

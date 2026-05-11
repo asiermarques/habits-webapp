@@ -14,7 +14,7 @@ const CHART_THEME = {
 
 export function ByTypeChartSection() {
   const { activeUser } = useUserContext();
-  const { data: habits = [] } = useHabitDefinitionsQuery();
+  const { data: habits = [] } = useHabitDefinitionsQuery(activeUser?.id ?? 0);
   const { data, isLoading } = useByHabitMetrics(activeUser?.id ?? 0);
 
   const habitsById = useMemo(

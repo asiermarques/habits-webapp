@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
+import { useSettingsQuery } from '@/settings/queries';
 import { EntryForm } from './EntryForm';
 import { useCreateEntry, useUpdateEntry } from './queries';
 
@@ -31,7 +32,9 @@ const Ctx = createContext<LogEntryDialogContextValue | null>(null);
 export function LogEntryDialogProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DialogState>({ kind: 'closed' });
   const { activeUser } = useUserContext();
-  const { data: habits = [] } = useHabitDefinitionsQuery();
+  const { data: habits = [] } = useHabitDefinitionsQuery(activeUser?.id ?? 0);
+  const { data: settings } = useSettingsQuery();
+  const currency = settings?.currency ?? 'EUR';
   const createEntry = useCreateEntry();
   const updateEntry = useUpdateEntry();
 
@@ -56,6 +59,7 @@ export function LogEntryDialogProvider({ children }: { children: ReactNode }) {
           {state.kind === 'log' && activeUser && (
             <EntryForm
               habits={habits}
+              currency={currency}
               pending={createEntry.isPending}
               onSubmit={(values) => {
                 createEntry.mutate(
@@ -71,6 +75,7 @@ export function LogEntryDialogProvider({ children }: { children: ReactNode }) {
             <EntryForm
               habits={habits}
               initial={state.entry}
+              currency={currency}
               pending={updateEntry.isPending}
               onSubmit={(values) => {
                 updateEntry.mutate(

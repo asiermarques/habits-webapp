@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { EntriesList } from '@/entries/EntriesList';
 import { useLogEntryDialog } from '@/entries/LogEntryDialog';
@@ -14,7 +15,8 @@ import { WeekChartSection } from '@/metrics/WeekChartSection';
 const ALL_HABITS = 'all';
 
 export function Home() {
-  const { data: habits = [] } = useHabitDefinitionsQuery();
+  const { activeUser } = useUserContext();
+  const { data: habits = [] } = useHabitDefinitionsQuery(activeUser?.id ?? 0);
   const { openEdit } = useLogEntryDialog();
   const [filter, setFilter] = useState<string>(ALL_HABITS);
 

@@ -3,6 +3,7 @@ import {
   getByHabitMetrics,
   getByTypeMetrics,
   getHeatmapMetrics,
+  getSummaryMetrics,
   getWeeklyMetrics,
   isValidIsoDate,
 } from './repository.js';
@@ -79,6 +80,22 @@ metricsRouter.get('/by-habit', (req, res) => {
   }
 
   res.json(getByHabitMetrics({ userId, today }));
+});
+
+metricsRouter.get('/summary', (req, res) => {
+  const userId = parseUserId(req);
+  if (typeof userId === 'object') {
+    res.status(400).json(userId);
+    return;
+  }
+
+  const today = parseToday(req);
+  if (typeof today === 'object' && today !== undefined) {
+    res.status(400).json(today);
+    return;
+  }
+
+  res.json(getSummaryMetrics({ userId, today }));
 });
 
 metricsRouter.get('/heatmap', (req, res) => {

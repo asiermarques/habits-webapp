@@ -62,7 +62,7 @@ const weeklyEmpty: WeeklyMetrics = {
 function makeFetch(weekly: WeeklyMetrics) {
   return vi.fn().mockImplementation((input: string) => {
     if (input.endsWith('/users')) return Promise.resolve(jsonResponse(users));
-    if (input.endsWith('/habit-definitions')) return Promise.resolve(jsonResponse(habits));
+    if (input.includes('/habit-definitions')) return Promise.resolve(jsonResponse(habits));
     if (input.includes('/metrics/weekly')) return Promise.resolve(jsonResponse(weekly));
     return Promise.resolve(jsonResponse({}));
   });

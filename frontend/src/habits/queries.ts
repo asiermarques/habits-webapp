@@ -6,38 +6,44 @@ import type {
 } from '@habitsapp/shared';
 import { apiFetch } from '@/lib/api';
 
-const habitDefinitionsKey = ['habit-definitions'] as const;
+export const habitDefinitionsKey = (userId: number) =>
+  ['habit-definitions', userId] as const;
 
-export function useHabitDefinitionsQuery() {
+export function useHabitDefinitionsQuery(userId: number) {
   return useQuery({
-    queryKey: habitDefinitionsKey,
-    queryFn: () => apiFetch<HabitDefinition[]>('/habit-definitions'),
+    queryKey: habitDefinitionsKey(userId),
+    enabled: userId > 0,
+    queryFn: () =>
+      apiFetch<HabitDefinition[]>(`/habit-definitions?userId=${userId}`),
   });
 }
 
-export function useCreateHabitDefinition() {
+export function useCreateHabitDefinition(userId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: CreateHabitDefinitionBody) =>
-      apiFetch<HabitDefinition>('/habit-definitions', { method: 'POST', body }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: habitDefinitionsKey }),
+    mutationFn: (body: Omit<CreateHabitDefinitionBody, 'userId'>) =>
+      apiFetch<HabitDefinition>('/habit-definitions', {
+        method: 'POST',
+        body: { userId, ...body },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: habitDefinitionsKey(userId) }),
   });
 }
 
-export function useUpdateHabitDefinition() {
+export function useUpdateHabitDefinition(userId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...body }: UpdateHabitDefinitionBody & { id: number }) =>
       apiFetch<HabitDefinition>(`/habit-definitions/${id}`, { method: 'PUT', body }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: habitDefinitionsKey }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: habitDefinitionsKey(userId) }),
   });
 }
 
-export function useDeleteHabitDefinition() {
+export function useDeleteHabitDefinition(userId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) =>
       apiFetch<void>(`/habit-definitions/${id}`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: habitDefinitionsKey }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: habitDefinitionsKey(userId) }),
   });
 }

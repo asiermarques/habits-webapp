@@ -11,13 +11,13 @@ async function seedUserAndHabits() {
 
   const workoutRes = await request(app)
     .post('/habit-definitions')
-    .send({ name: 'Running', type: 'workout' });
+    .send({ userId: user.id, name: 'Running', type: 'workout' });
   const writingRes = await request(app)
     .post('/habit-definitions')
-    .send({ name: 'Journal', type: 'writing' });
+    .send({ userId: user.id, name: 'Journal', type: 'writing' });
   const customRes = await request(app)
     .post('/habit-definitions')
-    .send({ name: 'Reading', type: 'custom', positive: true });
+    .send({ userId: user.id, name: 'Reading', type: 'custom', positive: true });
 
   return {
     user,
@@ -262,7 +262,7 @@ describe('Habit definition entry-protection (now wired)', () => {
       data: { duration: 20 },
     });
 
-    const res = await request(app).get('/habit-definitions');
+    const res = await request(app).get(`/habit-definitions?userId=${user.id}`);
     expect(res.status).toBe(200);
     const list = res.body as HabitDefinition[];
     const workoutDef = list.find((d) => d.id === workout.id);

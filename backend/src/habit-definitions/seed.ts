@@ -1,9 +1,13 @@
-import { db } from '../db/index.js';
-import { habitDefinitions } from '../db/schema.js';
 import { createHabitDefinition } from './repository.js';
-import type { CreateInput } from './repository.js';
+import type { HabitType } from '@habitsapp/shared';
 
-const SEED: CreateInput[] = [
+type SeedDefinition = {
+  name: string;
+  type: HabitType;
+  positive?: boolean;
+};
+
+const SEED: SeedDefinition[] = [
   { name: 'Running', type: 'workout' },
   { name: 'Rowing', type: 'workout' },
   { name: 'Writing', type: 'writing' },
@@ -14,11 +18,8 @@ const SEED: CreateInput[] = [
   { name: 'Social interactions', type: 'custom', positive: true },
 ];
 
-export function seedHabitDefinitions() {
-  const existing = db.select().from(habitDefinitions).all();
-  if (existing.length > 0) return;
-
+export function seedHabitDefinitionsForUser(userId: number): void {
   for (const definition of SEED) {
-    createHabitDefinition(definition);
+    createHabitDefinition({ userId, ...definition });
   }
 }

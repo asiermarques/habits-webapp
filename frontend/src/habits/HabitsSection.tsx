@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useUserContext } from '@/users/UserContext';
 import { HabitForm } from './HabitForm';
 import {
   useCreateHabitDefinition,
@@ -43,10 +44,12 @@ type DialogState =
   | { kind: 'edit'; habit: HabitDefinition };
 
 export function HabitsSection() {
-  const { data: habits = [], isLoading } = useHabitDefinitionsQuery();
-  const createHabit = useCreateHabitDefinition();
-  const updateHabit = useUpdateHabitDefinition();
-  const deleteHabit = useDeleteHabitDefinition();
+  const { activeUser } = useUserContext();
+  const userId = activeUser?.id ?? 0;
+  const { data: habits = [], isLoading } = useHabitDefinitionsQuery(userId);
+  const createHabit = useCreateHabitDefinition(userId);
+  const updateHabit = useUpdateHabitDefinition(userId);
+  const deleteHabit = useDeleteHabitDefinition(userId);
   const [dialog, setDialog] = useState<DialogState>({ kind: 'closed' });
   const [pendingDelete, setPendingDelete] = useState<HabitDefinition | null>(null);
 
@@ -57,13 +60,24 @@ export function HabitsSection() {
 
   const closeDialog = () => setDialog({ kind: 'closed' });
 
+  if (!activeUser) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Habit Definitions</h2>
+        <p className="text-sm text-neutral-500">
+          Add a user above to start defining habits.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-4">
       <header className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Habit Definitions</h2>
           <p className="text-sm text-neutral-500">
-            Habits are shared across all users. Each one has a type and a color used in heatmaps.
+            Habits for <span className="font-medium">{activeUser.name}</span>. Each user has their own list.
           </p>
         </div>
         <Button size="sm" onClick={() => setDialog({ kind: 'add' })}>
@@ -110,7 +124,7 @@ export function HabitsSection() {
             <DialogDescription>
               {dialog.kind === 'edit'
                 ? 'Update the habit name, type, or whether it is positive.'
-                : 'Add a new habit available to all users.'}
+                : `Add a new habit for ${activeUser.name}.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -155,7 +169,7 @@ export function HabitsSection() {
             <AlertDialogDescription>
               {pendingDelete?.hasEntries
                 ? 'This habit has logged entries and cannot be deleted.'
-                : 'This action cannot be undone. The habit will be removed for all users.'}
+                : 'This action cannot be undone.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

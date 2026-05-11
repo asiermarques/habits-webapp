@@ -15,7 +15,7 @@ const WEEKDAY_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun'];
 
 export function HeatmapSection() {
   const { activeUser } = useUserContext();
-  const { data: habits = [] } = useHabitDefinitionsQuery();
+  const { data: habits = [] } = useHabitDefinitionsQuery(activeUser?.id ?? 0);
   const { data: heatmap, isLoading } = useHeatmapMetrics(activeUser?.id ?? 0);
 
   const habitsById = useMemo(

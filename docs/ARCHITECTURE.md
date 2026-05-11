@@ -34,11 +34,12 @@ Invariants enforced in `backend/src/users/repository.ts` (all run inside transac
 
 ### HabitDefinition — implemented
 
-A globally-shared catalogue of habits. All users see the same definitions.
+A per-user catalogue of habits. Each user manages their own list; users are the only globally-shared entity.
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | integer PK | autoincrement |
+| `userId` | integer FK → users.id | owner; cascade-deletes with the user |
 | `name` | text | display name |
 | `type` | enum | `workout` \| `writing` \| `custom` |
 | `positive` | boolean | direction; drives metric framing and heatmap color |
@@ -47,14 +48,16 @@ A globally-shared catalogue of habits. All users see the same definitions.
 | `hasEntries` | boolean | response-only; computed via `hasEntriesForDefinition`. Drives the UI's type-lock and delete-block affordances |
 
 Invariants enforced in `backend/src/habit-definitions/repository.ts`:
+- Definitions are scoped per `userId`: `GET /habit-definitions?userId=` returns only that user's habits, and `POST` requires a `userId` in the body
 - Workout and Writing are **always** positive (`positive` is forced to true regardless of input)
 - Custom is the only type with a meaningful `positive` flag
 - Color is auto-assigned at creation:
   - Negative → red (`#ef4444`)
-  - Positive → next color in the rotating 8-color palette, based on the count of existing positive habits
+  - Positive → next color in the rotating 8-color palette, based on the count of existing positive habits **for that user**
 - Type cannot change once entries reference the definition → HTTP 409
 - Definitions with existing entries cannot be deleted → HTTP 409
 - The last two checks call `hasEntriesForDefinition(id)` (in `entries/repository.ts`) which counts rows in the `entries` table for that definition; both rules are enforced as of Slice 3
+- Entry creation rejects with HTTP 403 if the supplied `habitDefinitionId` belongs to a different user than the entry's `userId`
 
 ### HabitEntry — implemented
 
@@ -117,28 +120,32 @@ habitsapp/
 │   │   │   ├── migrate.ts  programmatic migration runner
 │   │   │   └── schema.ts   table definitions
 │   │   ├── users/          Slice 1: users feature
-│   │   │   ├── repository.ts  CRUD against the users table (transactions)
+│   │   │   ├── repository.ts  CRUD against the users table (transactions); createUser also triggers per-user habit seeding (skipped under NODE_ENV=test)
 │   │   │   ├── routes.ts      Express router for /users
 │   │   │   └── __tests__/
-│   │   ├── habit-definitions/ Slice 2: habit definitions feature
+│   │   ├── habit-definitions/ Slice 2: per-user habit definitions feature
 │   │   │   ├── colors.ts      positive palette + red for negative; pickColor()
-│   │   │   ├── repository.ts  CRUD with type-lock and delete-block (calls hasEntriesForDefinition)
-│   │   │   ├── routes.ts      Express router for /habit-definitions
-│   │   │   ├── seed.ts        first-run seed of eight example habits
+│   │   │   ├── repository.ts  CRUD scoped by userId, with type-lock and delete-block (calls hasEntriesForDefinition); per-user positive-color rotation
+│   │   │   ├── routes.ts      Express router for /habit-definitions (requires userId)
+│   │   │   ├── seed.ts        seedHabitDefinitionsForUser(userId) inserts eight example habits for one user
 │   │   │   └── __tests__/
 │   │   ├── entries/        Slice 3: log entries feature
 │   │   │   ├── repository.ts  cursor-paginated list, parent + child-table CRUD in transactions
 │   │   │   ├── routes.ts      Express router for /entries (cursor encoded as base64url JSON)
 │   │   │   └── __tests__/
 │   │   ├── metrics/        Slices 4–5: metrics
-│   │   │   ├── repository.ts  weekly per-day aggregation + 13-week by-type + 13-week by-habit + 26-week heatmap aggregations; all sum repetitions (`COALESCE(workout.number, custom.number, 1)`) rather than counting rows
-│   │   │   ├── routes.ts      Express router for /metrics/weekly, /metrics/by-type, /metrics/heatmap
+│   │   │   ├── repository.ts  weekly per-day aggregation + 13-week by-type + 13-week by-habit + 26-week heatmap + 30-day summary aggregations; all sum repetitions (`COALESCE(workout.number, custom.number, 1)`) rather than counting rows
+│   │   │   ├── routes.ts      Express router for /metrics/weekly, /metrics/by-type, /metrics/by-habit, /metrics/heatmap, /metrics/summary
 │   │   │   └── __tests__/
 │   │   ├── export/         Slice 6: CSV export
 │   │   │   ├── repository.ts  joined entry rows + RFC-4180 CSV serializer
 │   │   │   ├── routes.ts      Express router for /export/csv
 │   │   │   └── __tests__/
-│   │   ├── test/setup.ts   Vitest setup: in-memory DB + table reset per test
+│   │   ├── settings/       Global app settings (singleton key/value)
+│   │   │   ├── repository.ts  get/setCurrency on app_settings table
+│   │   │   ├── routes.ts      Express router for /settings + /settings/currency
+│   │   │   └── __tests__/
+│   │   ├── test/setup.ts   Vitest setup: in-memory DB + table reset per test (re-seeds currency default to EUR)
 │   │   └── __tests__/      Vitest + supertest
 │   ├── drizzle/            generated SQL migrations
 │   ├── drizzle.config.ts
@@ -170,16 +177,21 @@ habitsapp/
 │   │   │   └── __tests__/
 │   │   ├── metrics/        Slices 4–5: metrics
 │   │   │   ├── WeekChartSection.tsx     Nivo stacked-bar chart (Mon–Sun) reacting to the home filter
-│   │   │   ├── ByTypeChartSection.tsx   Nivo stacked-bar chart of entries per archetype across 13 weeks (Metrics page)
+│   │   │   ├── ByTypeChartSection.tsx   Nivo stacked-bar chart of entries per habit across 13 weeks with custom HTML legend (Metrics page)
 │   │   │   ├── HeatmapSection.tsx       Custom 26×7 grid heatmap per habit definition (Metrics page)
-│   │   │   ├── queries.ts               useWeeklyMetrics, useByTypeMetrics, useHeatmapMetrics hooks
+│   │   │   ├── SummaryCards.tsx         Four last-30-day score cards (2 cols mobile, 4 cols md+); reads /metrics/summary
+│   │   │   ├── queries.ts               useWeeklyMetrics, useByTypeMetrics, useByHabitMetrics, useHeatmapMetrics, useSummaryMetrics hooks
 │   │   │   └── __tests__/
 │   │   ├── export/         Slice 6: CSV export
-│   │   │   ├── ExportSection.tsx        user + date-range form, fetches CSV blob and triggers browser download
+│   │   │   ├── ExportSection.tsx        date-range form for the active user (no user picker — uses UserContext); fetches CSV blob and triggers browser download
 │   │   │   └── __tests__/
+│   │   ├── settings/       Global app settings (currency)
+│   │   │   ├── queries.ts            useSettingsQuery + useUpdateCurrency hooks
+│   │   │   └── CurrencySection.tsx   Settings page section: curated currency dropdown
 │   │   ├── pages/          Home, Metrics, Settings
 │   │   ├── lib/
 │   │   │   ├── api.ts      apiFetch wrapper
+│   │   │   ├── currency.ts formatCurrency(amount, code) → "12.50 EUR"
 │   │   │   ├── utils.ts    cn() class merger
 │   │   │   └── __tests__/
 │   │   ├── test/
@@ -202,13 +214,15 @@ habitsapp/
 - **Endpoints implemented**:
   - `GET /health` → `{ ok: true }`
   - `GET /users`, `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
-  - `GET /habit-definitions`, `POST /habit-definitions`, `PUT /habit-definitions/:id`, `DELETE /habit-definitions/:id`
+  - `GET /habit-definitions?userId=`, `POST /habit-definitions` (body must include `userId`), `PUT /habit-definitions/:id`, `DELETE /habit-definitions/:id`
   - `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT /entries/:id`, `DELETE /entries/:id`
   - `GET /metrics/weekly?userId=&habitDefinitionId=&today=` — current week (Mon–Sun) bucketed per day with sparse `counts` per habit definition. `habitDefinitionId` and `today` are optional; `today` (YYYY-MM-DD) anchors the week and is used by tests. Counts sum repetitions: workout/custom entries contribute their `number` field (repetitions) when set, otherwise the entry contributes 1.
   - `GET /metrics/by-type?userId=&today=` — repetition counts per archetype (workout/writing/custom) per week across the 13-week range (Mon–Sun aligned) that ends with the anchor week. Always returns 13 ordered weeks (oldest first), zero-filled. Same repetition-summing rule as `/metrics/weekly`.
   - `GET /metrics/by-habit?userId=&today=` — same 13-week range as `by-type`, but broken down by individual habit definition instead of archetype. Each week contains a sparse `habits: HabitCount[]` array (only habits with entries appear). Uses the same repetition-summing rule.
+  - `GET /metrics/summary?userId=&today=` — last-30-day rollup for the score cards on `/metrics`: `mostRegistered`, `leastRegistered` (zero-entry habits can win and are returned with `count: 0`), `badHabitsTotalCost` (sum of `entry_custom_data.amount` across entries belonging to `positive=false` custom habits — only custom habits can be negative), and `activeHabitsCount` (distinct habits with at least one entry). Most/least use the same repetition-summing rule as the other endpoints.
   - `GET /metrics/heatmap?userId=&today=` — for every habit definition, a sparse `{ date, count }[]` over the rolling 26-week range (~6 months, Mon–Sun aligned) that ends with the anchor week. `count` is the per-day sum of repetitions (same rule as the other metrics endpoints). Habits are ordered by their most recent in-range entry (newest first); habits with no in-range entries are listed last with an empty `days` array.
   - `GET /export/csv?userId=&from=&to=` — returns a CSV (`text/csv; charset=utf-8`, `Content-Disposition: attachment`) with one row per entry inside the inclusive `[from, to]` window. Columns: `date, habit_name, type, positive, duration, distance, weight, amount, notes, words, time, number`. `duration` and `number` are shared across workout/custom; `amount` is custom-only. For each row only the columns that apply to its archetype are filled, the rest are empty. Text fields are RFC-4180 escaped.
+  - `GET /settings`, `PUT /settings/currency` — global singleton settings (key/value table). Currency defaults to `EUR`; `PUT` accepts a body `{ currency: <code> }` validated against `SUPPORTED_CURRENCIES` (`EUR`, `USD`, `GBP`, `JPY`, `CHF`, `CAD`, `AUD`).
 - **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`).
 - **Dev runner**: `tsx watch src/index.ts`
 
@@ -222,15 +236,16 @@ habitsapp/
   - Exports a `db` instance with the schema attached
 - **Schema** (`src/db/schema.ts`):
   - `users` (`id`, `name`, `is_default`, `created_at`)
-  - `habit_definitions` (`id`, `name`, `type` enum: workout/writing/custom, `positive`, `color`, `created_at`)
+  - `habit_definitions` (`id`, `user_id` FK→cascade, `name`, `type` enum: workout/writing/custom, `positive`, `color`, `created_at`)
   - `entries` (`id`, `habit_definition_id` FK→restrict, `user_id` FK→cascade, `date` text, `created_at`)
   - Type-specific child tables, each with `entry_id` PK FK→cascade:
     - `entry_workout_data` — `duration` (int, required), `distance` (real), `weight` (real), `number` (real, repetitions), `notes` (text)
     - `entry_writing_data` — `words` (int, required), `time` (int)
     - `entry_custom_data` — `number` (real), `amount` (real), `duration` (int)
+  - `app_settings` (`key` PK text, `value` text) — singleton key/value store. Currently holds `currency=EUR` by default (migration 0006).
 - **Pagination**: `GET /entries` uses cursor pagination ordered by `(date DESC, id DESC)`. The cursor is `{ date, id }` of the last item in the previous page, base64url-encoded as JSON. Default page size is 20.
 - **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/db/migrate.ts`.
-- **Seeding**: on backend startup, after migrations, `seedHabitDefinitions()` runs and inserts the eight example habits if the table is empty.
+- **Seeding**: triggered inside `createUser()` — every new user gets the eight example habits via `seedHabitDefinitionsForUser(userId)`. Skipped when `NODE_ENV=test` so backend tests can assert exact habit counts. No startup-time seeding.
 
 ## Frontend
 
