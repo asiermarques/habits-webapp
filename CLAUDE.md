@@ -9,7 +9,7 @@ Mobile-first web app for tracking habits across multiple unauthenticated users. 
 - `docs/ARCHITECTURE.md` — code structure, layers, conventions, commands. Read this first when orienting in the codebase.
 - `docs/PRODUCT.md` — what the app actually does today vs. what's still planned. Source of truth for "is X implemented?"
 
-When the implementation diverges from `ARCHITECTURE.md` or `PRODUCT.md`, update those public docs too — they should always reflect reality.
+When the implementation diverges from `ARCHITECTURE.md` or `PRODUCT.md` or `README.md`, update those public docs too — they should always reflect reality.
 
 ## Conventions
 

@@ -10,6 +10,7 @@ import type { Entry } from '@habitsapp/shared';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -54,6 +55,11 @@ export function LogEntryDialogProvider({ children }: { children: ReactNode }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{state.kind === 'edit' ? 'Edit entry' : 'Log entry'}</DialogTitle>
+            <DialogDescription>
+              {state.kind === 'edit'
+                ? 'Update the details of this habit entry.'
+                : 'Record a new entry for one of your habits.'}
+            </DialogDescription>
           </DialogHeader>
 
           {state.kind === 'log' && activeUser && (

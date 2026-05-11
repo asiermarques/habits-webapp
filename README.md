@@ -104,6 +104,24 @@ npm run db:generate     # generate migrations from schema changes
 npm run db:migrate      # apply pending migrations
 ```
 
+### Testing
+
+**Unit tests** (Vitest — backend + frontend):
+
+```bash
+npm test
+```
+
+**E2E tests** (Playwright — Chromium, full stack):
+
+```bash
+npm run test:e2e:install   # download Chromium binary (run once after clone)
+npm run test:e2e           # run the suite
+npm run test:e2e:ui        # open Playwright UI mode
+```
+
+E2E tests run against a separate database (`backend/habits.e2e.db`) and start their own backend (port 4001) and frontend (port 4173) so they never touch the dev environment.
+
 ## License
 
 [MIT](./LICENSE)
