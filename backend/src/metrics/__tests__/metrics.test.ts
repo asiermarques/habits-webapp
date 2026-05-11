@@ -142,6 +142,52 @@ describe('GET /metrics/weekly', () => {
     expect(allCounts).toHaveLength(2);
   });
 
+  it('sums repetitions instead of entries for workout and custom habits', async () => {
+    const user = await createUser('Alice');
+    const running = await createHabit('Running', 'workout');
+    const pushups = await createHabit('Pushups', 'custom');
+    const journal = await createHabit('Journal', 'writing');
+
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id,
+      userId: user.id,
+      date: '2026-05-04',
+      data: { duration: 30, number: 10 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: pushups.id,
+      userId: user.id,
+      date: '2026-05-04',
+      data: { number: 25 },
+    });
+    // Writing has no repetitions field → still counts as 1.
+    await request(app).post('/entries').send({
+      habitDefinitionId: journal.id,
+      userId: user.id,
+      date: '2026-05-04',
+      data: { words: 200 },
+    });
+    // Workout with no `number` falls back to 1.
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id,
+      userId: user.id,
+      date: '2026-05-05',
+      data: { duration: 20 },
+    });
+
+    const body = (await getWeekly(user.id, ANCHOR)).body as WeeklyMetrics;
+    const monday = body.days.find((d) => d.date === '2026-05-04')!;
+    expect(monday.counts).toEqual(
+      expect.arrayContaining([
+        { habitDefinitionId: running.id, count: 10 },
+        { habitDefinitionId: pushups.id, count: 25 },
+        { habitDefinitionId: journal.id, count: 1 },
+      ]),
+    );
+    const tuesday = body.days.find((d) => d.date === '2026-05-05')!;
+    expect(tuesday.counts).toEqual([{ habitDefinitionId: running.id, count: 1 }]);
+  });
+
   it('isolates results per user', async () => {
     const alice = await createUser('Alice');
     const bob = await createUser('Bob');

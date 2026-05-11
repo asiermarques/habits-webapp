@@ -14,7 +14,7 @@ When the implementation diverges from `ARCHITECTURE.md` or `PRODUCT.md`, update 
 ## Conventions
 
 - **Mobile-first** — design and CSS classes target mobile viewports first; only add larger-breakpoint variants when needed
-- **Vertical slices** — each feature is delivered end-to-end (DB → API → UI) in one go, not layer by layer. See `docs/local/implementation-plan.md`
+- **Vertical slices** — each feature is delivered end-to-end (DB → API → UI) in one go, not layer by layer. 
 - **Path alias** — `@/*` maps to `frontend/src/*`
 - **Tests live next to the code** in `__tests__/` folders
 - **No goals or targets** in the metrics layer — only raw counts (this is a deliberate product decision)

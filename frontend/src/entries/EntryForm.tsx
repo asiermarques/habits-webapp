@@ -10,7 +10,6 @@ import type {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -205,7 +204,7 @@ function DataFields({ type, data, onChange }: DataFieldsProps) {
         />
         <NumField id="distance" label="Distance (km)" step="0.01" value={d.distance} onChange={(v) => onChange({ ...d, distance: v })} />
         <NumField id="weight" label="Weight (kg)" step="0.1" value={d.weight} onChange={(v) => onChange({ ...d, weight: v })} />
-        <NumField id="amount" label="Amount" step="0.01" value={d.amount} onChange={(v) => onChange({ ...d, amount: v })} />
+        <NumField id="number" label="Repetitions" min="0" step="1" value={d.number} onChange={(v) => onChange({ ...d, number: v })} />
         <div className="space-y-1.5">
           <Label htmlFor="notes">Notes</Label>
           <Input id="notes" value={d.notes ?? ''} onChange={(e) => onChange({ ...d, notes: e.target.value || null })} />
@@ -225,17 +224,9 @@ function DataFields({ type, data, onChange }: DataFieldsProps) {
   const d = data as CustomData;
   return (
     <div className="space-y-3">
-      <NumField id="number" label="Number" step="0.01" value={d.number} onChange={(v) => onChange({ ...d, number: v })} />
-      <NumField id="custom-amount" label="Amount" step="0.01" value={d.amount} onChange={(v) => onChange({ ...d, amount: v })} />
+      <NumField id="number" label="Repetitions" min="0" step="1" value={d.number} onChange={(v) => onChange({ ...d, number: v })} />
+      <NumField id="custom-amount" label="Cost spent" step="0.01" value={d.amount} onChange={(v) => onChange({ ...d, amount: v })} />
       <NumField id="custom-duration" label="Duration (min)" min="0" value={d.duration} onChange={(v) => onChange({ ...d, duration: v })} />
-      <div className="flex items-center justify-between rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
-        <Label htmlFor="binary">Done?</Label>
-        <Switch
-          id="binary"
-          checked={d.binary ?? false}
-          onCheckedChange={(checked) => onChange({ ...d, binary: checked })}
-        />
-      </div>
     </div>
   );
 }

@@ -51,7 +51,7 @@ export const entryWorkoutData = sqliteTable('entry_workout_data', {
   duration: integer('duration').notNull(), // minutes
   distance: real('distance'), // km
   weight: real('weight'), // kg
-  amount: real('amount'),
+  number: real('number'), // repetitions
   notes: text('notes'),
 });
 
@@ -70,5 +70,4 @@ export const entryCustomData = sqliteTable('entry_custom_data', {
   number: real('number'),
   amount: real('amount'),
   duration: integer('duration'), // minutes
-  binary: integer('binary', { mode: 'boolean' }),
 });

@@ -22,6 +22,20 @@
       "when": 1778347567140,
       "tag": "0002_abandoned_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1778490279023,
+      "tag": "0003_bizarre_gorilla_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1778491058239,
+      "tag": "0004_slimy_ultimates",
+      "breakpoints": true
     }
   ]
 }

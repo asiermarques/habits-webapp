@@ -95,7 +95,7 @@ function attachData(rows: EntryRow[]): Entry[] {
       duration: r.duration,
       distance: r.distance,
       weight: r.weight,
-      amount: r.amount,
+      number: r.number,
       notes: r.notes,
     });
   }
@@ -107,7 +107,6 @@ function attachData(rows: EntryRow[]): Entry[] {
       number: r.number,
       amount: r.amount,
       duration: r.duration,
-      binary: r.binary,
     });
   }
 
@@ -307,7 +306,7 @@ function insertChild(tx: Tx, entryId: number, type: HabitType, data: EntryData) 
         duration: d.duration,
         distance: d.distance ?? null,
         weight: d.weight ?? null,
-        amount: d.amount ?? null,
+        number: d.number ?? null,
         notes: d.notes ?? null,
       })
       .run();
@@ -322,7 +321,6 @@ function insertChild(tx: Tx, entryId: number, type: HabitType, data: EntryData) 
         number: d.number ?? null,
         amount: d.amount ?? null,
         duration: d.duration ?? null,
-        binary: d.binary ?? null,
       })
       .run();
   }

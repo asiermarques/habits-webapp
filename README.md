@@ -29,14 +29,13 @@ The review skills are orchestrated by the `project-reviewer` agent and are not m
 
 ### Workflow directory
 
-`.workflow/` holds the output produced by agents and skills:
+`.workflow/` holds the output produced by agents and skills. Subdirectories are created on demand the first time a given skill or agent runs:
 
-```
-.workflow/
-├── requisites/       Feature requirement files (written by demo-take-requirements)
-├── tasks/            User story files per feature (written by demo-create-implementation-plan)
-└── review/           Review reports (written by project-reviewer agent)
-```
+- `requisites/` — feature requirement files (written by `demo-take-requirements`)
+- `tasks/` — user story files per feature (written by `demo-create-implementation-plan`)
+- `review/` — review reports (written by the `project-reviewer` agent)
+
+The directory may also contain ad-hoc working files (for example, `implementation-plan.md`) that aren't produced by any specific skill.
 
 ---
 
@@ -49,7 +48,7 @@ The review skills are orchestrated by the `project-reviewer` agent and are not m
 - Editable past entries and backfill for any date
 - Home dashboard with a weekly chart and an infinite-scroll history of entries
 - Dedicated metrics view: stacked bar chart of entries per archetype over the last 13 weeks, plus per-habit heatmaps over the last 26 weeks (one column on mobile, two on tablet+)
-- CSV export for any user and date range *(planned — Slice 6)*
+- CSV export for any user and date range
 - Pre-seeded example habits to start logging immediately
 
 ### Documentation

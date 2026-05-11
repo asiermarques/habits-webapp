@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../app.js';
 import type {
+  ByHabitMetrics,
   ByTypeMetrics,
   HabitDefinition,
   HeatmapMetrics,
@@ -147,6 +148,38 @@ describe('GET /metrics/by-type', () => {
     expect(aliceTotal).toBe(1);
     expect(bobTotal).toBe(2);
   });
+
+  it('sums repetitions across workout and custom entries', async () => {
+    const user = await createUser('Alice');
+    const running = await createHabit('Running', 'workout');
+    const pushups = await createHabit('Pushups', 'custom');
+    const journal = await createHabit('Journal', 'writing');
+
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id,
+      userId: user.id,
+      date: '2026-05-04',
+      data: { duration: 30, number: 7 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: pushups.id,
+      userId: user.id,
+      date: '2026-05-05',
+      data: { number: 50 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: journal.id,
+      userId: user.id,
+      date: '2026-05-06',
+      data: { words: 300 },
+    });
+
+    const body = (
+      await request(app).get(`/metrics/by-type?userId=${user.id}&today=${ANCHOR}`)
+    ).body as ByTypeMetrics;
+    const current = body.weeks.find((w) => w.weekStart === '2026-05-04')!;
+    expect(current).toMatchObject({ workout: 7, writing: 1, custom: 50 });
+  });
 });
 
 describe('GET /metrics/heatmap', () => {
@@ -242,6 +275,40 @@ describe('GET /metrics/heatmap', () => {
     expect(bobDays).toHaveLength(2);
   });
 
+  it('sums repetitions per day for workout and custom heatmaps', async () => {
+    const user = await createUser('Alice');
+    const running = await createHabit('Running', 'workout');
+    const pushups = await createHabit('Pushups', 'custom');
+
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id,
+      userId: user.id,
+      date: '2026-05-04',
+      data: { duration: 30, number: 5 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: running.id,
+      userId: user.id,
+      date: '2026-05-04',
+      data: { duration: 20, number: 3 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: pushups.id,
+      userId: user.id,
+      date: '2026-05-04',
+      data: { number: 40 },
+    });
+
+    const body = (
+      await request(app).get(`/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
+    ).body as HeatmapMetrics;
+
+    const runningEntry = body.habits.find((h) => h.habitDefinitionId === running.id)!;
+    expect(runningEntry.days).toEqual([{ date: '2026-05-04', count: 8 }]);
+    const pushupsEntry = body.habits.find((h) => h.habitDefinitionId === pushups.id)!;
+    expect(pushupsEntry.days).toEqual([{ date: '2026-05-04', count: 40 }]);
+  });
+
   it('orders habits by most recent entry first; empty habits last', async () => {
     const user = await createUser('Alice');
     const oldest = await createHabit('Oldest', 'custom');
@@ -263,6 +330,92 @@ describe('GET /metrics/heatmap', () => {
       oldest.id,
       empty.id,
     ]);
+  });
+});
+
+describe('GET /metrics/by-habit', () => {
+  it('returns 400 when userId is missing', async () => {
+    const res = await request(app).get('/metrics/by-habit');
+    expect(res.status).toBe(400);
+  });
+
+  it(`emits ${BY_TYPE_WEEKS} weeks with sparse habit counts`, async () => {
+    const user = await createUser('Alice');
+    const running = await createHabit('Running', 'workout');
+    const journal = await createHabit('Journal', 'writing');
+
+    await logEntry(running, user.id, '2026-05-04');
+    await logEntry(running, user.id, '2026-05-05');
+    await logEntry(journal, user.id, '2026-05-06');
+    // previous week
+    await logEntry(running, user.id, '2026-04-27');
+
+    const body = (
+      await request(app).get(`/metrics/by-habit?userId=${user.id}&today=${ANCHOR}`)
+    ).body as ByHabitMetrics;
+
+    const { rangeStart, rangeEnd } = byTypeRange(ANCHOR);
+    expect(body.rangeStart).toBe(rangeStart);
+    expect(body.rangeEnd).toBe(rangeEnd);
+    expect(body.weeks).toHaveLength(BY_TYPE_WEEKS);
+
+    const current = body.weeks.find((w) => w.weekStart === '2026-05-04')!;
+    const runningCount = current.habits.find((h) => h.habitDefinitionId === running.id)?.count;
+    const journalCount = current.habits.find((h) => h.habitDefinitionId === journal.id)?.count;
+    expect(runningCount).toBe(2);
+    expect(journalCount).toBe(1);
+
+    const previous = body.weeks.find((w) => w.weekStart === '2026-04-27')!;
+    expect(previous.habits).toHaveLength(1);
+    expect(previous.habits[0]).toMatchObject({ habitDefinitionId: running.id, count: 1 });
+  });
+
+  it('sums repetitions per week', async () => {
+    const user = await createUser('Alice');
+    const pushups = await createHabit('Pushups', 'custom');
+
+    await request(app).post('/entries').send({
+      habitDefinitionId: pushups.id, userId: user.id,
+      date: '2026-05-04', data: { number: 30 },
+    });
+    await request(app).post('/entries').send({
+      habitDefinitionId: pushups.id, userId: user.id,
+      date: '2026-05-06', data: { number: 20 },
+    });
+
+    const body = (
+      await request(app).get(`/metrics/by-habit?userId=${user.id}&today=${ANCHOR}`)
+    ).body as ByHabitMetrics;
+
+    const current = body.weeks.find((w) => w.weekStart === '2026-05-04')!;
+    expect(current.habits.find((h) => h.habitDefinitionId === pushups.id)?.count).toBe(50);
+  });
+
+  it('isolates results per user', async () => {
+    const alice = await createUser('Alice');
+    const bob = await createUser('Bob');
+    const running = await createHabit('Running', 'workout');
+
+    await logEntry(running, alice.id, '2026-05-04');
+    await logEntry(running, bob.id, '2026-05-04');
+    await logEntry(running, bob.id, '2026-05-05');
+
+    const aliceBody = (
+      await request(app).get(`/metrics/by-habit?userId=${alice.id}&today=${ANCHOR}`)
+    ).body as ByHabitMetrics;
+    const bobBody = (
+      await request(app).get(`/metrics/by-habit?userId=${bob.id}&today=${ANCHOR}`)
+    ).body as ByHabitMetrics;
+
+    const aliceTotal = aliceBody.weeks.reduce(
+      (s, w) => s + w.habits.reduce((x, h) => x + h.count, 0), 0,
+    );
+    const bobTotal = bobBody.weeks.reduce(
+      (s, w) => s + w.habits.reduce((x, h) => x + h.count, 0), 0,
+    );
+
+    expect(aliceTotal).toBe(1);
+    expect(bobTotal).toBe(2);
   });
 });
 

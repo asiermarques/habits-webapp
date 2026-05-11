@@ -44,6 +44,7 @@ A globally-shared catalogue of habits. All users see the same definitions.
 | `positive` | boolean | direction; drives metric framing and heatmap color |
 | `color` | text | hex; auto-assigned at creation |
 | `createdAt` | text | timestamp |
+| `hasEntries` | boolean | response-only; computed via `hasEntriesForDefinition`. Drives the UI's type-lock and delete-block affordances |
 
 Invariants enforced in `backend/src/habit-definitions/repository.ts`:
 - Workout and Writing are **always** positive (`positive` is forced to true regardless of input)
@@ -75,7 +76,7 @@ The data fields are split into a child table per archetype so each row only carr
 | `duration` | yes |
 | `distance` | optional |
 | `weight` | optional |
-| `amount` | optional |
+| `number` | optional (repetitions; UI label "Repetitions") |
 | `notes` | optional |
 
 **WritingData** (`entry_writing_data`)
@@ -87,10 +88,9 @@ The data fields are split into a child table per archetype so each row only carr
 **CustomData** (`entry_custom_data`)
 | Field | Required |
 |---|---|
-| `number` | optional |
-| `amount` | optional |
+| `number` | optional (UI label "Repetitions") |
+| `amount` | optional (UI label "Cost spent") |
 | `duration` | optional |
-| `binary` | optional |
 
 (`name` and `positive` for Custom live on the parent HabitDefinition, not on the entry.)
 
@@ -131,8 +131,12 @@ habitsapp/
 │   │   │   ├── routes.ts      Express router for /entries (cursor encoded as base64url JSON)
 │   │   │   └── __tests__/
 │   │   ├── metrics/        Slices 4–5: metrics
-│   │   │   ├── repository.ts  weekly per-day aggregation + 13-week by-type and 26-week per-habit heatmap aggregations
+│   │   │   ├── repository.ts  weekly per-day aggregation + 13-week by-type + 13-week by-habit + 26-week heatmap aggregations; all sum repetitions (`COALESCE(workout.number, custom.number, 1)`) rather than counting rows
 │   │   │   ├── routes.ts      Express router for /metrics/weekly, /metrics/by-type, /metrics/heatmap
+│   │   │   └── __tests__/
+│   │   ├── export/         Slice 6: CSV export
+│   │   │   ├── repository.ts  joined entry rows + RFC-4180 CSV serializer
+│   │   │   ├── routes.ts      Express router for /export/csv
 │   │   │   └── __tests__/
 │   │   ├── test/setup.ts   Vitest setup: in-memory DB + table reset per test
 │   │   └── __tests__/      Vitest + supertest
@@ -158,16 +162,20 @@ habitsapp/
 │   │   │   ├── queries.ts        TanStack Query hooks
 │   │   │   └── __tests__/
 │   │   ├── entries/        Slice 3: log entries feature
-│   │   │   ├── EntryForm.tsx     log/edit modal with dynamic per-type fields
-│   │   │   ├── EntriesList.tsx   filterable list with infinite scroll + delete confirm
-│   │   │   ├── date.ts           todayIso() + formatDate() helpers
-│   │   │   ├── queries.ts        TanStack Query hooks (useInfiniteQuery; entry mutations also invalidate ['metrics'])
+│   │   │   ├── EntryForm.tsx        log/edit form with dynamic per-type fields
+│   │   │   ├── LogEntryDialog.tsx   shared Log/Edit modal + provider (useLogEntryDialog hook)
+│   │   │   ├── EntriesList.tsx      filterable list with infinite scroll + delete confirm
+│   │   │   ├── date.ts              todayIso() + formatDate() helpers
+│   │   │   ├── queries.ts           TanStack Query hooks (useInfiniteQuery; entry mutations also invalidate ['metrics'])
 │   │   │   └── __tests__/
 │   │   ├── metrics/        Slices 4–5: metrics
 │   │   │   ├── WeekChartSection.tsx     Nivo stacked-bar chart (Mon–Sun) reacting to the home filter
 │   │   │   ├── ByTypeChartSection.tsx   Nivo stacked-bar chart of entries per archetype across 13 weeks (Metrics page)
-│   │   │   ├── HeatmapSection.tsx       Custom 13×7 grid heatmap per habit definition (Metrics page)
+│   │   │   ├── HeatmapSection.tsx       Custom 26×7 grid heatmap per habit definition (Metrics page)
 │   │   │   ├── queries.ts               useWeeklyMetrics, useByTypeMetrics, useHeatmapMetrics hooks
+│   │   │   └── __tests__/
+│   │   ├── export/         Slice 6: CSV export
+│   │   │   ├── ExportSection.tsx        user + date-range form, fetches CSV blob and triggers browser download
 │   │   │   └── __tests__/
 │   │   ├── pages/          Home, Metrics, Settings
 │   │   ├── lib/
@@ -196,9 +204,11 @@ habitsapp/
   - `GET /users`, `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
   - `GET /habit-definitions`, `POST /habit-definitions`, `PUT /habit-definitions/:id`, `DELETE /habit-definitions/:id`
   - `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT /entries/:id`, `DELETE /entries/:id`
-  - `GET /metrics/weekly?userId=&habitDefinitionId=&today=` — current week (Mon–Sun) bucketed per day with sparse `counts` per habit definition. `habitDefinitionId` and `today` are optional; `today` (YYYY-MM-DD) anchors the week and is used by tests.
-  - `GET /metrics/by-type?userId=&today=` — entry counts per archetype (workout/writing/custom) per week across the 13-week range (Mon–Sun aligned) that ends with the anchor week. Always returns 13 ordered weeks (oldest first), zero-filled.
-  - `GET /metrics/heatmap?userId=&today=` — for every habit definition, a sparse `{ date, count }[]` over the rolling 26-week range (~6 months, Mon–Sun aligned) that ends with the anchor week. Habits are ordered by their most recent in-range entry (newest first); habits with no in-range entries are listed last with an empty `days` array.
+  - `GET /metrics/weekly?userId=&habitDefinitionId=&today=` — current week (Mon–Sun) bucketed per day with sparse `counts` per habit definition. `habitDefinitionId` and `today` are optional; `today` (YYYY-MM-DD) anchors the week and is used by tests. Counts sum repetitions: workout/custom entries contribute their `number` field (repetitions) when set, otherwise the entry contributes 1.
+  - `GET /metrics/by-type?userId=&today=` — repetition counts per archetype (workout/writing/custom) per week across the 13-week range (Mon–Sun aligned) that ends with the anchor week. Always returns 13 ordered weeks (oldest first), zero-filled. Same repetition-summing rule as `/metrics/weekly`.
+  - `GET /metrics/by-habit?userId=&today=` — same 13-week range as `by-type`, but broken down by individual habit definition instead of archetype. Each week contains a sparse `habits: HabitCount[]` array (only habits with entries appear). Uses the same repetition-summing rule.
+  - `GET /metrics/heatmap?userId=&today=` — for every habit definition, a sparse `{ date, count }[]` over the rolling 26-week range (~6 months, Mon–Sun aligned) that ends with the anchor week. `count` is the per-day sum of repetitions (same rule as the other metrics endpoints). Habits are ordered by their most recent in-range entry (newest first); habits with no in-range entries are listed last with an empty `days` array.
+  - `GET /export/csv?userId=&from=&to=` — returns a CSV (`text/csv; charset=utf-8`, `Content-Disposition: attachment`) with one row per entry inside the inclusive `[from, to]` window. Columns: `date, habit_name, type, positive, duration, distance, weight, amount, notes, words, time, number`. `duration` and `number` are shared across workout/custom; `amount` is custom-only. For each row only the columns that apply to its archetype are filled, the rest are empty. Text fields are RFC-4180 escaped.
 - **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`).
 - **Dev runner**: `tsx watch src/index.ts`
 
@@ -215,9 +225,9 @@ habitsapp/
   - `habit_definitions` (`id`, `name`, `type` enum: workout/writing/custom, `positive`, `color`, `created_at`)
   - `entries` (`id`, `habit_definition_id` FK→restrict, `user_id` FK→cascade, `date` text, `created_at`)
   - Type-specific child tables, each with `entry_id` PK FK→cascade:
-    - `entry_workout_data` — `duration` (int, required), `distance` (real), `weight` (real), `amount` (real), `notes` (text)
+    - `entry_workout_data` — `duration` (int, required), `distance` (real), `weight` (real), `number` (real, repetitions), `notes` (text)
     - `entry_writing_data` — `words` (int, required), `time` (int)
-    - `entry_custom_data` — `number` (real), `amount` (real), `duration` (int), `binary` (boolean)
+    - `entry_custom_data` — `number` (real), `amount` (real), `duration` (int)
 - **Pagination**: `GET /entries` uses cursor pagination ordered by `(date DESC, id DESC)`. The cursor is `{ date, id }` of the last item in the previous page, base64url-encoded as JSON. Default page size is 20.
 - **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/db/migrate.ts`.
 - **Seeding**: on backend startup, after migrations, `seedHabitDefinitions()` runs and inserts the eight example habits if the table is empty.
@@ -230,11 +240,18 @@ habitsapp/
 
 ### Entry & providers
 
-`src/main.tsx` mounts (in order, outer → inner):
+The provider stack is split between `src/main.tsx` (transport-level) and `src/App.tsx` (app-level).
+
+`src/main.tsx` mounts (outer → inner):
 1. `React.StrictMode`
-2. `QueryClientProvider` (TanStack Query, `staleTime: 30s`, no refetch on focus)
+2. `QueryClientProvider` — TanStack Query with `staleTime: 30s`, `refetchOnWindowFocus: false`, and a `MutationCache` whose `onError` surfaces failures as `sonner` toasts (global error notifications for every mutation)
 3. `BrowserRouter`
 4. `<App />`
+
+`src/App.tsx` adds (outer → inner):
+1. `UserProvider` — active user state + localStorage persistence
+2. `LogEntryDialogProvider` — owns the shared Log/Edit modal opened from the header and the entries list
+3. `Header` + `Routes` + `<Toaster richColors position="top-center" />` (sonner mount point)
 
 ### Routing
 
@@ -242,14 +259,16 @@ habitsapp/
 | Path | Component | Purpose |
 |---|---|---|
 | `/` | `Home` | Default; demonstrates API connectivity by calling `/health` |
-| `/metrics` | `Metrics` | Last-3-months bar chart by archetype + per-habit heatmaps |
-| `/settings` | `Settings` | Placeholder for Slices 1–2 |
+| `/metrics` | `Metrics` | Last-3-months bar chart by archetype + per-habit heatmaps + CSV export |
+| `/settings` | `Settings` | User management and habit definitions management (Slices 1–2) |
 
 ### Header
 
-`src/components/Header.tsx` is sticky and mobile-friendly. It conditionally renders:
-- **On `/`**: app title + Metrics icon + Settings icon (Lucide `BarChart3`, `Settings`)
-- **On any other route**: back arrow that navigates home (Lucide `ArrowLeft`)
+`src/components/Header.tsx` is sticky and mobile-friendly. The `UserSwitcher` is rendered on every route (it stays hidden until more than one user exists). Beyond that, it conditionally renders:
+- **On `/`**: app title on the left; on the right, the Log entry button (Lucide `PlusCircle`, disabled until there is an active user **and** at least one habit definition), Metrics icon (`BarChart3`), and Settings icon (`Settings`)
+- **On any other route**: back arrow that navigates home (Lucide `ArrowLeft`); the route-specific icons are hidden
+
+The Log button opens the shared Log/Edit modal via `useLogEntryDialog()`.
 
 ### Styling
 
@@ -267,6 +286,7 @@ habitsapp/
 - `button.tsx`, `input.tsx`, `select.tsx`, `dialog.tsx`, `dropdown-menu.tsx`, `switch.tsx`, `label.tsx`, `alert-dialog.tsx`
 - Use `cn()` from `@/lib/utils` (clsx + tailwind-merge) to compose classes
 - Use the `radix-ui` umbrella package for primitives (Slot, Dialog, Select)
+- `sonner` provides toast notifications; the `<Toaster>` is mounted once in `App.tsx` and the `QueryClient`'s `MutationCache` pipes mutation errors into it
 
 ### API client
 
@@ -279,7 +299,14 @@ habitsapp/
 
 ## Shared types
 
-`shared/src/index.ts` is imported as `@habitsapp/shared` from both backend and frontend. Currently exports only `HealthResponse`. The package has no build step — both apps consume the `.ts` source directly.
+`shared/src/index.ts` is imported as `@habitsapp/shared` from both backend and frontend. It is the contract for every slice and groups types by feature area:
+- **Health**: `HealthResponse`
+- **Users**: `User`, `CreateUserBody`, `UpdateUserBody`
+- **Habit definitions**: `HabitType` (+ the `HABIT_TYPES` runtime list), `HabitDefinition`, `CreateHabitDefinitionBody`, `UpdateHabitDefinitionBody`
+- **Entries**: `Entry`, `EntryData` (the union of `WorkoutData` / `WritingData` / `CustomData`), `EntryCursor`, `EntriesPage`, `CreateEntryBody`, `UpdateEntryBody`
+- **Metrics**: `WeeklyMetrics` (+ `WeekDayMetrics`, `HabitCount`), `ByTypeMetrics` (+ `ByTypeWeek`), `HeatmapMetrics` (+ `HabitHeatmap`, `HeatmapDay`)
+
+The package has no build step — both apps consume the `.ts` source directly.
 
 ## Communication
 
@@ -289,8 +316,8 @@ habitsapp/
 
 ## Testing
 
-- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users`, `habit_definitions`, and the entries tables before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, Users (CRUD + default-user invariants), Habit Definitions (CRUD, color rotation, positive-flag enforcement, seeding), Entries (CRUD per archetype, cursor pagination, type-lock/delete-block guards), `/metrics/weekly` (Mon–Sun range, per-day aggregation, habit filter, user isolation), and `/metrics/by-type` + `/metrics/heatmap` (13-week range, archetype/per-habit aggregation, range edge exclusion, user isolation).
-- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (Radix UI primitives need it). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + Router + UserProvider) used by component tests. Tests live in `src/**/__tests__/`. Covers the `Header`, `apiFetch`, `HabitForm`, `EntryForm`, `WeekChartSection`, `ByTypeChartSection` (Nivo `ResponsiveBar` is mocked so tests assert on the chart model — keys, data, colors, and empty state), and `HeatmapSection` (asserts the 26×7 grid, totals, and per-habit color choice).
+- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users`, `habit_definitions`, and the entries tables before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, Users (CRUD + default-user invariants), Habit Definitions (CRUD, color rotation, positive-flag enforcement, seeding), Entries (CRUD per archetype, cursor pagination, type-lock/delete-block guards), `/metrics/weekly` (Mon–Sun range, per-day aggregation, habit filter, user isolation), `/metrics/by-type` + `/metrics/heatmap` (13/26-week range, archetype/per-habit aggregation, range edge exclusion, user isolation, recent-first ordering), and `/export/csv` (validation, CSV escaping, archetype column mapping, range filter, user isolation).
+- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (Radix UI primitives need it). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + UserProvider + LogEntryDialogProvider) used by component tests; tests that need routing add their own `MemoryRouter`. Tests live in `src/**/__tests__/`. Covers the `Header`, `apiFetch`, `HabitForm`, `EntryForm`, `WeekChartSection`, `ByTypeChartSection` (Nivo `ResponsiveBar` is mocked so tests assert on the chart model — keys, data, colors, and empty state), `HeatmapSection` (asserts the 26×7 grid, totals, and per-habit color choice), and `ExportSection` (URL params, error rendering, blob download trigger).
 
 ## Commands
 

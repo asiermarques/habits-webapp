@@ -19,6 +19,7 @@ Read:
 
 - `docs/PRODUCT.md`
 - `docs/ARCHITECTURE.md`
+- `README.md`
 
 Also inspect README or setup docs if relevant.
 
@@ -36,6 +37,7 @@ Check whether `docs/PRODUCT.md` accurately describes:
 - deliberate exclusions
 - metrics behavior
 - the decision that metrics use raw counts only, with no goals or targets
+- incorrect or outdated directory or filename references
 
 Check whether `docs/ARCHITECTURE.md` accurately describes:
 

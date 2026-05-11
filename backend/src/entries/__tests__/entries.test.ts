@@ -79,11 +79,11 @@ describe('Entries API', () => {
         habitDefinitionId: custom.id,
         userId: user.id,
         date: '2026-05-09',
-        data: { number: 42, binary: true },
+        data: { number: 42, duration: 15 },
       });
       expect(res.status).toBe(201);
       expect(res.body.data.number).toBe(42);
-      expect(res.body.data.binary).toBe(true);
+      expect(res.body.data.duration).toBe(15);
     });
 
     it('returns 400 for an invalid date format', async () => {

@@ -1,5 +1,6 @@
 import { Router, type Request } from 'express';
 import {
+  getByHabitMetrics,
   getByTypeMetrics,
   getHeatmapMetrics,
   getWeeklyMetrics,
@@ -62,6 +63,22 @@ metricsRouter.get('/by-type', (req, res) => {
   }
 
   res.json(getByTypeMetrics({ userId, today }));
+});
+
+metricsRouter.get('/by-habit', (req, res) => {
+  const userId = parseUserId(req);
+  if (typeof userId === 'object') {
+    res.status(400).json(userId);
+    return;
+  }
+
+  const today = parseToday(req);
+  if (typeof today === 'object' && today !== undefined) {
+    res.status(400).json(today);
+    return;
+  }
+
+  res.json(getByHabitMetrics({ userId, today }));
 });
 
 metricsRouter.get('/heatmap', (req, res) => {

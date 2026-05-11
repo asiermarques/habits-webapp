@@ -1,7 +1,19 @@
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { entries, habitDefinitions } from '../db/schema.js';
+import {
+  entries,
+  entryCustomData,
+  entryWorkoutData,
+  habitDefinitions,
+} from '../db/schema.js';
+
+// Counts "times the habit was done" rather than "entries logged":
+// workout/custom entries contribute their repetitions field (`number`) when
+// present, every other case counts as 1.
+const REP_COUNT_SQL = sql<number>`SUM(COALESCE(${entryWorkoutData.number}, ${entryCustomData.number}, 1))`;
 import type {
+  ByHabitMetrics,
+  ByHabitWeek,
   ByTypeMetrics,
   ByTypeWeek,
   HabitCount,
@@ -43,9 +55,11 @@ export function getWeeklyMetrics({
     .select({
       date: entries.date,
       habitDefinitionId: entries.habitDefinitionId,
-      count: sql<number>`COUNT(*)`,
+      count: REP_COUNT_SQL,
     })
     .from(entries)
+    .leftJoin(entryWorkoutData, eq(entryWorkoutData.entryId, entries.id))
+    .leftJoin(entryCustomData, eq(entryCustomData.entryId, entries.id))
     .where(and(...conditions))
     .groupBy(entries.date, entries.habitDefinitionId)
     .all();
@@ -82,10 +96,12 @@ export function getByTypeMetrics({ userId, today }: RangeInput): ByTypeMetrics {
     .select({
       date: entries.date,
       type: habitDefinitions.type,
-      count: sql<number>`COUNT(*)`,
+      count: REP_COUNT_SQL,
     })
     .from(entries)
     .innerJoin(habitDefinitions, eq(entries.habitDefinitionId, habitDefinitions.id))
+    .leftJoin(entryWorkoutData, eq(entryWorkoutData.entryId, entries.id))
+    .leftJoin(entryCustomData, eq(entryCustomData.entryId, entries.id))
     .where(
       and(
         eq(entries.userId, userId),
@@ -117,6 +133,53 @@ export function getByTypeMetrics({ userId, today }: RangeInput): ByTypeMetrics {
   return { rangeStart, rangeEnd, weeks };
 }
 
+// --- Last 3 months: by-habit ---
+
+export function getByHabitMetrics({ userId, today }: RangeInput): ByHabitMetrics {
+  const anchor = today ?? isoToday();
+  const { rangeStart, rangeEnd, weekStarts } = byTypeRange(anchor);
+
+  const rows = db
+    .select({
+      date: entries.date,
+      habitDefinitionId: entries.habitDefinitionId,
+      count: REP_COUNT_SQL,
+    })
+    .from(entries)
+    .leftJoin(entryWorkoutData, eq(entryWorkoutData.entryId, entries.id))
+    .leftJoin(entryCustomData, eq(entryCustomData.entryId, entries.id))
+    .where(
+      and(
+        eq(entries.userId, userId),
+        gte(entries.date, rangeStart),
+        lte(entries.date, rangeEnd),
+      ),
+    )
+    .groupBy(entries.date, entries.habitDefinitionId)
+    .all();
+
+  const byWeekStart = new Map<string, Map<number, number>>();
+  for (const ws of weekStarts) byWeekStart.set(ws, new Map());
+
+  for (const r of rows) {
+    const ws = weekStartFor(r.date);
+    const bucket = byWeekStart.get(ws);
+    if (!bucket) continue;
+    bucket.set(r.habitDefinitionId, (bucket.get(r.habitDefinitionId) ?? 0) + Number(r.count));
+  }
+
+  const weeks: ByHabitWeek[] = weekStarts.map((weekStart) => {
+    const bucket = byWeekStart.get(weekStart)!;
+    const habits: HabitCount[] = [];
+    for (const [habitDefinitionId, count] of bucket) {
+      habits.push({ habitDefinitionId, count });
+    }
+    return { weekStart, weekEnd: addDaysIso(weekStart, 6), habits };
+  });
+
+  return { rangeStart, rangeEnd, weeks };
+}
+
 // --- Last 3 months: heatmap ---
 
 export function getHeatmapMetrics({ userId, today }: RangeInput): HeatmapMetrics {
@@ -127,9 +190,11 @@ export function getHeatmapMetrics({ userId, today }: RangeInput): HeatmapMetrics
     .select({
       habitDefinitionId: entries.habitDefinitionId,
       date: entries.date,
-      count: sql<number>`COUNT(*)`,
+      count: REP_COUNT_SQL,
     })
     .from(entries)
+    .leftJoin(entryWorkoutData, eq(entryWorkoutData.entryId, entries.id))
+    .leftJoin(entryCustomData, eq(entryCustomData.entryId, entries.id))
     .where(
       and(
         eq(entries.userId, userId),

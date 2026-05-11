@@ -121,14 +121,12 @@ function EntryCard({ entry, habit, onEdit, onDelete }: EntryCardProps) {
     <li className="flex items-center justify-between gap-3 rounded-md border border-neutral-200 bg-white px-3 py-2.5">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: habit?.color ?? '#999' }}
-          />
           <span className="truncate font-medium">{habit?.name ?? 'Unknown habit'}</span>
-          <span className="ml-auto shrink-0 text-xs text-neutral-500">
-            {formatDate(entry.date)}
+          <span
+            className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium text-white"
+            style={{ backgroundColor: habit?.color ?? '#999' }}
+          >
+            {entry.type}
           </span>
         </div>
         <EntrySummary entry={entry} />
@@ -159,19 +157,18 @@ function EntrySummary({ entry }: { entry: Entry }) {
     if (typeof d.duration === 'number') parts.push(`${d.duration} min`);
     if (typeof d.distance === 'number') parts.push(`${d.distance} km`);
     if (typeof d.weight === 'number') parts.push(`${d.weight} kg`);
-    if (typeof d.amount === 'number') parts.push(`× ${d.amount}`);
+    if (typeof d.number === 'number') parts.push(`${d.number} reps`);
   } else if (entry.type === 'writing') {
     if (typeof d.words === 'number') parts.push(`${d.words} words`);
     if (typeof d.time === 'number') parts.push(`${d.time} min`);
   } else {
-    if (typeof d.number === 'number') parts.push(`#${d.number}`);
-    if (typeof d.amount === 'number') parts.push(`amount ${d.amount}`);
+    if (typeof d.number === 'number') parts.push(`${d.number} reps`);
+    if (typeof d.amount === 'number') parts.push(`cost ${d.amount}`);
     if (typeof d.duration === 'number') parts.push(`${d.duration} min`);
-    if (d.binary === true) parts.push('done');
   }
 
-  if (parts.length === 0) return null;
-  return (
-    <p className="mt-0.5 truncate text-sm text-neutral-600">{parts.join(' · ')}</p>
-  );
+  const date = formatDate(entry.date);
+  const text = parts.length > 0 ? `${date} → ${parts.join(' · ')}` : date;
+
+  return <p className="mt-0.5 truncate text-sm text-neutral-600">{text}</p>;
 }

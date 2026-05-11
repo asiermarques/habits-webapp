@@ -55,7 +55,7 @@ export type WorkoutData = {
   duration: number;
   distance?: number | null;
   weight?: number | null;
-  amount?: number | null;
+  number?: number | null;
   notes?: string | null;
 };
 
@@ -68,7 +68,6 @@ export type CustomData = {
   number?: number | null;
   amount?: number | null;
   duration?: number | null;
-  binary?: boolean | null;
 };
 
 export type EntryData = WorkoutData | WritingData | CustomData;
@@ -143,6 +142,18 @@ export type ByTypeMetrics = {
   rangeStart: string; // Monday of the earliest week
   rangeEnd: string;   // Sunday of the latest week
   weeks: ByTypeWeek[]; // length 13, oldest first
+};
+
+export type ByHabitWeek = {
+  weekStart: string; // Monday, YYYY-MM-DD
+  weekEnd: string;   // Sunday, YYYY-MM-DD
+  habits: HabitCount[]; // sparse: only habits with entries appear
+};
+
+export type ByHabitMetrics = {
+  rangeStart: string; // Monday of the earliest week
+  rangeEnd: string;   // Sunday of the latest week
+  weeks: ByHabitWeek[]; // length 13, oldest first
 };
 
 export type HeatmapDay = {

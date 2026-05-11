@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type {
+  ByHabitMetrics,
   ByTypeMetrics,
   HeatmapMetrics,
   WeeklyMetrics,
@@ -11,6 +12,9 @@ export const weeklyMetricsKey = (userId: number, habitDefinitionId?: number) =>
 
 export const byTypeMetricsKey = (userId: number) =>
   ['metrics', 'by-type', userId] as const;
+
+export const byHabitMetricsKey = (userId: number) =>
+  ['metrics', 'by-habit', userId] as const;
 
 export const heatmapMetricsKey = (userId: number) =>
   ['metrics', 'heatmap', userId] as const;
@@ -35,6 +39,15 @@ export function useByTypeMetrics(userId: number) {
     enabled: userId > 0,
     queryFn: () =>
       apiFetch<ByTypeMetrics>(`/metrics/by-type?userId=${userId}`),
+  });
+}
+
+export function useByHabitMetrics(userId: number) {
+  return useQuery({
+    queryKey: byHabitMetricsKey(userId),
+    enabled: userId > 0,
+    queryFn: () =>
+      apiFetch<ByHabitMetrics>(`/metrics/by-habit?userId=${userId}`),
   });
 }
 

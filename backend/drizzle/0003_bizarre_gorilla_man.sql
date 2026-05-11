@@ -1,0 +1,1 @@
+ALTER TABLE `entry_custom_data` DROP COLUMN `binary`;
