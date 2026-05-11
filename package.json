@@ -8,7 +8,7 @@
     "frontend"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
+    "dev": "concurrently --names backend,frontend \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspaces --if-present",
@@ -21,6 +21,7 @@
     "test:e2e:install": "playwright install --with-deps chromium"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1"
+    "@playwright/test": "^1.59.1",
+    "concurrently": "^9.2.1"
   }
 }

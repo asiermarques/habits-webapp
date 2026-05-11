@@ -202,8 +202,13 @@ habitsapp/
 │   ├── components.json     shadcn config
 │   ├── vite.config.ts
 │   └── vitest.config.ts
-└── shared/                 @habitsapp/shared
-    └── src/index.ts        types shared between API and UI
+├── shared/                 @habitsapp/shared
+│   └── src/index.ts        types shared between API and UI
+├── e2e/                    Playwright end-to-end tests
+│   ├── tests/              test specs (one file per feature area)
+│   ├── helpers.ts          shared page-object helpers
+│   └── global-setup.ts     deletes the e2e DB before the suite runs
+└── playwright.config.ts    Playwright config (ports 4001/4173, Chromium, workers: 1)
 ```
 
 ## Backend
@@ -341,14 +346,24 @@ The package has no build step — both apps consume the `.ts` source directly.
   - `NODE_ENV` is not set to `test`, so seeding runs as in production.
   - Browser binary not included in the repo; install once with `npm run test:e2e:install`.
 
+## CI
+
+CircleCI (`.circleci/config.yml`) runs two sequential jobs on every push:
+
+1. **test** — `npm run typecheck` → `npm test` → `npm run build`
+2. **e2e** — installs Playwright's Chromium binary, then `npm run test:e2e`. Playwright report and test-results artifacts are stored for each run. Only runs when `test` passes.
+
+Both jobs use `cimg/node:22.11`. npm packages are cached by `package-lock.json` checksum; Playwright browsers are cached separately.
+
 ## Commands
 
 ```bash
 npm install                  # install all workspaces
-npm run dev                  # both backend and frontend
+npm run dev                  # both backend and frontend (via concurrently)
 npm run dev:backend          # backend only (port 3001)
 npm run dev:frontend         # frontend only (port 5173)
 npm test                     # all workspace tests (Vitest)
+npm run typecheck            # TypeScript type check (all workspaces, no emit)
 npm run build                # production builds
 npm run db:generate          # generate Drizzle migrations
 npm run db:migrate           # apply pending migrations

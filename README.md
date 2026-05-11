@@ -71,6 +71,12 @@ npm run db:migrate      # apply pending migrations
 
 ### Testing
 
+**Type check** (TypeScript — all workspaces):
+
+```bash
+npm run typecheck
+```
+
 **Unit tests** (Vitest — backend + frontend):
 
 ```bash

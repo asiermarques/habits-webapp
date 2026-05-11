@@ -1,6 +1,6 @@
-# Product Status
+# Product 
 
-This document describes **what the app actually does today**, not what it's planned to do.
+This document describes **what the app actually does today**.
 
 ## Vision (one paragraph)
 
@@ -29,9 +29,6 @@ A mobile-first web app for tracking habits across multiple unauthenticated users
   - One heatmap per habit definition over the last 26 weeks (~6 months) — a 26×7 grid where opacity indicates the per-day count. On `md+` viewports cards are arranged in two columns; cells fill the available width via CSS grid. Positive habits use their assigned color, negative habits use red. Habits with no entries still render an empty grid. Habits are ordered by their most recent in-range entry (newest first); empty habits sink to the bottom
   - **CSV export** at the top of the Metrics page, collapsed behind a chevron toggle: expand it to pick user + from/to dates, click Export, the browser downloads `habits-{user}-{from}-{to}.csv` with one row per entry and a unified set of columns (data fields not applicable to an archetype are blank)
 
-## What does not work yet
-
-_All planned slices are implemented._
 
 ## Product decisions worth knowing
 
@@ -46,17 +43,6 @@ These were settled during scoping and are intentional design constraints, not om
 - **Habit type cannot change** once entries exist for a definition (data integrity)
 - **Habit definitions cannot be deleted** if entries exist (data integrity)
 
-## Implementation status
-
-| Slice | Status | What it delivers |
-|---|---|---|
-| 0 — Foundation | ✅ Done | Both apps run, navigate, and talk to each other |
-| 1 — Users | ✅ Done | Manage user names, default user, header switcher |
-| 2 — Habit Definitions | ✅ Done | CRUD for habit definitions + seeded examples |
-| 3 — Log Entry + List | ✅ Done | Core logging loop with infinite-scroll history |
-| 4 — Home Metrics Summary | ✅ Done | Home weekly stacked-bar chart (Mon–Sun) with habit filter |
-| 5 — Metrics View | ✅ Done | Bar charts and heatmaps over the last 3 months |
-| 6 — CSV Export | ✅ Done | Date-ranged export per user |
 
 ## Periods
 
@@ -71,4 +57,3 @@ npm install
 npm run dev
 ```
 
-Visit `http://localhost:5173`. The Home page should show "ok: true" if the API is reachable.
