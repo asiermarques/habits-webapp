@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../app.js';
 import { seedHabitDefinitionsForUser } from '../seed.js';
-import { POSITIVE_COLORS, NEGATIVE_COLOR } from '../colors.js';
+import { POSITIVE_COLORS, NEGATIVE_COLOR } from '../domain/Color.js';
 import type { HabitDefinition, User } from '@habitsapp/shared';
 
 const app = createApp();

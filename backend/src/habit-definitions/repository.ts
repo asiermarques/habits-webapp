@@ -2,7 +2,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { entries, habitDefinitions, users, type DbHabitDefinition } from '../db/schema.js';
 import type { HabitDefinition, HabitType } from '@habitsapp/shared';
-import { pickColor } from './colors.js';
+import { pickColor } from './domain/Color.js';
 import { hasEntriesForDefinition } from '../entries/repository.js';
 
 function toHabitDefinition(row: DbHabitDefinition, hasEntries = false): HabitDefinition {
