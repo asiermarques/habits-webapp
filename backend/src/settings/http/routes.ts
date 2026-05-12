@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateBody } from '../../shared/infrastructure/http/validate.js';
+import { validateBody } from '../../shared/middleware/validate.js';
 import { setCurrencySchema } from './schemas.js';
 import type { SettingsRepository } from '../domain/SettingsRepository.js';
 

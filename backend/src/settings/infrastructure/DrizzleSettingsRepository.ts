@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
-import { db } from '../../shared/infrastructure/db/index.js';
-import { appSettings } from '../../shared/infrastructure/db/schema.js';
+import { db } from '../../shared/db/index.js';
+import { appSettings } from '../../shared/db/schema.js';
 import type { AppSettings, CurrencyCode } from '@habitsapp/shared';
 import type { SettingsRepository } from '../domain/SettingsRepository.js';
 import { DEFAULT_CURRENCY } from '../domain/Settings.js';

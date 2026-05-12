@@ -1,7 +1,7 @@
 // READ MODEL — weekly metrics query.
 import { and, eq, gte, lte } from 'drizzle-orm';
-import { db } from '../../shared/infrastructure/db/index.js';
-import { entries, entryCustomData, entryWorkoutData } from '../../shared/infrastructure/db/schema.js';
+import { db } from '../../shared/db/index.js';
+import { entries, entryCustomData, entryWorkoutData } from '../../shared/db/schema.js';
 import type { HabitCount, WeeklyMetrics } from '@habitsapp/shared';
 import { REP_COUNT_SQL } from './sql-fragments.js';
 import { currentWeekRange, enumerateWeek, isoToday } from './date-utils.js';

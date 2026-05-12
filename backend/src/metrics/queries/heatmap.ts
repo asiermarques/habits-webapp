@@ -1,7 +1,7 @@
 // READ MODEL — heatmap query.
 import { and, eq, gte, lte } from 'drizzle-orm';
-import { db } from '../../shared/infrastructure/db/index.js';
-import { entries, entryCustomData, entryWorkoutData, habitDefinitions } from '../../shared/infrastructure/db/schema.js';
+import { db } from '../../shared/db/index.js';
+import { entries, entryCustomData, entryWorkoutData, habitDefinitions } from '../../shared/db/schema.js';
 import type { HabitHeatmap, HeatmapDay, HeatmapMetrics } from '@habitsapp/shared';
 import { REP_COUNT_SQL } from './sql-fragments.js';
 import { heatmapRange, isoToday } from './date-utils.js';

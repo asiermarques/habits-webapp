@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createApp } from './app.js';
-import { runMigrations } from './shared/infrastructure/db/migrate.js';
+import { runMigrations } from './shared/db/migrate.js';
 
 runMigrations();
 

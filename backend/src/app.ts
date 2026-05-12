@@ -1,17 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import type { HealthResponse } from '@habitsapp/shared';
-import { createUsersRouter } from './users/interface/routes.js';
+import { createUsersRouter } from './users/http/routes.js';
 import { DrizzleUserRepository } from './users/infrastructure/DrizzleUserRepository.js';
-import { createHabitDefinitionsRouter } from './habit-definitions/interface/routes.js';
+import { createHabitDefinitionsRouter } from './habit-definitions/http/routes.js';
 import { DrizzleHabitDefinitionRepository } from './habit-definitions/infrastructure/DrizzleHabitDefinitionRepository.js';
-import { createEntriesRouter } from './entries/interface/routes.js';
+import { createEntriesRouter } from './entries/http/routes.js';
 import { DrizzleEntryRepository } from './entries/infrastructure/DrizzleEntryRepository.js';
-import { createMetricsRouter } from './metrics/interface/routes.js';
-import { createExportRouter } from './export/interface/routes.js';
-import { createSettingsRouter } from './settings/interface/routes.js';
+import { createMetricsRouter } from './metrics/http/routes.js';
+import { createExportRouter } from './export/http/routes.js';
+import { createSettingsRouter } from './settings/http/routes.js';
 import { DrizzleSettingsRepository } from './settings/infrastructure/DrizzleSettingsRepository.js';
-import { domainErrorHandler } from './shared/infrastructure/http/errorHandler.js';
+import { domainErrorHandler } from './shared/middleware/errorHandler.js';
 
 export function createApp() {
   const app = express();

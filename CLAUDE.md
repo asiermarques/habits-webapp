@@ -27,16 +27,16 @@ Each command slice (`users/`, `habit-definitions/`, `entries/`, `settings/`) fol
 <slice>/
 ├── domain/          Pure types, invariant functions, repository port (TypeScript interface)
 ├── infrastructure/  Drizzle adapter implementing the port; owns db.transaction
-├── interface/       createXxxRouter(repo) factory + Zod schemas
+├── http/            createXxxRouter(repo) factory + Zod schemas
 └── __tests__/       Vitest + supertest integration tests
 ```
 
-Read-model slices (`metrics/`, `export/`) have no domain layer — just `queries/` functions and an `interface/` router.
+Read-model slices (`metrics/`, `export/`) have no domain layer — just `queries/` functions and an `http/` router.
 
 Key rules:
 - **Domain is pure** — no Drizzle imports; functions are sync and throw `DomainError` subclasses.
 - **Infrastructure owns transactions** — `db.transaction(...)` lives only in the Drizzle adapters.
-- **Interface uses `validateBody` / `validateQuery`** — never hand-roll `req.body` checks in routes.
+- **`http/` uses `validateBody` / `validateQuery`** — never hand-roll `req.body` checks in routes.
 - **Repositories return domain values or throw `DomainError`** — no `{ status: 'not_found' }` objects.
 - Cross-slice dependencies go through **injected repository ports**, not direct file imports.
 

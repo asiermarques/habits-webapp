@@ -117,9 +117,8 @@ habitsapp/
 │   │   ├── domain/
 │   │   │   ├── errors/          DomainError subclasses
 │   │   │   └── value-objects/   IsoDate, Currency
-│   │   └── infrastructure/
-│   │       ├── db/              Drizzle connection, schema, migrations
-│   │       └── http/            errorHandler middleware, validateBody/validateQuery
+│   │   ├── db/                  Drizzle connection, schema, migrations
+│   │   └── middleware/          errorHandler, validateBody/validateQuery
 │   ├── users/          command slice
 │   ├── habit-definitions/  command slice
 │   ├── entries/        command slice
@@ -149,7 +148,7 @@ habitsapp/
 <slice>/
 ├── domain/          Pure types, invariant functions, repository port (interface)
 ├── infrastructure/  Drizzle adapter implementing the port; owns db.transaction
-├── interface/       createXxxRouter(repo) factory + Zod schemas
+├── http/            createXxxRouter(repo) factory + Zod schemas
 └── __tests__/       Vitest + supertest integration tests
 ```
 
@@ -158,7 +157,7 @@ habitsapp/
 ```
 <slice>/
 ├── queries/     Drizzle/SQL query functions
-├── interface/   createXxxRouter() factory + Zod schemas
+├── http/        createXxxRouter() factory + Zod schemas
 └── __tests__/
 ```
 
@@ -172,8 +171,8 @@ When adding a new command slice, use `habit-definitions/` as the template:
 | domain errors | `backend/src/habit-definitions/domain/errors.ts` |
 | repository port | `backend/src/habit-definitions/domain/HabitDefinitionRepository.ts` |
 | Drizzle adapter | `backend/src/habit-definitions/infrastructure/DrizzleHabitDefinitionRepository.ts` |
-| router factory | `backend/src/habit-definitions/interface/routes.ts` |
-| Zod schemas | `backend/src/habit-definitions/interface/schemas.ts` |
+| router factory | `backend/src/habit-definitions/http/routes.ts` |
+| Zod schemas | `backend/src/habit-definitions/http/schemas.ts` |
 | integration tests | `backend/src/habit-definitions/__tests__/habit-definitions.test.ts` |
 
 When adding a new read-model slice, use `metrics/` as the template:
@@ -181,8 +180,8 @@ When adding a new read-model slice, use `metrics/` as the template:
 | Layer | Reference file |
 |---|---|
 | query function | `backend/src/metrics/queries/weekly.ts` |
-| router factory | `backend/src/metrics/interface/routes.ts` |
-| Zod schemas | `backend/src/metrics/interface/schemas.ts` |
+| router factory | `backend/src/metrics/http/routes.ts` |
+| Zod schemas | `backend/src/metrics/http/schemas.ts` |
 
 ## Backend
 
@@ -208,11 +207,11 @@ When adding a new read-model slice, use `metrics/` as the template:
 
 - **Engine**: SQLite via `better-sqlite3`
 - **ORM**: Drizzle (`drizzle-orm/better-sqlite3`)
-- **Connection** (`src/shared/infrastructure/db/index.ts`):
+- **Connection** (`src/shared/db/index.ts`):
   - Opens the DB file from `DATABASE_URL`
   - Applies `journal_mode = WAL` and `foreign_keys = ON`
   - Exports a `db` instance with the schema attached
-- **Schema** (`src/shared/infrastructure/db/schema.ts`):
+- **Schema** (`src/shared/db/schema.ts`):
   - `users` (`id`, `name`, `is_default`, `created_at`)
   - `habit_definitions` (`id`, `user_id` FK→cascade, `name`, `type` enum: workout/writing/custom, `positive`, `color`, `created_at`)
   - `entries` (`id`, `habit_definition_id` FK→restrict, `user_id` FK→cascade, `date` text, `created_at`)
@@ -222,7 +221,7 @@ When adding a new read-model slice, use `metrics/` as the template:
     - `entry_custom_data` — `number` (real), `amount` (real), `duration` (int)
   - `app_settings` (`key` PK text, `value` text) — singleton key/value store. Currently holds `currency=EUR` by default (migration 0006).
 - **Pagination**: `GET /entries` uses cursor pagination ordered by `(date DESC, id DESC)`. The cursor is `{ date, id }` of the last item in the previous page, base64url-encoded as JSON. Default page size is 20.
-- **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/shared/infrastructure/db/migrate.ts`.
+- **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/shared/db/migrate.ts`.
 - **Seeding**: triggered inside `createUser()` — every new user gets the eight example habits via `seedHabitDefinitionsForUser(userId)`. Skipped when `NODE_ENV=test` so backend tests can assert exact habit counts. No startup-time seeding.
 
 ## Frontend

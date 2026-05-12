@@ -1,6 +1,6 @@
 import { eq, ne, asc } from 'drizzle-orm';
-import { db } from '../../shared/infrastructure/db/index.js';
-import { users, type DbUser } from '../../shared/infrastructure/db/schema.js';
+import { db } from '../../shared/db/index.js';
+import { users, type DbUser } from '../../shared/db/schema.js';
 import type { User } from '../domain/User.js';
 import { resolveIsDefault, pickNextDefaultAfter } from '../domain/User.js';
 import { UserNotFoundError, OnlyUserError } from '../domain/errors.js';

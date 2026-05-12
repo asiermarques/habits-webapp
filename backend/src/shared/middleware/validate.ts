@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { z } from 'zod';
-import { ValidationError } from '../../domain/errors/DomainError.js';
+import { ValidationError } from '../domain/errors/DomainError.js';
 
 export function validateBody<T>(req: Request, schema: z.ZodType<T, z.ZodTypeDef, unknown>): T {
   const result = schema.safeParse(req.body);

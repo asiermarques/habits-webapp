@@ -1,6 +1,6 @@
 // READ MODEL — no domain layer, no repository port, just read functions wired to HTTP.
 import { Router } from 'express';
-import { validateQuery } from '../../shared/infrastructure/http/validate.js';
+import { validateQuery } from '../../shared/middleware/validate.js';
 import { exportQuerySchema } from './schemas.js';
 import { getRowsInRange } from '../queries/getRowsInRange.js';
 import { rowsToCsv } from '../csv.js';

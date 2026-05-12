@@ -1,6 +1,6 @@
 // READ MODEL — shared SQL expression used across all metrics queries.
 import { sql } from 'drizzle-orm';
-import { entryWorkoutData, entryCustomData } from '../../shared/infrastructure/db/schema.js';
+import { entryWorkoutData, entryCustomData } from '../../shared/db/schema.js';
 
 // Counts "times the habit was done" rather than "entries logged":
 // workout/custom entries contribute their repetitions field (`number`) when
