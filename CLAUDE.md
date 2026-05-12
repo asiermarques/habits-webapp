@@ -19,6 +19,27 @@ When the implementation diverges from `ARCHITECTURE.md` or `PRODUCT.md` or `READ
 - **Tests live next to the code** in `__tests__/` folders
 - **No goals or targets** in the metrics layer — only raw counts (this is a deliberate product decision)
 
+### Backend layering
+
+Each command slice (`users/`, `habit-definitions/`, `entries/`, `settings/`) follows a four-layer split:
+
+```
+<slice>/
+├── domain/          Pure types, invariant functions, repository port (TypeScript interface)
+├── infrastructure/  Drizzle adapter implementing the port; owns db.transaction
+├── interface/       createXxxRouter(repo) factory + Zod schemas
+└── __tests__/       Vitest + supertest integration tests
+```
+
+Read-model slices (`metrics/`, `export/`) have no domain layer — just `queries/` functions and an `interface/` router.
+
+Key rules:
+- **Domain is pure** — no Drizzle imports; functions are sync and throw `DomainError` subclasses.
+- **Infrastructure owns transactions** — `db.transaction(...)` lives only in the Drizzle adapters.
+- **Interface uses `validateBody` / `validateQuery`** — never hand-roll `req.body` checks in routes.
+- **Repositories return domain values or throw `DomainError`** — no `{ status: 'not_found' }` objects.
+- Cross-slice dependencies go through **injected repository ports**, not direct file imports.
+
 ## Context7 — fetch up-to-date library docs
 
 When working with libraries, frameworks, SDKs, or CLI tools, use the Context7 MCP server to fetch current documentation — even for well-known libraries like React, Drizzle, Tailwind, shadcn, or Vite. Local training data may be outdated, especially for fast-moving libraries (Tailwind v4 and shadcn/ui have both had recent breaking changes).

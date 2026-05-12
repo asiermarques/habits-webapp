@@ -9,7 +9,7 @@ import type {
   SummaryMetrics,
   User,
 } from '@habitsapp/shared';
-import { BY_TYPE_WEEKS, byTypeRange, heatmapRange } from '../repository.js';
+import { BY_TYPE_WEEKS, byTypeRange, heatmapRange } from '../queries/date-utils.js';
 
 const app = createApp();
 

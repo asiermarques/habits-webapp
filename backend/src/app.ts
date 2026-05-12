@@ -5,10 +5,12 @@ import { createUsersRouter } from './users/interface/routes.js';
 import { DrizzleUserRepository } from './users/infrastructure/DrizzleUserRepository.js';
 import { createHabitDefinitionsRouter } from './habit-definitions/interface/routes.js';
 import { DrizzleHabitDefinitionRepository } from './habit-definitions/infrastructure/DrizzleHabitDefinitionRepository.js';
-import { entriesRouter } from './entries/routes.js';
-import { metricsRouter } from './metrics/routes.js';
-import { exportRouter } from './export/routes.js';
-import { settingsRouter } from './settings/routes.js';
+import { createEntriesRouter } from './entries/interface/routes.js';
+import { DrizzleEntryRepository } from './entries/infrastructure/DrizzleEntryRepository.js';
+import { createMetricsRouter } from './metrics/interface/routes.js';
+import { createExportRouter } from './export/interface/routes.js';
+import { createSettingsRouter } from './settings/interface/routes.js';
+import { DrizzleSettingsRepository } from './settings/infrastructure/DrizzleSettingsRepository.js';
 import { domainErrorHandler } from './shared/http/errorHandler.js';
 
 export function createApp() {
@@ -23,14 +25,15 @@ export function createApp() {
     res.json(body);
   });
 
-  const habitRepo = new DrizzleHabitDefinitionRepository();
+  const entryRepo = new DrizzleEntryRepository();
+  const habitRepo = new DrizzleHabitDefinitionRepository(entryRepo);
   const userRepo = new DrizzleUserRepository({ seedFor: (id) => habitRepo.seedFor(id) });
   app.use('/users', createUsersRouter(userRepo));
   app.use('/habit-definitions', createHabitDefinitionsRouter(habitRepo));
-  app.use('/entries', entriesRouter);
-  app.use('/metrics', metricsRouter);
-  app.use('/export', exportRouter);
-  app.use('/settings', settingsRouter);
+  app.use('/entries', createEntriesRouter(entryRepo));
+  app.use('/metrics', createMetricsRouter());
+  app.use('/export', createExportRouter());
+  app.use('/settings', createSettingsRouter(new DrizzleSettingsRepository()));
 
   app.use(domainErrorHandler);
 

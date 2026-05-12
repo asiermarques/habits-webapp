@@ -1,12 +1,13 @@
+// READ MODEL — no domain layer, just a joined read query.
 import { and, asc, eq, gte, lte } from 'drizzle-orm';
-import { db } from '../db/index.js';
+import { db } from '../../db/index.js';
 import {
   entries,
   entryWorkoutData,
   entryWritingData,
   entryCustomData,
   habitDefinitions,
-} from '../db/schema.js';
+} from '../../db/schema.js';
 import type { HabitType } from '@habitsapp/shared';
 
 export type ExportRow = {
@@ -30,7 +31,7 @@ export type ExportInput = {
   to: string;   // YYYY-MM-DD inclusive
 };
 
-export function getExportRows({ userId, from, to }: ExportInput): ExportRow[] {
+export function getRowsInRange({ userId, from, to }: ExportInput): ExportRow[] {
   const rows = db
     .select({
       date: entries.date,
@@ -79,51 +80,4 @@ export function getExportRows({ userId, from, to }: ExportInput): ExportRow[] {
     time: r.writingTime ?? null,
     number: r.workoutNumber ?? r.customNumber ?? null,
   }));
-}
-
-export const EXPORT_COLUMNS = [
-  'date',
-  'habit_name',
-  'type',
-  'positive',
-  'duration',
-  'distance',
-  'weight',
-  'amount',
-  'notes',
-  'words',
-  'time',
-  'number',
-] as const;
-
-export function rowsToCsv(rows: ExportRow[]): string {
-  const header = EXPORT_COLUMNS.join(',');
-  const lines = rows.map((r) =>
-    [
-      r.date,
-      r.habitName,
-      r.type,
-      r.positive,
-      r.duration,
-      r.distance,
-      r.weight,
-      r.amount,
-      r.notes,
-      r.words,
-      r.time,
-      r.number,
-    ]
-      .map(csvEscape)
-      .join(','),
-  );
-  // Trailing newline keeps tools like `wc -l` honest.
-  return [header, ...lines].join('\n') + '\n';
-}
-
-function csvEscape(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
-  const s = String(value);
-  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
 }

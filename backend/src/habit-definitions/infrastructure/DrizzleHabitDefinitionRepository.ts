@@ -7,7 +7,7 @@ import { pickColor } from '../domain/Color.js';
 import { HabitDefinitionNotFoundError, HasEntriesError, UserNotFoundError } from '../domain/errors.js';
 import type { HabitDefinitionRepository, InsertInput } from '../domain/HabitDefinitionRepository.js';
 import type { HabitPatch } from '../domain/HabitDefinition.js';
-import { hasEntriesForDefinition } from '../../entries/repository.js';
+import type { EntryRepository } from '../../entries/domain/EntryRepository.js';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -42,6 +42,8 @@ function definitionsWithEntries(tx?: Tx): Set<number> {
 }
 
 export class DrizzleHabitDefinitionRepository implements HabitDefinitionRepository {
+  constructor(private readonly entryRepo?: EntryRepository) {}
+
   listByUser(userId: number): HabitDefinition[] {
     const rows = db
       .select()
@@ -56,7 +58,7 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
   findById(id: number): HabitDefinition | undefined {
     const row = db.select().from(habitDefinitions).where(eq(habitDefinitions.id, id)).get();
     if (!row) return undefined;
-    const hasEntries = hasEntriesForDefinition(id);
+    const hasEntries = this.entryRepo?.hasEntriesForDefinition(id) ?? false;
     return toHabitDefinition(row, hasEntries);
   }
 
@@ -84,7 +86,7 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
       const row = tx.select().from(habitDefinitions).where(eq(habitDefinitions.id, id)).get();
       if (!row) throw new HabitDefinitionNotFoundError(id);
 
-      const hasEntries = hasEntriesForDefinition(id, tx);
+      const hasEntries = this.entryRepo?.hasEntriesForDefinition(id) ?? false;
       const existing = toHabitDefinition(row, hasEntries);
       const updates = applyPatch(existing, patch, hasEntries);
 
@@ -108,7 +110,7 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
       const row = tx.select().from(habitDefinitions).where(eq(habitDefinitions.id, id)).get();
       if (!row) throw new HabitDefinitionNotFoundError(id);
 
-      if (hasEntriesForDefinition(id, tx)) throw new HasEntriesError();
+      if (this.entryRepo?.hasEntriesForDefinition(id)) throw new HasEntriesError();
 
       tx.delete(habitDefinitions).where(eq(habitDefinitions.id, id)).run();
     });

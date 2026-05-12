@@ -26,7 +26,7 @@ User (1) ─────┐
 | `isDefault` | boolean | exactly one user is the default at any time |
 | `createdAt` | text | timestamp |
 
-Invariants enforced in `backend/src/users/repository.ts` (all run inside transactions):
+Invariants enforced in `users/domain/User.ts` (pure functions) and applied by `DrizzleUserRepository` inside transactions:
 - The first user created is automatically default
 - Setting a user as default un-sets all others
 - Deleting the default promotes the next-oldest user
@@ -47,7 +47,7 @@ A per-user catalogue of habits. Each user manages their own list; users are the 
 | `createdAt` | text | timestamp |
 | `hasEntries` | boolean | response-only; computed via `hasEntriesForDefinition`. Drives the UI's type-lock and delete-block affordances |
 
-Invariants enforced in `backend/src/habit-definitions/repository.ts`:
+Invariants enforced in `habit-definitions/domain/HabitDefinition.ts` (pure functions) and applied by `DrizzleHabitDefinitionRepository` inside transactions:
 - Definitions are scoped per `userId`: `GET /habit-definitions?userId=` returns only that user's habits, and `POST` requires a `userId` in the body
 - Workout and Writing are **always** positive (`positive` is forced to true regardless of input)
 - Custom is the only type with a meaningful `positive` flag
@@ -56,7 +56,7 @@ Invariants enforced in `backend/src/habit-definitions/repository.ts`:
   - Positive → next color in the rotating 8-color palette, based on the count of existing positive habits **for that user**
 - Type cannot change once entries reference the definition → HTTP 409
 - Definitions with existing entries cannot be deleted → HTTP 409
-- The last two checks call `hasEntriesForDefinition(id)` (in `entries/repository.ts`) which counts rows in the `entries` table for that definition; both rules are enforced as of Slice 3
+- The last two checks go through `EntryRepository.hasEntriesForDefinition(id)` (injected port); both rules are enforced as of Slice 3
 - Entry creation rejects with HTTP 403 if the supplied `habitDefinitionId` belongs to a different user than the entry's `userId`
 
 ### HabitEntry — implemented
@@ -107,109 +107,77 @@ The data fields are split into a child table per archetype so each row only carr
 
 ## Repository layout
 
-npm workspaces monorepo with three packages:
+npm workspaces monorepo: `backend/` (Express API), `frontend/` (React SPA), `shared/` (shared TS types).
 
 ```
 habitsapp/
-├── backend/                Express API
-│   ├── src/
-│   │   ├── app.ts          createApp() factory (Express setup, mounts routers)
-│   │   ├── index.ts        bootstrap (runs migrations, calls listen)
-│   │   ├── db/
-│   │   │   ├── index.ts    Drizzle connection (better-sqlite3)
-│   │   │   ├── migrate.ts  programmatic migration runner
-│   │   │   └── schema.ts   table definitions
-│   │   ├── users/          Slice 1: users feature
-│   │   │   ├── repository.ts  CRUD against the users table (transactions); createUser also triggers per-user habit seeding (skipped under NODE_ENV=test)
-│   │   │   ├── routes.ts      Express router for /users
-│   │   │   └── __tests__/
-│   │   ├── habit-definitions/ Slice 2: per-user habit definitions feature
-│   │   │   ├── colors.ts      positive palette + red for negative; pickColor()
-│   │   │   ├── repository.ts  CRUD scoped by userId, with type-lock and delete-block (calls hasEntriesForDefinition); per-user positive-color rotation
-│   │   │   ├── routes.ts      Express router for /habit-definitions (requires userId)
-│   │   │   ├── seed.ts        seedHabitDefinitionsForUser(userId) inserts eight example habits for one user
-│   │   │   └── __tests__/
-│   │   ├── entries/        Slice 3: log entries feature
-│   │   │   ├── repository.ts  cursor-paginated list, parent + child-table CRUD in transactions
-│   │   │   ├── routes.ts      Express router for /entries (cursor encoded as base64url JSON)
-│   │   │   └── __tests__/
-│   │   ├── metrics/        Slices 4–5: metrics
-│   │   │   ├── repository.ts  weekly per-day aggregation + 13-week by-type + 13-week by-habit + 26-week heatmap + 30-day summary aggregations; all sum repetitions (`COALESCE(workout.number, custom.number, 1)`) rather than counting rows
-│   │   │   ├── routes.ts      Express router for /metrics/weekly, /metrics/by-type, /metrics/by-habit, /metrics/heatmap, /metrics/summary
-│   │   │   └── __tests__/
-│   │   ├── export/         Slice 6: CSV export
-│   │   │   ├── repository.ts  joined entry rows + RFC-4180 CSV serializer
-│   │   │   ├── routes.ts      Express router for /export/csv
-│   │   │   └── __tests__/
-│   │   ├── settings/       Global app settings (singleton key/value)
-│   │   │   ├── repository.ts  get/setCurrency on app_settings table
-│   │   │   ├── routes.ts      Express router for /settings + /settings/currency
-│   │   │   └── __tests__/
-│   │   ├── test/setup.ts   Vitest setup: in-memory DB + table reset per test (re-seeds currency default to EUR)
-│   │   └── __tests__/      Vitest + supertest
-│   ├── drizzle/            generated SQL migrations
-│   ├── drizzle.config.ts
-│   └── .env.example
-├── frontend/               React SPA
-│   ├── src/
-│   │   ├── main.tsx        entry; mounts providers + router
-│   │   ├── App.tsx         routes
-│   │   ├── components/
-│   │   │   ├── Header.tsx  sticky header, conditional nav, embeds UserSwitcher
-│   │   │   ├── ui/         shadcn/ui primitives (Button, Input, Select, Dialog, DropdownMenu)
-│   │   │   └── __tests__/
-│   │   ├── users/          Slice 1: users feature
-│   │   │   ├── UserContext.tsx   active user state + localStorage persistence
-│   │   │   ├── UserSwitcher.tsx  header dropdown (visible only when >1 user)
-│   │   │   ├── UsersSection.tsx  Settings panel (list, add, rename, set default, delete)
-│   │   │   └── queries.ts        TanStack Query hooks
-│   │   ├── habits/         Slice 2: habit definitions feature
-│   │   │   ├── HabitForm.tsx     shared form for add and edit (modal)
-│   │   │   ├── HabitsSection.tsx Settings panel grouped by type
-│   │   │   ├── queries.ts        TanStack Query hooks
-│   │   │   └── __tests__/
-│   │   ├── entries/        Slice 3: log entries feature
-│   │   │   ├── EntryForm.tsx        log/edit form with dynamic per-type fields
-│   │   │   ├── LogEntryDialog.tsx   shared Log/Edit modal + provider (useLogEntryDialog hook)
-│   │   │   ├── EntriesList.tsx      filterable list with infinite scroll + delete confirm
-│   │   │   ├── date.ts              todayIso() + formatDate() helpers
-│   │   │   ├── queries.ts           TanStack Query hooks (useInfiniteQuery; entry mutations also invalidate ['metrics'])
-│   │   │   └── __tests__/
-│   │   ├── metrics/        Slices 4–5: metrics
-│   │   │   ├── WeekChartSection.tsx     Nivo stacked-bar chart (Mon–Sun) reacting to the home filter
-│   │   │   ├── ByTypeChartSection.tsx   Nivo stacked-bar chart of entries per habit across 13 weeks with custom HTML legend (Metrics page)
-│   │   │   ├── HeatmapSection.tsx       Custom 26×7 grid heatmap per habit definition (Metrics page)
-│   │   │   ├── SummaryCards.tsx         Four last-30-day score cards (2 cols mobile, 4 cols md+); reads /metrics/summary
-│   │   │   ├── queries.ts               useWeeklyMetrics, useByTypeMetrics, useByHabitMetrics, useHeatmapMetrics, useSummaryMetrics hooks
-│   │   │   └── __tests__/
-│   │   ├── export/         Slice 6: CSV export
-│   │   │   ├── ExportSection.tsx        date-range form for the active user (no user picker — uses UserContext); fetches CSV blob and triggers browser download
-│   │   │   └── __tests__/
-│   │   ├── settings/       Global app settings (currency)
-│   │   │   ├── queries.ts            useSettingsQuery + useUpdateCurrency hooks
-│   │   │   └── CurrencySection.tsx   Settings page section: curated currency dropdown
-│   │   ├── pages/          Home, Metrics, Settings
-│   │   ├── lib/
-│   │   │   ├── api.ts      apiFetch wrapper
-│   │   │   ├── currency.ts formatCurrency(amount, code) → "12.50 EUR"
-│   │   │   ├── utils.ts    cn() class merger
-│   │   │   └── __tests__/
-│   │   ├── test/
-│   │   │   ├── setup.ts        Vitest + Testing Library setup
-│   │   │   └── test-utils.tsx  TestProviders helper (QueryClient + Router + UserProvider)
-│   │   ├── index.css       Tailwind v4 + shadcn theme variables
-│   │   └── vite-env.d.ts
-│   ├── components.json     shadcn config
-│   ├── vite.config.ts
-│   └── vitest.config.ts
-├── shared/                 @habitsapp/shared
-│   └── src/index.ts        types shared between API and UI
-├── e2e/                    Playwright end-to-end tests
-│   ├── tests/              test specs (one file per feature area)
-│   ├── helpers.ts          shared page-object helpers
-│   └── global-setup.ts     deletes the e2e DB before the suite runs
-└── playwright.config.ts    Playwright config (ports 4001/4173, Chromium, workers: 1)
+├── backend/src/
+│   ├── app.ts          createApp() factory
+│   ├── db/             Drizzle connection, schema, migrations
+│   ├── shared/         DomainError subclasses, validateBody/validateQuery, value objects
+│   ├── users/          command slice
+│   ├── habit-definitions/  command slice
+│   ├── entries/        command slice
+│   ├── settings/       command slice
+│   ├── metrics/        read-model slice
+│   └── export/         read-model slice
+├── frontend/src/
+│   ├── pages/          Home, Metrics, Settings
+│   ├── components/     Header + shadcn ui/ primitives
+│   ├── users/          Slice 1
+│   ├── habits/         Slice 2
+│   ├── entries/        Slice 3
+│   ├── metrics/        Slices 4–5
+│   ├── export/         Slice 6
+│   ├── settings/       currency settings
+│   └── lib/            apiFetch, currency formatter, cn()
+├── shared/src/index.ts shared TypeScript types (no build step)
+├── e2e/                Playwright tests
+└── playwright.config.ts
 ```
+
+### Backend slice patterns
+
+**Command slices** (`users/`, `habit-definitions/`, `entries/`, `settings/`):
+
+```
+<slice>/
+├── domain/          Pure types, invariant functions, repository port (interface)
+├── infrastructure/  Drizzle adapter implementing the port; owns db.transaction
+├── interface/       createXxxRouter(repo) factory + Zod schemas
+└── __tests__/       Vitest + supertest integration tests
+```
+
+**Read-model slices** (`metrics/`, `export/`) — no domain layer:
+
+```
+<slice>/
+├── queries/     Drizzle/SQL query functions
+├── interface/   createXxxRouter() factory + Zod schemas
+└── __tests__/
+```
+
+### Reference implementations for new slices
+
+When adding a new command slice, use `habit-definitions/` as the template:
+
+| Layer | Reference file |
+|---|---|
+| domain type + invariants | `backend/src/habit-definitions/domain/HabitDefinition.ts` |
+| domain errors | `backend/src/habit-definitions/domain/errors.ts` |
+| repository port | `backend/src/habit-definitions/domain/HabitDefinitionRepository.ts` |
+| Drizzle adapter | `backend/src/habit-definitions/infrastructure/DrizzleHabitDefinitionRepository.ts` |
+| router factory | `backend/src/habit-definitions/interface/routes.ts` |
+| Zod schemas | `backend/src/habit-definitions/interface/schemas.ts` |
+| integration tests | `backend/src/habit-definitions/__tests__/habit-definitions.test.ts` |
+
+When adding a new read-model slice, use `metrics/` as the template:
+
+| Layer | Reference file |
+|---|---|
+| query function | `backend/src/metrics/queries/weekly.ts` |
+| router factory | `backend/src/metrics/interface/routes.ts` |
+| Zod schemas | `backend/src/metrics/interface/schemas.ts` |
 
 ## Backend
 
@@ -348,12 +316,7 @@ The package has no build step — both apps consume the `.ts` source directly.
 
 ## CI
 
-CircleCI (`.circleci/config.yml`) runs two sequential jobs on every push:
-
-1. **test** — `npm run typecheck` → `npm test` → `npm run build`
-2. **e2e** — installs Playwright's Chromium binary, then `npm run test:e2e`. Playwright report and test-results artifacts are stored for each run. Only runs when `test` passes.
-
-Both jobs use `cimg/node:22.11`. npm packages are cached by `package-lock.json` checksum; Playwright browsers are cached separately.
+CircleCI (`.circleci/config.yml`) runs two sequential jobs on every push.
 
 ## Commands
 

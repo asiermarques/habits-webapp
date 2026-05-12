@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../app.js';
 import type { HabitDefinition, User, WeeklyMetrics } from '@habitsapp/shared';
-import { currentWeekRange } from '../repository.js';
+import { currentWeekRange } from '../queries/date-utils.js';
 
 const app = createApp();
 
