@@ -1,13 +1,13 @@
 // READ MODEL — no domain layer, just a joined read query.
 import { and, asc, eq, gte, lte } from 'drizzle-orm';
-import { db } from '../../db/index.js';
+import { db } from '../../shared/infrastructure/db/index.js';
 import {
   entries,
   entryWorkoutData,
   entryWritingData,
   entryCustomData,
   habitDefinitions,
-} from '../../db/schema.js';
+} from '../../shared/infrastructure/db/schema.js';
 import type { HabitType } from '@habitsapp/shared';
 
 export type ExportRow = {

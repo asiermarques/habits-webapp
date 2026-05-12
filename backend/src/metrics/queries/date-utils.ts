@@ -1,5 +1,5 @@
 // READ MODEL — date arithmetic helpers shared across metrics queries.
-import { ISO_DATE_RE } from '../../shared/value-objects/IsoDate.js';
+import { ISO_DATE_RE } from '../../shared/domain/value-objects/IsoDate.js';
 
 export { ISO_DATE_RE };
 

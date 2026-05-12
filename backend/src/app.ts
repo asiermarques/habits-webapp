@@ -11,7 +11,7 @@ import { createMetricsRouter } from './metrics/interface/routes.js';
 import { createExportRouter } from './export/interface/routes.js';
 import { createSettingsRouter } from './settings/interface/routes.js';
 import { DrizzleSettingsRepository } from './settings/infrastructure/DrizzleSettingsRepository.js';
-import { domainErrorHandler } from './shared/http/errorHandler.js';
+import { domainErrorHandler } from './shared/infrastructure/http/errorHandler.js';
 
 export function createApp() {
   const app = express();

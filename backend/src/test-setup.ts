@@ -1,5 +1,5 @@
 import { beforeEach } from 'vitest';
-import { db } from '../db/index.js';
+import { db } from './shared/infrastructure/db/index.js';
 import {
   users,
   habitDefinitions,
@@ -8,8 +8,8 @@ import {
   entryWritingData,
   entryCustomData,
   appSettings,
-} from '../db/schema.js';
-import { runMigrations } from '../db/migrate.js';
+} from './shared/infrastructure/db/schema.js';
+import { runMigrations } from './shared/infrastructure/db/migrate.js';
 
 runMigrations();
 

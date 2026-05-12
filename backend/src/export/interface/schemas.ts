@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ISO_DATE_RE } from '../../shared/value-objects/IsoDate.js';
+import { ISO_DATE_RE } from '../../shared/domain/value-objects/IsoDate.js';
 
 const isoDateField = (label: string) =>
   z.string().regex(ISO_DATE_RE, `${label} must be YYYY-MM-DD`);

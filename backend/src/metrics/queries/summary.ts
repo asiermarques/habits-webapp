@@ -1,7 +1,7 @@
 // READ MODEL — 30-day summary score cards query.
 import { and, asc, eq, gte, lte, sql } from 'drizzle-orm';
-import { db } from '../../db/index.js';
-import { entries, entryCustomData, entryWorkoutData, habitDefinitions } from '../../db/schema.js';
+import { db } from '../../shared/infrastructure/db/index.js';
+import { entries, entryCustomData, entryWorkoutData, habitDefinitions } from '../../shared/infrastructure/db/schema.js';
 import type { HabitCount, SummaryMetrics } from '@habitsapp/shared';
 import { REP_COUNT_SQL } from './sql-fragments.js';
 import { addDaysIso, isoToday } from './date-utils.js';

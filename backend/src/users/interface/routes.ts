@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateBody } from '../../shared/http/validate.js';
+import { validateBody } from '../../shared/infrastructure/http/validate.js';
 import { createUserSchema, updateUserSchema } from './schemas.js';
 import type { UserRepository } from '../domain/UserRepository.js';
 

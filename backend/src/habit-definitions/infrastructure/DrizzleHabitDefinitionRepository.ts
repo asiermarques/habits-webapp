@@ -1,6 +1,6 @@
 import { and, asc, eq } from 'drizzle-orm';
-import { db } from '../../db/index.js';
-import { entries, habitDefinitions, users, type DbHabitDefinition } from '../../db/schema.js';
+import { db } from '../../shared/infrastructure/db/index.js';
+import { entries, habitDefinitions, users, type DbHabitDefinition } from '../../shared/infrastructure/db/schema.js';
 import type { HabitDefinition } from '../domain/HabitDefinition.js';
 import { resolvePositive, applyPatch } from '../domain/HabitDefinition.js';
 import { pickColor } from '../domain/Color.js';

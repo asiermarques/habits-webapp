@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SUPPORTED_CURRENCIES, type CurrencyCode } from '../../shared/value-objects/Currency.js';
+import { SUPPORTED_CURRENCIES, type CurrencyCode } from '../../shared/domain/value-objects/Currency.js';
 
 export const setCurrencySchema = z.object({
   currency: z

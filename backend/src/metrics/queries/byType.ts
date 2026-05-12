@@ -1,7 +1,7 @@
 // READ MODEL — by-type weekly breakdown query.
 import { and, eq, gte, lte } from 'drizzle-orm';
-import { db } from '../../db/index.js';
-import { entries, entryCustomData, entryWorkoutData, habitDefinitions } from '../../db/schema.js';
+import { db } from '../../shared/infrastructure/db/index.js';
+import { entries, entryCustomData, entryWorkoutData, habitDefinitions } from '../../shared/infrastructure/db/schema.js';
 import type { ByTypeMetrics, ByTypeWeek, HabitType } from '@habitsapp/shared';
 import { REP_COUNT_SQL } from './sql-fragments.js';
 import { addDaysIso, byTypeRange, isoToday } from './date-utils.js';

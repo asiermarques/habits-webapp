@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler } from 'express';
-import { DomainError } from '../errors/DomainError.js';
+import { DomainError } from '../../domain/errors/DomainError.js';
 
 export const domainErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   if (err instanceof DomainError) {

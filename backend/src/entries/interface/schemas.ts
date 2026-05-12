@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ISO_DATE_RE } from '../../shared/value-objects/IsoDate.js';
+import { ISO_DATE_RE } from '../../shared/domain/value-objects/IsoDate.js';
 
 export const PAGE_SIZE = 20;
 

@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, lt, or, sql } from 'drizzle-orm';
-import { db } from '../../db/index.js';
+import { db } from '../../shared/infrastructure/db/index.js';
 import {
   entries,
   entryWorkoutData,
@@ -7,7 +7,7 @@ import {
   entryCustomData,
   habitDefinitions,
   users,
-} from '../../db/schema.js';
+} from '../../shared/infrastructure/db/schema.js';
 import type {
   Entry,
   EntryCursor,

@@ -1,4 +1,4 @@
-import { NotFoundError, ConflictError } from '../../shared/errors/DomainError.js';
+import { NotFoundError, ConflictError } from '../../shared/domain/errors/DomainError.js';
 
 export class UserNotFoundError extends NotFoundError {
   constructor(id: number) {

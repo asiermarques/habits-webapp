@@ -1,4 +1,4 @@
-import { NotFoundError, ConflictError } from '../../shared/errors/DomainError.js';
+import { NotFoundError, ConflictError } from '../../shared/domain/errors/DomainError.js';
 export { UserNotFoundError } from '../../users/domain/errors.js';
 
 export class HabitDefinitionNotFoundError extends NotFoundError {

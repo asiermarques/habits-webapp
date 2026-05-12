@@ -113,8 +113,13 @@ npm workspaces monorepo: `backend/` (Express API), `frontend/` (React SPA), `sha
 habitsapp/
 ├── backend/src/
 │   ├── app.ts          createApp() factory
-│   ├── db/             Drizzle connection, schema, migrations
-│   ├── shared/         DomainError subclasses, validateBody/validateQuery, value objects
+│   ├── shared/
+│   │   ├── domain/
+│   │   │   ├── errors/          DomainError subclasses
+│   │   │   └── value-objects/   IsoDate, Currency
+│   │   └── infrastructure/
+│   │       ├── db/              Drizzle connection, schema, migrations
+│   │       └── http/            errorHandler middleware, validateBody/validateQuery
 │   ├── users/          command slice
 │   ├── habit-definitions/  command slice
 │   ├── entries/        command slice
@@ -203,11 +208,11 @@ When adding a new read-model slice, use `metrics/` as the template:
 
 - **Engine**: SQLite via `better-sqlite3`
 - **ORM**: Drizzle (`drizzle-orm/better-sqlite3`)
-- **Connection** (`src/db/index.ts`):
+- **Connection** (`src/shared/infrastructure/db/index.ts`):
   - Opens the DB file from `DATABASE_URL`
   - Applies `journal_mode = WAL` and `foreign_keys = ON`
   - Exports a `db` instance with the schema attached
-- **Schema** (`src/db/schema.ts`):
+- **Schema** (`src/shared/infrastructure/db/schema.ts`):
   - `users` (`id`, `name`, `is_default`, `created_at`)
   - `habit_definitions` (`id`, `user_id` FK→cascade, `name`, `type` enum: workout/writing/custom, `positive`, `color`, `created_at`)
   - `entries` (`id`, `habit_definition_id` FK→restrict, `user_id` FK→cascade, `date` text, `created_at`)
@@ -217,7 +222,7 @@ When adding a new read-model slice, use `metrics/` as the template:
     - `entry_custom_data` — `number` (real), `amount` (real), `duration` (int)
   - `app_settings` (`key` PK text, `value` text) — singleton key/value store. Currently holds `currency=EUR` by default (migration 0006).
 - **Pagination**: `GET /entries` uses cursor pagination ordered by `(date DESC, id DESC)`. The cursor is `{ date, id }` of the last item in the previous page, base64url-encoded as JSON. Default page size is 20.
-- **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/db/migrate.ts`.
+- **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/shared/infrastructure/db/migrate.ts`.
 - **Seeding**: triggered inside `createUser()` — every new user gets the eight example habits via `seedHabitDefinitionsForUser(userId)`. Skipped when `NODE_ENV=test` so backend tests can assert exact habit counts. No startup-time seeding.
 
 ## Frontend
@@ -304,7 +309,7 @@ The package has no build step — both apps consume the `.ts` source directly.
 
 ## Testing
 
-- **Backend**: Vitest + supertest. Setup file at `src/test/setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users`, `habit_definitions`, and the entries tables before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, Users (CRUD + default-user invariants), Habit Definitions (CRUD, color rotation, positive-flag enforcement, seeding), Entries (CRUD per archetype, cursor pagination, type-lock/delete-block guards), `/metrics/weekly` (Mon–Sun range, per-day aggregation, habit filter, user isolation), `/metrics/by-type` + `/metrics/heatmap` (13/26-week range, archetype/per-habit aggregation, range edge exclusion, user isolation, recent-first ordering), and `/export/csv` (validation, CSV escaping, archetype column mapping, range filter, user isolation).
+- **Backend**: Vitest + supertest. Setup file at `src/test-setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users`, `habit_definitions`, and the entries tables before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, Users (CRUD + default-user invariants), Habit Definitions (CRUD, color rotation, positive-flag enforcement, seeding), Entries (CRUD per archetype, cursor pagination, type-lock/delete-block guards), `/metrics/weekly` (Mon–Sun range, per-day aggregation, habit filter, user isolation), `/metrics/by-type` + `/metrics/heatmap` (13/26-week range, archetype/per-habit aggregation, range edge exclusion, user isolation, recent-first ordering), and `/export/csv` (validation, CSV escaping, archetype column mapping, range filter, user isolation).
 - **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (Radix UI primitives need it). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + UserProvider + LogEntryDialogProvider) used by component tests; tests that need routing add their own `MemoryRouter`. Tests live in `src/**/__tests__/`. Covers the `Header`, `apiFetch`, `HabitForm`, `EntryForm`, `WeekChartSection`, `ByTypeChartSection` (Nivo `ResponsiveBar` is mocked so tests assert on the chart model — keys, data, colors, and empty state), `HeatmapSection` (asserts the 26×7 grid, totals, and per-habit color choice), and `ExportSection` (URL params, error rendering, blob download trigger).
 - **E2E**: Playwright (`@playwright/test`) at the repo root. Config at `playwright.config.ts`. Tests live in `e2e/tests/`. Key characteristics:
   - Uses a **separate SQLite database** (`backend/habits.e2e.db`) so it never touches the dev DB.

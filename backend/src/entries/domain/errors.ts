@@ -1,4 +1,4 @@
-import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/errors/DomainError.js';
+import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/domain/errors/DomainError.js';
 
 export class EntryNotFoundError extends NotFoundError {
   constructor(id: number) {

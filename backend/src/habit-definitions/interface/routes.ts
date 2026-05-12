@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateBody, validateQuery } from '../../shared/http/validate.js';
+import { validateBody, validateQuery } from '../../shared/infrastructure/http/validate.js';
 import {
   listQuerySchema,
   createHabitDefinitionSchema,

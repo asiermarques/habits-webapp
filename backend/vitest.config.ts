@@ -7,6 +7,6 @@ export default defineConfig({
     env: {
       DATABASE_URL: ':memory:',
     },
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./src/test-setup.ts'],
   },
 });
