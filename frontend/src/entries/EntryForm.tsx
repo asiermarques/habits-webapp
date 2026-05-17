@@ -9,6 +9,7 @@ import type {
   WritingData,
 } from '@habitsapp/shared';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -117,13 +118,7 @@ export function EntryForm({ habits, initial, pending = false, currency = 'EUR', 
 
       <div className="space-y-1.5">
         <Label htmlFor="entry-date">Date</Label>
-        <Input
-          id="entry-date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          max={todayIso()}
-        />
+        <DatePicker id="entry-date" value={date} onChange={setDate} max={todayIso()} />
       </div>
 
       {selectedHabit && (

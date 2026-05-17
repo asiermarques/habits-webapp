@@ -93,13 +93,22 @@ describe('ExportSection', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Export CSV' }));
 
-    // Pin from/to to deterministic values.
-    const fromInput = screen.getByLabelText('From') as HTMLInputElement;
-    const toInput = screen.getByLabelText('To') as HTMLInputElement;
-    await user.clear(fromInput);
-    await user.type(fromInput, '2026-01-01');
-    await user.clear(toInput);
-    await user.type(toInput, '2026-01-31');
+    // Pin from/to to deterministic values via the custom DatePicker.
+    async function pickDate(triggerLabel: 'From' | 'To', targetYear: number, targetMonth: number, day: number) {
+      await user.click(screen.getByLabelText(triggerLabel));
+      const dialog = await screen.findByRole('dialog', { name: /choose date/i });
+      // Iterate month nav until the dialog header matches.
+      const targetHeader = new RegExp(
+        `${['January','February','March','April','May','June','July','August','September','October','November','December'][targetMonth]} ${targetYear}`,
+      );
+      while (!targetHeader.test(dialog.textContent ?? '')) {
+        await user.click(screen.getByRole('button', { name: /previous month/i }));
+      }
+      const cell = screen.getAllByRole('button', { name: new RegExp(`^${day}$`) })[0];
+      await user.click(cell);
+    }
+    await pickDate('From', 2026, 0, 1);
+    await pickDate('To', 2026, 0, 31);
 
     await user.click(screen.getByRole('button', { name: 'Export' }));
 

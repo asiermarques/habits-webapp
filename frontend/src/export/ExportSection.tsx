@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { useUserContext } from '@/users/UserContext';
 import { todayIso } from '@/entries/date';
@@ -99,23 +99,21 @@ export function ExportSection() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="export-from">From</Label>
-              <Input
+              <DatePicker
                 id="export-from"
-                type="date"
                 value={from}
                 max={to || undefined}
-                onChange={(e) => setFrom(e.target.value)}
+                onChange={setFrom}
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="export-to">To</Label>
-              <Input
+              <DatePicker
                 id="export-to"
-                type="date"
                 value={to}
                 min={from || undefined}
                 max={todayIso()}
-                onChange={(e) => setTo(e.target.value)}
+                onChange={setTo}
               />
             </div>
           </div>

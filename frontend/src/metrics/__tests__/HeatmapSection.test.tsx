@@ -69,8 +69,8 @@ describe('HeatmapSection', () => {
 
     await waitFor(() => expect(screen.getByText('Reading')).toBeInTheDocument());
     expect(screen.getByText('Fast food')).toBeInTheDocument();
-    expect(screen.getByText('6 entries')).toBeInTheDocument(); // reading total
-    expect(screen.getByText('2 entries')).toBeInTheDocument(); // fast food total
+    expect(screen.getByText('6 ENTRIES')).toBeInTheDocument(); // reading total
+    expect(screen.getByText('2 ENTRIES')).toBeInTheDocument(); // fast food total
   });
 
   it('emits a 26×7 grid (182 cells) per habit', async () => {

@@ -156,6 +156,7 @@ Restrained. The base layer ships one keyframe: `rise` (8px upward translate + fa
 - **Focus ring**: 3px ring at `ring/50` (moss-tinted). Already wired through the shadcn primitives.
 - **Pill-shaped filter selects**: use `rounded-full` for tertiary filters (e.g. habit filter on Home). Reserve `rounded-md` for primary form fields.
 - **Destructive buttons**: `bg-ember hover:bg-ember/90`. Destructive ghost icons: `text-ember hover:text-ember/80`.
+- **Date selection**: always use `<DatePicker>` from `components/ui/date-picker.tsx`. Never reach for `<input type="date">` — the custom picker keeps the visual system consistent across mobile/desktop and renders a Mon-first calendar grid with moss-tinted selection.
 
 ## 8. Iconography
 

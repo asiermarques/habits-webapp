@@ -277,6 +277,7 @@ The Log button opens the shared Log/Edit modal via `useLogEntryDialog()`.
 
 `src/components/ui/` contains shadcn components installed via `npx shadcn@latest add`:
 - `button.tsx`, `input.tsx`, `select.tsx`, `dialog.tsx`, `dropdown-menu.tsx`, `switch.tsx`, `label.tsx`, `alert-dialog.tsx`
+- `date-picker.tsx` — custom mobile-first calendar picker (Mon-first grid, month nav, min/max bounds, design-token styled). Used wherever a date is selected (entry form, CSV export). Not a shadcn install — built in-house to avoid pulling in Popover/Calendar deps
 - Use `cn()` from `@/lib/utils` (clsx + tailwind-merge) to compose classes
 - Use the `radix-ui` umbrella package for primitives (Slot, Dialog, Select)
 - `sonner` provides toast notifications; the `<Toaster>` is mounted once in `App.tsx` and the `QueryClient`'s `MutationCache` pipes mutation errors into it
