@@ -88,19 +88,19 @@ export function HabitForm({
           </SelectContent>
         </Select>
         {typeLocked && (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-ink-soft">
             Type is locked because entries already exist for this habit.
           </p>
         )}
       </div>
 
       {type === 'custom' && (
-        <div className="flex items-center justify-between rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-hairline bg-paper-deep px-3 py-2">
           <div>
             <Label htmlFor="habit-positive" className="font-medium">
               Positive habit
             </Label>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-ink-soft">
               Off = something you want less of (e.g. fast food).
             </p>
           </div>

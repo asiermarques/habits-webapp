@@ -18,11 +18,11 @@ export function UserSwitcher() {
         <button
           type="button"
           aria-label="Switch user"
-          className="flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium hover:bg-neutral-100"
+          className="flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium hover:bg-paper-deep"
         >
           <UserRound className="h-4 w-4" />
           <span className="max-w-[8rem] truncate">{activeUser.name}</span>
-          <ChevronDown className="h-3.5 w-3.5 text-neutral-500" />
+          <ChevronDown className="h-3.5 w-3.5 text-ink-soft" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40">

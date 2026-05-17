@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ISO_DATE_RE } from '../../shared/domain/value-objects/IsoDate.js';
 
-export const PAGE_SIZE = 20;
+export const PAGE_SIZE = 15;
 
 const cursorSchema = z
   .string()

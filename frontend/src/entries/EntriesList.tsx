@@ -42,7 +42,7 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
 
   if (!activeUser) {
     return (
-      <p className="text-sm text-neutral-500">Add a user in Settings to start logging.</p>
+      <p className="text-sm text-ink-soft">Add a user in Settings to start logging.</p>
     );
   }
 
@@ -50,14 +50,12 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Recent entries</h2>
-
       {isFetching && entries.length === 0 && (
-        <p className="text-sm text-neutral-500">Loading…</p>
+        <p className="text-sm text-ink-soft">Loading…</p>
       )}
 
       {!isFetching && entries.length === 0 && (
-        <p className="rounded-md border border-dashed border-neutral-300 p-4 text-center text-sm text-neutral-500">
+        <p className="rounded-md border border-dashed border-hairline p-4 text-center text-sm text-ink-soft">
           No entries yet. Tap “Log” above to add your first.
         </p>
       )}
@@ -76,15 +74,17 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
       </ul>
 
       {hasNextPage && (
-        <div className="flex justify-center pt-1">
-          <Button
-            variant="outline"
-            size="sm"
+        <div className="flex items-center gap-3 pt-2">
+          <div className="h-px flex-1 bg-hairline" />
+          <button
+            type="button"
             onClick={() => fetchNextPage()}
             disabled={isFetchingNextPage}
+            className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition hover:text-moss-deep disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isFetchingNextPage ? 'Loading…' : 'Load more'}
-          </Button>
+            {isFetchingNextPage ? 'Loading…' : 'See more →'}
+          </button>
+          <div className="h-px flex-1 bg-hairline" />
         </div>
       )}
 
@@ -103,7 +103,7 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
                 if (pendingDelete) deleteEntry.mutate(pendingDelete.id);
                 setPendingDelete(null);
               }}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-ember hover:bg-ember/90"
             >
               Delete
             </AlertDialogAction>
@@ -124,14 +124,16 @@ type EntryCardProps = {
 
 function EntryCard({ entry, habit, currency, onEdit, onDelete }: EntryCardProps) {
   return (
-    <li className="flex items-center justify-between gap-3 rounded-md border border-neutral-200 bg-white px-3 py-2.5">
+    <li className="flex items-center justify-between gap-3 rounded-md border border-hairline bg-card px-3 py-2.5">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate font-medium">{habit?.name ?? 'Unknown habit'}</span>
           <span
-            className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium text-white"
-            style={{ backgroundColor: habit?.color ?? '#999' }}
-          >
+            aria-hidden
+            className="inline-block h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: habit?.color ?? 'var(--ink-faint)' }}
+          />
+          <span className="truncate font-medium">{habit?.name ?? 'Unknown habit'}</span>
+          <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-faint">
             {entry.type}
           </span>
         </div>
@@ -146,7 +148,7 @@ function EntryCard({ entry, habit, currency, onEdit, onDelete }: EntryCardProps)
           variant="ghost"
           onClick={onDelete}
           aria-label="Delete entry"
-          className="text-red-600 hover:text-red-700"
+          className="text-ember hover:text-ember/80"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -176,5 +178,5 @@ function EntrySummary({ entry, currency }: { entry: Entry; currency: CurrencyCod
   const date = formatDate(entry.date);
   const text = parts.length > 0 ? `${date} → ${parts.join(' · ')}` : date;
 
-  return <p className="mt-0.5 truncate text-sm text-neutral-600">{text}</p>;
+  return <p className="mt-0.5 truncate text-sm text-ink-soft">{text}</p>;
 }

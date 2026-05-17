@@ -14,52 +14,53 @@ export function Header() {
   const { openLog } = useLogEntryDialog();
   const canLog = !!activeUser && habits.length > 0;
 
-  return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-4">
-      {isHome ? (
-        <Link to="/" className="text-lg font-semibold">
-          Habits
-        </Link>
-      ) : (
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          aria-label="Back to home"
-          className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-neutral-100"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-      )}
+  const iconBtn =
+    'flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition hover:bg-moss-tint hover:text-moss-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50';
 
-      <div className="flex items-center gap-1">
-        <UserSwitcher />
-        {isHome && (
-          <nav className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={openLog}
-              disabled={!canLog}
-              aria-label="Log entry"
-              className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-neutral-100 disabled:cursor-not-allowed disabled:text-neutral-300 disabled:hover:bg-transparent"
-            >
-              <PlusCircle className="h-5 w-5" />
-            </button>
-            <Link
-              to="/metrics"
-              aria-label="Metrics"
-              className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-neutral-100"
-            >
-              <BarChart3 className="h-5 w-5" />
-            </Link>
-            <Link
-              to="/settings"
-              aria-label="Settings"
-              className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-neutral-100"
-            >
-              <SettingsIcon className="h-5 w-5" />
-            </Link>
-          </nav>
+  return (
+    <header className="sticky top-0 z-10 border-b border-hairline/80 bg-paper/75 backdrop-blur-md">
+      <div className="flex h-16 items-center justify-between px-5 sm:px-8">
+        {isHome ? (
+          <Link to="/" className="group flex items-baseline gap-2">
+            <span className="font-display text-2xl tracking-tight">Habits</span>
+            <span
+              aria-hidden
+              className="ml-0.5 h-1.5 w-1.5 rounded-full bg-moss transition group-hover:scale-125"
+            />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            aria-label="Back to home"
+            className={iconBtn}
+          >
+            <ArrowLeft className="h-[18px] w-[18px]" />
+          </button>
         )}
+
+        <div className="flex items-center gap-1">
+          <UserSwitcher />
+          {isHome && (
+            <nav className="ml-1 flex items-center gap-0.5 border-l border-hairline pl-1">
+              <button
+                type="button"
+                onClick={openLog}
+                disabled={!canLog}
+                aria-label="Log entry"
+                className={`${iconBtn} disabled:cursor-not-allowed disabled:text-ink-faint/50 disabled:hover:bg-transparent disabled:hover:text-ink-faint/50`}
+              >
+                <PlusCircle className="h-[18px] w-[18px]" />
+              </button>
+              <Link to="/metrics" aria-label="Metrics" className={iconBtn}>
+                <BarChart3 className="h-[18px] w-[18px]" />
+              </Link>
+              <Link to="/settings" aria-label="Settings" className={iconBtn}>
+                <SettingsIcon className="h-[18px] w-[18px]" />
+              </Link>
+            </nav>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -24,7 +24,7 @@ export function UsersSection() {
     <section className="space-y-4">
       <header>
         <h2 className="text-lg font-semibold">Users</h2>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-ink-soft">
           Names that can log habits. The default user is pre-selected when logging.
         </p>
       </header>
@@ -42,13 +42,13 @@ export function UsersSection() {
         </Button>
       </form>
 
-      {isLoading && <p className="text-sm text-neutral-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-soft">Loading…</p>}
 
       {!isLoading && users.length === 0 && (
-        <p className="text-sm text-neutral-500">No users yet. Add one above to get started.</p>
+        <p className="text-sm text-ink-soft">No users yet. Add one above to get started.</p>
       )}
 
-      <ul className="divide-y divide-neutral-200 rounded-md border border-neutral-200 bg-white">
+      <ul className="divide-y divide-hairline rounded-md border border-hairline bg-card">
         {users.map((user) => (
           <UserRow
             key={user.id}
@@ -119,7 +119,7 @@ function UserRow({
         <span className="flex items-center gap-2 truncate">
           <span className="truncate">{user.name}</span>
           {user.isDefault && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+            <span className="inline-flex items-center gap-1 rounded-full bg-clay/15 px-2 py-0.5 text-xs font-medium text-clay">
               <Star className="h-3 w-3" />
               Default
             </span>
@@ -162,7 +162,7 @@ function UserRow({
               aria-label={`Delete ${user.name}`}
               disabled={deleteDisabled}
               title={deleteDisabledReason}
-              className="text-red-600 hover:text-red-700"
+              className="text-ember hover:text-ember/80"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

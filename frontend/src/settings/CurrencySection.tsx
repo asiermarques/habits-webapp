@@ -18,7 +18,7 @@ export function CurrencySection() {
     <section className="space-y-2">
       <div>
         <h2 className="text-lg font-semibold">Currency</h2>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-ink-soft">
           Used for displaying the "Cost spent" amount on bad habits. Shared across all users.
         </p>
       </div>

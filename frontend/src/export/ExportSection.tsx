@@ -80,12 +80,12 @@ export function ExportSection() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="export-panel"
-        className="flex w-full items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 py-2 text-left text-lg font-semibold hover:bg-neutral-50"
+        className="flex w-full items-center gap-2 rounded-md border border-hairline bg-card px-3 py-2 text-left text-lg font-semibold hover:bg-paper-deep"
       >
         {open ? (
-          <ChevronDown className="h-4 w-4 text-neutral-500" aria-hidden />
+          <ChevronDown className="h-4 w-4 text-ink-soft" aria-hidden />
         ) : (
-          <ChevronRight className="h-4 w-4 text-neutral-500" aria-hidden />
+          <ChevronRight className="h-4 w-4 text-ink-soft" aria-hidden />
         )}
         Export CSV
       </button>
@@ -94,7 +94,7 @@ export function ExportSection() {
         <form
           id="export-panel"
           onSubmit={onSubmit}
-          className="mt-2 space-y-3 rounded-md border border-neutral-200 bg-white p-3"
+          className="mt-2 space-y-3 rounded-md border border-hairline bg-card p-3"
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -121,7 +121,7 @@ export function ExportSection() {
           </div>
 
           {error && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-ember">
               {error}
             </p>
           )}

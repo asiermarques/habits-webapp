@@ -5,7 +5,7 @@ import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useHeatmapMetrics } from './queries';
 
 const NEGATIVE_COLOR = '#ef4444';
-const EMPTY_CELL = '#f5f5f5';
+const EMPTY_CELL = 'oklch(0.93 0.012 75)';
 
 // Opacity ramp by count bucket (0..4). The base color is the habit's color
 // (or red for negative habits).
@@ -26,19 +26,23 @@ export function HeatmapSection() {
   if (!activeUser) return null;
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Heatmaps (last 6 months)</h2>
+    <section className="space-y-5">
+      <div className="flex items-baseline gap-3">
+        <span className="eyebrow">last 6 months</span>
+        <div className="h-px flex-1 bg-hairline" />
+        <h2 className="font-display text-2xl tracking-tight">Heatmaps</h2>
+      </div>
 
       {isLoading || !heatmap ? (
-        <p className="rounded-md border border-neutral-200 bg-white px-3 py-12 text-center text-sm text-neutral-500">
+        <p className="surface px-3 py-16 text-center text-sm text-ink-soft">
           Loading…
         </p>
       ) : heatmap.habits.length === 0 ? (
-        <p className="rounded-md border border-neutral-200 bg-white px-3 py-12 text-center text-sm text-neutral-500">
+        <p className="surface px-3 py-16 text-center text-sm text-ink-soft">
           No habits configured yet.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {heatmap.habits.map((h) => {
             const def = habitsById.get(h.habitDefinitionId);
             if (!def) return null;
@@ -81,21 +85,23 @@ function HabitHeatmapCard({ habit, definition, rangeStart }: CardProps) {
   } as const;
 
   return (
-    <div className="rounded-md border border-neutral-200 bg-white p-3">
-      <div className="flex items-baseline justify-between">
-        <div className="flex items-center gap-2">
+    <div className="surface p-5 sm:p-6">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <div className="flex items-center gap-2.5">
           <span
             aria-hidden
-            className="inline-block h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: baseColor }}
+            className="inline-block h-2 w-2 rounded-full ring-2 ring-offset-2 ring-offset-card"
+            style={{ backgroundColor: baseColor, boxShadow: `0 0 0 1px ${baseColor}` }}
           />
-          <h3 className="font-medium">{definition.name}</h3>
+          <h3 className="font-display text-lg tracking-tight">{definition.name}</h3>
         </div>
-        <span className="text-xs text-neutral-500">{total} entries</span>
+        <span className="font-mono text-[11px] tracking-wider text-ink-faint">
+          {total} ENTRIES
+        </span>
       </div>
 
       <div
-        className="mt-2 grid gap-[3px]"
+        className="grid gap-[5px]"
         style={gridStyle}
         role="grid"
         aria-label={`${definition.name} heatmap`}
@@ -103,7 +109,7 @@ function HabitHeatmapCard({ habit, definition, rangeStart }: CardProps) {
         {WEEKDAY_LABELS.map((label, i) => (
           <div
             key={`label-${i}`}
-            className="flex items-center pr-1 text-[10px] leading-none text-neutral-500"
+            className="flex items-center pr-2 font-mono text-[10px] leading-none tracking-wider text-ink-faint"
             style={{ gridRow: i + 1, gridColumn: 1 }}
             aria-hidden
           >
@@ -182,7 +188,7 @@ function Cell({ date, count, max, color, gridRow, gridColumn }: CellProps) {
         gridColumn,
         backgroundColor: fill,
         opacity: count === 0 ? 1 : opacity,
-        borderRadius: 2,
+        borderRadius: 3,
         aspectRatio: '1 / 1',
         minWidth: 0,
       }}

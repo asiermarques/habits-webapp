@@ -48,13 +48,13 @@ export function WeekChartSection({ habitDefinitionId }: WeekChartSectionProps) {
     <section className="space-y-2">
       <h2 className="text-lg font-semibold">This week</h2>
 
-      <div className="rounded-md border border-neutral-200 bg-white p-2">
+      <div className="rounded-md border border-hairline bg-card p-2">
         {isLoading || !weekly ? (
-          <p className="px-2 py-12 text-center text-sm text-neutral-500">
+          <p className="px-2 py-12 text-center text-sm text-ink-soft">
             Loading…
           </p>
         ) : !hasAnyEntry ? (
-          <p className="px-2 py-12 text-center text-sm text-neutral-500">
+          <p className="px-2 py-12 text-center text-sm text-ink-soft">
             No entries this week.
           </p>
         ) : (
@@ -139,7 +139,7 @@ type ChartTooltipProps = {
 
 function ChartTooltip({ habit, value, day, color }: ChartTooltipProps) {
   return (
-    <div className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs shadow-sm">
+    <div className="rounded-md border border-hairline bg-card px-2 py-1 text-xs shadow-sm">
       <div className="flex items-center gap-2">
         <span
           aria-hidden
@@ -148,7 +148,7 @@ function ChartTooltip({ habit, value, day, color }: ChartTooltipProps) {
         />
         <span className="font-medium">{habit?.name ?? 'Unknown'}</span>
       </div>
-      <div className="text-neutral-600">
+      <div className="text-ink-soft">
         {day}: {value}
       </div>
     </div>

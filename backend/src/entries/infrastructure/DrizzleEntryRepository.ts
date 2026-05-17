@@ -24,7 +24,7 @@ import { enforceOwnership } from '../domain/Entry.js';
 import { validateEntryData } from '../domain/EntryData.js';
 import { UserNotFoundError } from '../../users/domain/errors.js';
 
-export const PAGE_SIZE = 20;
+export const PAGE_SIZE = 15;
 
 type EntryRow = {
   id: number;

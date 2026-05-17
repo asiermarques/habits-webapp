@@ -33,13 +33,13 @@ export function ByTypeChartSection() {
     <section className="space-y-2">
       <h2 className="text-lg font-semibold">By habit (last 3 months)</h2>
 
-      <div className="rounded-md border border-neutral-200 bg-white p-2">
+      <div className="rounded-md border border-hairline bg-card p-2">
         {isLoading || !data ? (
-          <p className="px-2 py-12 text-center text-sm text-neutral-500">
+          <p className="px-2 py-12 text-center text-sm text-ink-soft">
             Loading…
           </p>
         ) : !hasAnyEntry ? (
-          <p className="px-2 py-12 text-center text-sm text-neutral-500">
+          <p className="px-2 py-12 text-center text-sm text-ink-soft">
             No entries in the last 3 months.
           </p>
         ) : (
@@ -68,7 +68,7 @@ export function ByTypeChartSection() {
                 tooltip={({ id, value, indexValue }) => {
                   const habit = habitsById.get(Number(id));
                   return (
-                    <div className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs shadow-sm">
+                    <div className="rounded-md border border-hairline bg-card px-2 py-1 text-xs shadow-sm">
                       <div className="flex items-center gap-2">
                         <span
                           aria-hidden
@@ -77,7 +77,7 @@ export function ByTypeChartSection() {
                         />
                         <span className="font-medium">{habit?.name ?? 'Unknown'}</span>
                       </div>
-                      <div className="text-neutral-600">
+                      <div className="text-ink-soft">
                         {String(indexValue)}: {value}
                       </div>
                     </div>
@@ -91,7 +91,7 @@ export function ByTypeChartSection() {
               {keys.map((k) => {
                 const habit = habitsById.get(Number(k));
                 return (
-                  <div key={k} className="flex items-center gap-1.5 text-xs text-neutral-600">
+                  <div key={k} className="flex items-center gap-1.5 text-xs text-ink-soft">
                     <span
                       aria-hidden
                       className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"

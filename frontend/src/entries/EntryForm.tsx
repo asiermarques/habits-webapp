@@ -87,7 +87,7 @@ export function EntryForm({ habits, initial, pending = false, currency = 'EUR', 
 
   if (sortedHabits.length === 0) {
     return (
-      <p className="text-sm text-neutral-600">
+      <p className="text-sm text-ink-soft">
         No habit definitions yet. Add one in Settings before logging.
       </p>
     );
@@ -172,7 +172,7 @@ function NumField({
     <div className="space-y-1.5">
       <Label htmlFor={id}>
         {label}
-        {required && <span className="ml-1 text-red-600">*</span>}
+        {required && <span className="ml-1 text-ember">*</span>}
       </Label>
       <Input
         id={id}

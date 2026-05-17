@@ -64,7 +64,7 @@ export function HabitsSection() {
     return (
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Habit Definitions</h2>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-ink-soft">
           Add a user above to start defining habits.
         </p>
       </section>
@@ -76,7 +76,7 @@ export function HabitsSection() {
       <header className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Habit Definitions</h2>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-ink-soft">
             Habits for <span className="font-medium">{activeUser.name}</span>. Each user has their own list.
           </p>
         </div>
@@ -86,10 +86,10 @@ export function HabitsSection() {
         </Button>
       </header>
 
-      {isLoading && <p className="text-sm text-neutral-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-soft">Loading…</p>}
 
       {!isLoading && habits.length === 0 && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-ink-soft">
           No habits yet. The default seed should provide examples — restart the backend if you see this.
         </p>
       )}
@@ -98,10 +98,10 @@ export function HabitsSection() {
         {grouped.map(({ type, items }) =>
           items.length === 0 ? null : (
             <div key={type}>
-              <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-500">
+              <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-ink-soft">
                 {TYPE_LABELS[type]}
               </h3>
-              <ul className="divide-y divide-neutral-200 rounded-md border border-neutral-200 bg-white">
+              <ul className="divide-y divide-hairline rounded-md border border-hairline bg-card">
                 {items.map((habit) => (
                   <HabitRow
                     key={habit.id}
@@ -180,7 +180,7 @@ export function HabitsSection() {
                 setPendingDelete(null);
               }}
               disabled={pendingDelete?.hasEntries}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-ember hover:bg-ember/90"
             >
               Delete
             </AlertDialogAction>
@@ -209,7 +209,7 @@ function HabitRow({ habit, onEdit, onDelete, deletePending }: HabitRowProps) {
         />
         <span className="truncate">{habit.name}</span>
         {!habit.positive && (
-          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+          <span className="rounded-full bg-ember-tint px-2 py-0.5 text-xs font-medium text-ember">
             negative
           </span>
         )}
@@ -225,7 +225,7 @@ function HabitRow({ habit, onEdit, onDelete, deletePending }: HabitRowProps) {
           onClick={onDelete}
           disabled={deletePending}
           aria-label={`Delete ${habit.name}`}
-          className="text-red-600 hover:text-red-700"
+          className="text-ember hover:text-ember/80"
         >
           <Trash2 className="h-4 w-4" />
         </Button>

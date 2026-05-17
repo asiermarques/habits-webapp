@@ -11,16 +11,26 @@ export function App() {
   return (
     <UserProvider>
       <LogEntryDialogProvider>
-        <div className="min-h-full bg-neutral-50 text-neutral-900">
+        <div className="min-h-full text-ink">
           <Header />
-          <main>
+          <main className="px-5 pb-24 pt-2 sm:px-8">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/metrics" element={<Metrics />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
           </main>
-          <Toaster richColors position="top-center" />
+          <Toaster
+            richColors
+            position="top-center"
+            toastOptions={{
+              style: {
+                fontFamily: 'var(--font-sans)',
+                border: '1px solid var(--hairline)',
+                borderRadius: '12px',
+              },
+            }}
+          />
         </div>
       </LogEntryDialogProvider>
     </UserProvider>
