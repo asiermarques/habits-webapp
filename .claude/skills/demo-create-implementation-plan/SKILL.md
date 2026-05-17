@@ -1,9 +1,9 @@
 ---
 name: demo-create-implementation-plan
-description: Create a production-deliverable vertical-slice implementation plan from .workflow/requisites/<feature-slug>.md. The plan is an index, and each user story is written to .workflow/tasks/<feature-slug>/US-XXX.md.
-argument-hint: "<feature name or slug>"
+description: Turn a `.workflow/requisites/<id>-<slug>.md` file into a vertical-slice implementation plan plus one user-story file per slice. Reads PRODUCT.md, ARCHITECTURE.md, UBIQUITOUS_LANGUAGE.md, and the requisites file; writes `.workflow/implementation-plans/<id>-<slug>.md` and `.workflow/tasks/<id>-<slug>/US-XXX.md`. Use AFTER the requisites interview, BEFORE implementation.
+argument-hint: "<requisites file path, feature slug, ID, or feature name>"
 arguments:
-  - feature_slug
+  - feature_input
 disable-model-invocation: true
 allowed-tools:
   - Read
@@ -16,318 +16,178 @@ allowed-tools:
 
 # Demo create implementation plan
 
-Use the full `$ARGUMENTS` value as the feature input.
+Plan a feature into vertical slices and per-slice user stories. The plan is an index; the user-story files carry the detail.
 
-Derive `feature_slug` from the full input using kebab-case.
+## Process (in order)
 
-Examples:
+1. **Resolve the requisites file** (see "Resolving the input"). If none exists, stop and tell the user to run `/demo-requisites-interview` first.
+2. Read `./docs/PRODUCT.md`, `./docs/ARCHITECTURE.md`, the requisites file, and `./docs/UBIQUITOUS_LANGUAGE.md` if present. If PRODUCT.md or ARCHITECTURE.md is missing, stop and report.
+3. **Readiness gate**: if requisites status is `Not ready`, stop and report the missing items. If `Ready with assumptions`, proceed but echo the assumptions in the plan Summary.
+4. **Glossary check**: write the plan and task files using canonical terms from `UBIQUITOUS_LANGUAGE.md`. If the requisites file already uses canonical terms, no extra work. If you spot a new/conflicting term, flag it in the final response — don't rewrite the glossary here.
+5. Inspect code only when needed to confirm existing patterns the plan will reuse. Don't survey the whole codebase.
+6. Split into vertical slices (one slice = one independently releasable increment). Split each slice into user stories that are each independently deliverable.
+7. Derive paths (see "Naming").
+8. Write the plan index, then one `US-XXX.md` per story. Skip sections that don't apply — don't fill with "Not applicable".
+9. Final response: just paths and counts (see "Final response").
 
-- `add habits for users` → `add-habits-for-users`
-- `add-habits-for-users.md` → `add-habits-for-users`
+## Resolving the input
 
-Then use:
+`$ARGUMENTS` may be a full path, a file name, a slug-with-ID, a slug-without-ID, an ID alone, or a free-form feature name.
 
-- Requirements: `.workflow/requisites/<feature_slug>.md`
-- Plan: `.workflow/implementation-plans/<feature_slug>.md`
-- Tasks: `.workflow/tasks/<feature_slug>/US-XXX.md`
+Match order:
+1. If it's an existing path under `.workflow/requisites/`, use it.
+2. Glob `.workflow/requisites/*.md` and match by exact filename, then by `<id>-*`, then by `*-<slug>.md`.
+3. If multiple match, ask via `AskUserQuestion` which file to use.
+4. If none match, stop. Do not invent requirements or create a stub requisites file.
 
-Create or update:
+The plan and tasks **must reuse the same `<id>-<slug>` as the requisites file** — never re-derive.
 
-`.workflow/implementation-plans/$feature_slug.md`
+## Naming
 
-Also create or update task files in:
+Given requisites file `.workflow/requisites/<id>-<slug>.md`:
 
-`.workflow/tasks/$feature_slug/US-XXX.md`
+- Plan: `.workflow/implementation-plans/<id>-<slug>.md`
+- Tasks dir: `.workflow/tasks/<id>-<slug>/`
+- Task files: `.workflow/tasks/<id>-<slug>/US-001.md`, `US-002.md`, …
 
-Mandatory sources:
-
-- `.workflow/requisites/$feature_slug.md`
-- `./docs/PRODUCT.md`
-- `./docs/ARCHITECTURE.md`
+When updating an existing plan, keep `US-XXX` IDs and statuses stable. Don't renumber.
 
 ## Rules
 
-- Read `./docs/PRODUCT.md` before planning.
-- Read `./docs/ARCHITECTURE.md` before planning.
-- Read `.workflow/requisites/$feature_slug.md` before planning.
-- Do not implement code.
-- Do not modify production files.
-- Do not invent unresolved requirements.
-- If any mandatory source is missing, stop.
-- If requirements are `Not ready`, ask only the critical questions needed before planning.
-- If answers change requirements, update `.workflow/requisites/$feature_slug.md` first.
-- Plan by vertical slices, not by technical layers.
-- Each vertical slice is an epic.
-- Each user story must be independently deliverable to production.
-- The implementation plan must stay concise.
-- Do not put full task details in the implementation plan.
-- Put full user story details in separate files under `.workflow/tasks/$feature_slug/`.
-- Do not create separate frontend, backend, infrastructure, or observability task groups.
-- Do not create a separate testing section.
-- Testing is implicit in each user story and will be handled by the implementation skill.
-- Keep task IDs stable when updating an existing plan.
-- Do not renumber existing tasks unless explicitly needed.
-- Preserve existing task status when updating, unless the user asks to change it.
+- Don't write code. Don't modify production files.
+- Don't invent unresolved requirements. If a gap blocks planning, surface it as an open question and lower readiness.
+- Plan by **vertical slice**, not by technical layer. No separate frontend/backend/infra/observability/testing sections.
+- Testing is implicit per user story — the implementation skill handles it.
+- Keep the plan an **index**. Story detail lives in `US-XXX.md`.
+- Use canonical glossary terms throughout.
+- Skip sections with no real content. Never write "Not applicable".
 
-## Process
+## Plan output
 
-1. Read `./docs/PRODUCT.md`.
-2. Read `./docs/ARCHITECTURE.md`.
-3. Read `.workflow/requisites/$feature_slug.md`.
-4. Check readiness, assumptions, open questions, risks, and acceptance criteria.
-5. Inspect code only if needed to understand existing patterns, APIs, data flows, or constraints.
-6. Split the feature into production-deliverable vertical slices.
-7. Split each slice into production-deliverable user stories.
-8. Write the concise implementation plan.
-9. Write one task file per user story.
-
-## Implementation plan format
-
-Write `.workflow/implementation-plans/$feature_slug.md` using this structure:
+Write `.workflow/implementation-plans/<id>-<slug>.md`. Required: header, Sources, Summary, Vertical slices, Implementation readiness. Everything else is optional.
 
 ```md
 # Implementation plan: <feature name>
 
+Requirement ID: <id>
+Feature slug: `<slug>`
+Plan path: `.workflow/implementation-plans/<id>-<slug>.md`
+Tasks dir: `.workflow/tasks/<id>-<slug>/`
+
 ## Sources
 
-- Product context: `./docs/PRODUCT.md`
-- Architecture context: `./docs/ARCHITECTURE.md`
-- Requirements: `.workflow/requisites/<feature-slug>.md`
+- Requirements: `.workflow/requisites/<id>-<slug>.md`
+- Product: `./docs/PRODUCT.md`
+- Architecture: `./docs/ARCHITECTURE.md`
+- Glossary: `./docs/UBIQUITOUS_LANGUAGE.md` (if present)
 
 ## Summary
 
-Briefly describe:
-
-- what will be built
-- how the work is split
-- major constraints
-- major risks
-
-## Product and architecture alignment
-
-Summarize how the plan aligns with:
-
-- `./docs/PRODUCT.md`
-- `./docs/ARCHITECTURE.md`
-
-## Planning principles
-
-- The plan is split into vertical slices.
-- Each vertical slice is an epic.
-- Each user story is independently deliverable to production.
-- Detailed user story definitions live in `.workflow/tasks/<feature-slug>/US-XXX.md`.
-- The plan is an index, not the implementation input.
+2–5 sentences. What ships, how it's split, key constraints, key risks. Echo any "Ready with assumptions" items from the requisites file.
 
 ## Vertical slices
 
-### Slice 1: <slice name>
+### Slice 1: <name>
 
-Status: <Not started | In progress | Blocked | Done>
+Status: Not started
+Goal: <one sentence>
+Scope: <bullets>
+Out of scope: <bullets, omit if empty>
+Dependencies: <bullets, omit if none>
 
-Goal:
+#### Rollout (optional)
 
-User/business value:
-
-Scope:
-
-Out of scope:
-
-Dependencies:
-
-#### Rollout plan
-
-- Rollout strategy:
-- Feature flag:
-- Backward compatibility:
-- Migration considerations:
-- Monitoring during rollout:
-- Rollback approach:
+Only include lines that matter for this slice (feature flag, migration, rollback). Omit the section if it's all defaults.
 
 #### User stories
 
-- [ ] US-001: <short title>
-  - Task file: `.workflow/tasks/<feature-slug>/US-001.md`
-  - Production deliverable: <one concise sentence>
-  - Status: <Not started | In progress | Blocked | Done>
+- [ ] US-001: <title> — `.workflow/tasks/<id>-<slug>/US-001.md` — <one-sentence deliverable>
+- [ ] US-002: <title> — `.workflow/tasks/<id>-<slug>/US-002.md` — <one-sentence deliverable>
 
-- [ ] US-002: <short title>
-  - Task file: `.workflow/tasks/<feature-slug>/US-002.md`
-  - Production deliverable: <one concise sentence>
-  - Status: <Not started | In progress | Blocked | Done>
+#### Risks / Open questions (optional)
 
-#### Risks
-
-- RISK-001: ...
-
-#### Open questions
-
-- OQ-001: ...
+RISK-001 / OQ-001 if ≥3 items. Otherwise plain bullets. Skip if none.
 
 ---
 
-### Slice 2: <slice name>
+### Slice 2: <name>
 
-Repeat the same structure.
+Same structure.
 
-## Cross-slice dependencies
+## Cross-slice dependencies (optional)
 
-List dependencies between slices.
+Skip if none.
 
-## Global risks
+## Global risks / open questions (optional)
 
-- RISK-001: ...
-
-## Global open questions
-
-- OQ-001: ...
+Skip if none.
 
 ## Implementation readiness
 
-One of:
-
-- Ready
-- Ready with assumptions
-- Not ready
-
-Explain why.
+`Ready` | `Ready with assumptions` | `Not ready` — one sentence justifying.
 ```
 
-## User story task file format
+## User story output
 
-For each user story, create:
-
-`.workflow/tasks/$feature_slug/US-XXX.md`
-
-Use this structure:
+Write `.workflow/tasks/<id>-<slug>/US-XXX.md`. Required: header, User story, Production deliverable, Acceptance criteria. Everything else is optional.
 
 ````md
-# US-XXX: <short title>
+# US-XXX: <title>
 
-Status: <Not started | In progress | Blocked | Done>
-
-Feature: `<feature-slug>`
-
+Status: Not started
+Feature: `<id>-<slug>`
 Slice: `<slice name>`
-
-Plan: `.workflow/implementation-plans/<feature-slug>.md`
-
-Requirements: `.workflow/requisites/<feature-slug>.md`
-
-Sources:
-
-- Product context: `./docs/PRODUCT.md`
-- Architecture context: `./docs/ARCHITECTURE.md`
+Plan: `.workflow/implementation-plans/<id>-<slug>.md`
+Requirements: `.workflow/requisites/<id>-<slug>.md`
 
 ## User story
 
-As a <user/system/team>, I want <capability>, so that <benefit>.
+As a <actor>, I want <capability>, so that <benefit>.
 
 ## Production deliverable
 
-Describe exactly what can be released to production after this user story is completed.
+One paragraph. What is releasable after this story merges, and how to demo it.
 
-The deliverable must be independently releasable.
+## Scope (optional)
 
-## Scope
+Bullets covering only the categories that apply. Omit the rest — don't list "Frontend: Not applicable".
 
-Include all work needed for this story to be production-ready.
+## Out of scope / Dependencies (optional)
 
-- Product behavior:
-- Frontend/UI:
-- Backend/API/domain:
-- Data/persistence:
-- Infrastructure/configuration:
-- Observability:
-- Security/privacy/compliance:
-- Rollout:
-
-Use `Not applicable` where a category does not apply.
-
-## Out of scope
-
-List what this story explicitly does not include.
-
-## Dependencies
-
-List dependencies on:
-
-- other user stories
-- external systems
-- product decisions
-- architectural constraints
-- configuration
-- data availability
+Skip if empty.
 
 ## Acceptance criteria
-
-Use BDD.
 
 ```gherkin
 Given ...
 When ...
 Then ...
 ```
+
+Add scenarios until the main paths and one or two edge cases are covered (usually 3–6).
+
+## Risks / Open questions / Implementation notes (optional)
+
+Include only if they carry information the implementer can't derive from the requisites + architecture docs.
 ````
 
-Add more scenarios when needed.
+## Quality checklist (run before reporting done)
 
-## Rollout notes
-
-Describe only rollout considerations specific to this user story.
-
-## Risks
-
-- RISK-001: ...
-
-## Open questions
-
-- OQ-001: ...
-
-## Implementation notes
-
-Add only constraints or context needed by the implementation skill.
-
-Do not write code.
-Do not define detailed test cases.
-Do not create an implementation checklist.
-
-```
-
-## Quality checklist
-
-Before finishing, verify that:
-
-- `.workflow/implementation-plans/$feature_slug.md` exists.
-- `.workflow/tasks/$feature_slug/` exists.
-- Each user story in the plan has a matching `US-XXX.md` file.
-- Each `US-XXX.md` file is referenced from the implementation plan.
-- The plan references `./docs/PRODUCT.md`.
-- The plan references `./docs/ARCHITECTURE.md`.
-- The plan references `.workflow/requisites/$feature_slug.md`.
-- The plan is split into vertical slices.
-- Each vertical slice is an epic.
-- Each user story is independently deliverable to production.
-- Task details are not duplicated in the implementation plan.
-- No tasks are grouped by frontend, backend, infrastructure, or observability.
-- Each task file includes BDD acceptance criteria.
-- There is no separate testing section.
-- Rollout is defined per slice.
-- Open questions are explicit.
-- Risks are explicit.
-- Final readiness status is clear.
+- Requisites file exists and was the source.
+- Plan path uses the same `<id>-<slug>` as the requisites file.
+- Every `US-XXX` in the plan has a matching file under `.workflow/tasks/<id>-<slug>/`.
+- No technical-layer groupings, no testing section.
+- No "Not applicable" fillers.
+- Canonical glossary terms used throughout.
 
 ## Final response
 
 Return only:
-
 - plan path
-- task directory path
-- source requirements path
-- product source path: `./docs/PRODUCT.md`
-- architecture source path: `./docs/ARCHITECTURE.md`
-- number of vertical slices
-- number of user stories
+- tasks dir
+- requisites path
+- slices count / user stories count
 - readiness
-- unresolved open questions count
+- open questions count
+- `glossary update needed: <terms>` if step 4 surfaced any new/conflicting terms
 - critical blockers, if any
-```

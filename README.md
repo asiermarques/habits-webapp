@@ -18,7 +18,11 @@ This is also a **demo project used in talks and training sessions** about Claude
 
 ### Documentation
 
-See the [docs](./docs) directory for architecture and product feature details.
+See the [docs](./docs) directory:
+
+- [`ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — code structure, layers, conventions
+- [`PRODUCT.md`](./docs/PRODUCT.md) — implemented features and product decisions
+- [`UBIQUITOUS_LANGUAGE.md`](./docs/UBIQUITOUS_LANGUAGE.md) — canonical domain vocabulary
 
 ### Project structure
 
@@ -27,7 +31,7 @@ habitsapp/
 ├── backend/        Express API, Drizzle schema and migrations, SQLite
 ├── frontend/       Vite + React app
 ├── shared/         Types shared between backend and frontend
-├── docs/           Architecture and product docs
+├── docs/           Architecture, product, and ubiquitous-language docs
 ├── .claude/        Claude Code agents, skills, and agent memory
 └── .workflow/      Output directory for agents and skills
 ```

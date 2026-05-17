@@ -8,8 +8,9 @@ Mobile-first web app for tracking habits across multiple unauthenticated users. 
 
 - `docs/ARCHITECTURE.md` — code structure, layers, conventions, commands. Read this first when orienting in the codebase.
 - `docs/PRODUCT.md` — what the app actually does today vs. what's still planned. Source of truth for "is X implemented?"
+- `docs/UBIQUITOUS_LANGUAGE.md` — canonical domain vocabulary (User, Habit Definition, Entry, Archetype, etc.) and aliases to avoid. Use these terms in code, specs, and PR descriptions.
 
-When the implementation diverges from `ARCHITECTURE.md` or `PRODUCT.md` or `README.md`, update those public docs too — they should always reflect reality.
+When the implementation diverges from `ARCHITECTURE.md`, `PRODUCT.md`, `UBIQUITOUS_LANGUAGE.md`, or `README.md`, update those public docs too — they should always reflect reality.
 
 ## Conventions
 
