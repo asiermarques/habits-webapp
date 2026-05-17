@@ -200,7 +200,8 @@ When adding a new read-model slice, use `metrics/` as the template:
   - `GET /metrics/heatmap?userId=&today=` — for every habit definition, a sparse `{ date, count }[]` over the rolling 26-week range (~6 months, Mon–Sun aligned) that ends with the anchor week. `count` is the per-day sum of repetitions (same rule as the other metrics endpoints). Habits are ordered by their most recent in-range entry (newest first); habits with no in-range entries are listed last with an empty `days` array.
   - `GET /export/csv?userId=&from=&to=` — returns a CSV (`text/csv; charset=utf-8`, `Content-Disposition: attachment`) with one row per entry inside the inclusive `[from, to]` window. Columns: `date, habit_name, type, positive, duration, distance, weight, amount, notes, words, time, number`. `duration` and `number` are shared across workout/custom; `amount` is custom-only. For each row only the columns that apply to its archetype are filled, the rest are empty. Text fields are RFC-4180 escaped.
   - `GET /settings`, `PUT /settings/currency` — global singleton settings (key/value table). Currency defaults to `EUR`; `PUT` accepts a body `{ currency: <code> }` validated against `SUPPORTED_CURRENCIES` (`EUR`, `USD`, `GBP`, `JPY`, `CHF`, `CAD`, `AUD`).
-- **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`).
+- **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`), `FRONTEND_DIST_DIR` (production only — path to the compiled frontend assets, default `../../frontend/dist` relative to the compiled backend).
+- **Production static serving**: when `NODE_ENV=production`, `createApp()` registers `express.static(FRONTEND_DIST_DIR)` after all API routes, plus a catch-all `GET *` that serves `index.html` for React Router deep links. In all other environments this block is skipped and the API returns 404 for unknown routes.
 - **Dev runner**: `tsx watch src/index.ts`
 
 ### Database layer
@@ -318,6 +319,20 @@ The package has no build step — both apps consume the `.ts` source directly.
   - `NODE_ENV` is not set to `test`, so seeding runs as in production.
   - Browser binary not included in the repo; install once with `npm run test:e2e:install`.
 
+## Docker
+
+The repo ships a multi-stage `Dockerfile` that produces a single production image (~266 MB). The frontend is compiled with `VITE_API_URL=""` so all API calls are relative to the same origin, and Express serves the static assets when `NODE_ENV=production`.
+
+The shared package (`@habitsapp/shared`) has no separate build step — its TypeScript source is loaded at runtime via the npm workspace symlink using Node 22's `--experimental-transform-types` flag.
+
+SQLite persistence is handled by a named Docker volume declared in `docker-compose.yml`:
+
+```
+Dockerfile          # multi-stage: deps → frontend-build → backend-build → runtime
+docker-compose.yml  # service + named volume db-data mounted at /data
+.dockerignore       # excludes node_modules, dist, *.db, .env*, .git, etc.
+```
+
 ## CI
 
 CircleCI (`.circleci/config.yml`) runs two sequential jobs on every push.
@@ -337,4 +352,7 @@ npm run db:migrate           # apply pending migrations
 npm run test:e2e:install     # download Playwright's Chromium binary (run once)
 npm run test:e2e             # run Playwright e2e suite
 npm run test:e2e:ui          # open Playwright UI mode
+docker compose up -d         # build image and start production container
+docker compose down          # stop container (volume kept)
+docker compose down -v       # stop container and delete volume (data lost)
 ```

@@ -1,0 +1,41 @@
+# Dependencies (recreated inside Docker)
+node_modules
+**/node_modules
+
+# Build artifacts (built inside Docker)
+**/dist
+frontend-dist
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
+
+# Environment files (injected at runtime)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Version control
+.git
+.gitignore
+
+# Project workflow files
+.workflow
+
+# Test artifacts
+e2e
+playwright-report
+test-results
+coverage
+
+# CI configuration
+.circleci
+
+# Playwright config (not needed inside image)
+playwright.config.ts
+
+# Miscellaneous
+.DS_Store
+npm-debug.log*

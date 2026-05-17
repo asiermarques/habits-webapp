@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    image: habitsapp:latest
+    ports:
+      - "${PORT:-8083}:${PORT:-8083}"
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-8083}
+      DATABASE_URL: ${DATABASE_URL:-/data/habits.db}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    volumes:
+      - db-data:/data
+    restart: unless-stopped
+
+volumes:
+  db-data:

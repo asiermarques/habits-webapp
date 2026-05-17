@@ -69,6 +69,50 @@ npm run db:generate     # generate migrations from schema changes
 npm run db:migrate      # apply pending migrations
 ```
 
+### Docker (production)
+
+Build and run the app as a single container. The SQLite database is persisted in a named Docker volume so data survives container recreation.
+
+```bash
+docker compose up -d           # build (first time) and start in the background
+docker compose logs -f app     # stream logs
+docker compose down            # stop (data is kept in the volume)
+docker compose down -v         # stop AND delete the volume (data lost)
+```
+
+The app is available at `http://localhost:8083`. To use a different port:
+
+```bash
+PORT=9000 docker compose up -d
+```
+
+To build the image manually without docker-compose:
+
+```bash
+docker build -t habitsapp .
+docker run --rm -p 3001:3001 habitsapp
+```
+
+> **Note**: without a volume mount the database lives inside the container and is lost when it stops. Use `docker compose` for persistent deployments.
+
+To migrate existing dev data (`backend/habits.db`) into the Docker volume before the first start:
+
+```bash
+docker run --rm \
+  -v habitsapp_db-data:/data \
+  -v $(pwd)/backend:/src \
+  alpine cp /src/habits.db /data/habits.db
+```
+
+Environment variables (all optional, have defaults):
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `3001` | HTTP port the server listens on |
+| `DATABASE_URL` | `./habits.db` | Path to the SQLite file |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin |
+| `FRONTEND_DIST_DIR` | `/app/frontend-dist` | Path to the compiled frontend assets |
+
 ### Testing
 
 **Type check** (TypeScript — all workspaces):
