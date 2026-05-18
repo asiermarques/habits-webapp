@@ -88,6 +88,23 @@ The backend is split into **vertical slices**. Each slice owns its domain, persi
 - **Cross-slice dependencies go through injected repository ports**, not direct file imports
 - **Router factories take their repo as a parameter** — composition happens in `app.ts`
 
+### DomainError → HTTP mapping
+
+All errors thrown from domain or repository code must extend `DomainError` (`backend/src/shared/domain/errors/DomainError.ts`). `domainErrorHandler` middleware translates them to HTTP responses of the form `{ "error": "<message>" }`. Anything else falls through to Express's default 500 handler.
+
+| Subclass | Status | Use for |
+|---|---|---|
+| `ValidationError` | 400 | Domain invariants beyond what Zod can express (e.g. forbidden state transitions) |
+| `ForbiddenError` | 403 | Cross-user access attempts (e.g. entry references another user's habit) |
+| `NotFoundError` | 404 | Repository lookups that miss |
+| `ConflictError` | 409 | State conflicts: deleting the last user, changing type after entries exist, deleting a habit with entries |
+
+Zod failures from `validateBody` / `validateQuery` short-circuit with their own 400 response before reaching the domain layer — don't try to mirror Zod errors with `ValidationError`.
+
+### `userId` trust boundary
+
+There is no auth, by design. The client sends `userId` in every multi-user request (query string for GETs, body for POST/PUT). The HTTP layer trusts it verbatim — **every repository method that touches a multi-user table takes `userId` and filters by it**. This is the only thing standing between users; treat it as a load-bearing invariant, not boilerplate to refactor away. Cross-user references (e.g. an entry pointing at another user's habit) are caught in the slice's domain/http layer and rejected with `ForbiddenError`.
+
 ### Reference implementations
 
 When adding a new **command slice**, copy `habit-definitions/`:
@@ -132,13 +149,28 @@ Per-user; `id`, `userId` (FK, cascade), `name`, `type` (`workout` | `writing` | 
 - Cannot be deleted while entries exist (HTTP 409)
 
 ### HabitEntry
-`id`, `habitDefinitionId` (FK, restrict), `userId` (FK, cascade), `date` (`d-m-Y`), `createdAt`. Cross-user `habitDefinitionId` is rejected with HTTP 403. Archetype data lives in child tables, each with `entry_id` PK FK→cascade:
+`id`, `habitDefinitionId` (FK, restrict), `userId` (FK, cascade), `date` (`YYYY-MM-DD`), `createdAt`. Cross-user `habitDefinitionId` is rejected with HTTP 403. Archetype data lives in child tables, each with `entry_id` PK FK→cascade:
 
 - `entry_workout_data` — `duration` (int, required), `distance` (real), `weight` (real), `number` (real, repetitions), `notes` (text)
 - `entry_writing_data` — `words` (int, required), `time` (int)
 - `entry_custom_data` — `number` (real, repetitions), `amount` (real, cost spent), `duration` (int)
 
 `name` and `positive` for Custom live on the parent `HabitDefinition`, not on the entry.
+
+### Adding a new archetype
+
+The three archetypes (`workout`, `writing`, `custom`) are spread across many files. To add a fourth, touch all of these in one slice — order matters because TypeScript will catch missed updates once the shared types change:
+
+1. **Shared types** — extend the `HabitType` union and the entry data discriminated union in `shared/src/index.ts`.
+2. **DB schema** — add a new `entry_<archetype>_data` table in `backend/src/shared/db/schema.ts` (PK FK→`entries.id` cascade), then `npm run db:generate` and review the SQL.
+3. **Domain** — update the `HabitDefinition` invariants in `habit-definitions/domain/HabitDefinition.ts` if the new archetype has rules like Workout/Writing being forced `positive: true`.
+4. **Entries http** — extend the discriminated `data` schema in `entries/http/schemas.ts` and the create/update branching in `entries/http/routes.ts`.
+5. **Entries infrastructure** — add the insert/update/delete branch in the Drizzle adapter so the child row is written inside the same `db.transaction(...)`.
+6. **Metrics** — apply the repetition-counting rule (sum `number` when set, otherwise count as 1, unless the archetype is count-as-1 like Writing) in `metrics/queries/*`.
+7. **CSV export** — add any new columns to the header and row mapping in `export/queries` and `export/http/routes.ts`. Unused columns stay blank for other archetypes.
+8. **Seed** — extend `backend/src/habit-definitions/seed.ts` if the archetype should ship as a default habit.
+9. **Frontend** — add a form variant in `frontend/src/entries/EntryForm.tsx`, render in `EntriesList`, and update `HabitForm` so users can pick the new type.
+10. **Tests** — integration test under `backend/src/entries/__tests__/` covering create + list + cross-user 403; frontend RTL test for the form variant.
 
 ### AppSettings
 Singleton key/value table — currently `currency` (default `EUR`) and `locale` (default `en`).
@@ -150,7 +182,7 @@ Singleton key/value table — currently `currency` (default `EUR`) and `locale` 
 | `GET /health` | `{ ok: true }` |
 | `GET/POST /users`, `PUT/DELETE /users/:id` | CRUD |
 | `GET /habit-definitions?userId=`, `POST /habit-definitions` (body requires `userId`), `PUT/DELETE /habit-definitions/:id` | per-user list |
-| `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT/DELETE /entries/:id` | cursor pagination ordered by `(date DESC, id DESC)`; cursor is base64url JSON `{date, id}`; default page size 20 |
+| `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT/DELETE /entries/:id` | cursor pagination ordered by `(date DESC, id DESC)`; cursor is base64url JSON `{date, id}`; default page size 15, max 100 |
 | `GET /metrics/weekly?userId=&habitDefinitionId=&today=` | current week (Mon–Sun), per-day sparse `counts` per habit; `today` (YYYY-MM-DD) is optional and used by tests |
 | `GET /metrics/by-type?userId=&today=` | 13-week range (Mon–Sun) ending at the anchor week; per-archetype repetitions; always 13 ordered weeks, zero-filled |
 | `GET /metrics/by-habit?userId=&today=` | same 13-week range; per-habit instead of per-archetype; sparse |
@@ -228,6 +260,20 @@ App-level in `src/App.tsx` (outer → inner):
 ### API client
 
 `src/lib/api.ts` exports `apiFetch<T>(path, options)` which prefixes `VITE_API_URL`, defaults `Content-Type: application/json`, serializes the body, throws on non-2xx, and returns `response.json()` typed as `T`.
+
+### Data fetching conventions
+
+Each frontend feature folder (`entries/`, `habits/`, `users/`, `metrics/`) owns a `queries.ts` that exports its TanStack Query hooks and a `<feature>Key(...)` builder. Conventions:
+
+- **Query keys** are tuples starting with the feature name, e.g. `['entries', userId, habitDefinitionId ?? 'all']`. Always include `userId` so switching active user invalidates cleanly.
+- **`enabled: userId > 0`** on any query that depends on the active user — `UserProvider` returns `0` before a user is selected.
+- **Mutation hooks invalidate by feature prefix**, not by exact key: `qc.invalidateQueries({ queryKey: ['entries'] })`. Anything that changes entries also invalidates `['metrics']` since metrics are derived. Follow the same pattern when adding new derived read models.
+- **No manual error toasts** — `MutationCache.onError` in `main.tsx` already surfaces every mutation error. Only catch in components for inline UI state.
+- **Cursor pagination** uses `useInfiniteQuery` with `getNextPageParam: (lastPage) => lastPage.nextCursor`; see `useEntriesInfinite` for the canonical example.
+
+### Active user
+
+`UserProvider` (`frontend/src/users/UserContext.tsx`) owns the active `userId` and persists it to `localStorage`. Components read it via the `useUserContext()` hook. Before the first user exists or is selected, the active id is `0` — feature queries gate on `userId > 0` rather than rendering empty states from a request that 400s.
 
 ## Shared types
 
