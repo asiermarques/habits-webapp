@@ -1,62 +1,75 @@
-# Product 
+# Product
 
-This document describes **what the app actually does today**.
+What the app does today. For *how* it's built, see [`ARCHITECTURE.md`](./ARCHITECTURE.md). For setup and run instructions, see the [`README`](../README.md).
 
-## Vision (one paragraph)
+## Vision
 
-A mobile-first web app for tracking habits across multiple unauthenticated users on the same instance. Habits fall into three archetypes (**Workout**, **Writing**, **Custom**) and are logged with type-specific fields. The app surfaces top habits by frequency for the last week, last 30 days, and last 3 months, plus per-habit GitHub-style heatmaps and CSV export. No goals, no targets — only raw counts of how many times a habit was done (repetitions are summed; entries without a repetitions field count as one). The user draws their own conclusions.
+A mobile-first web app for tracking habits across multiple unauthenticated users on the same instance. Habits fall into three archetypes — **Workout**, **Writing**, **Custom** — and are logged with type-specific fields. The app surfaces top habits by frequency for the last week, last 30 days, and last 3 months, plus per-habit GitHub-style heatmaps and CSV export. No goals, no targets — only raw counts. The user draws their own conclusions.
 
 The visual identity is **"Quiet Discipline"** — an editorial, warm-paper aesthetic with a deep moss-green primary accent, ember red for negative signals, and a Fraunces serif paired with Geist sans. The full design system (tokens, typography, rules) lives in [`DESIGN.md`](./DESIGN.md) — read it before adding UI.
 
+## Navigation
 
-## Features available
+- Three routes: **Home** (`/`), **Metrics** (`/metrics`), **Settings** (`/settings`)
+- Mobile-friendly sticky header. On Home it shows the log-entry button and nav icons (Metrics, Settings); on other routes it shows a back arrow
+- A user switcher appears in the header automatically once a second user is created
+- The active user persists across reloads; first user created is the default; deleting the default promotes the next user
 
-- **Three navigable routes**: `/` (Home), `/metrics`, `/settings`
-- **Mobile-friendly header** with route-conditional navigation (icons on Home, back arrow elsewhere)
-- **End-to-end connectivity**: Home calls the backend's `/health` endpoint via TanStack Query and renders the live API status
-- **User management** in Settings: add users, rename inline, delete, mark one as default
-- **Active user persists** across reloads via `localStorage`; the first created user is auto-set as default; deleting the default promotes the next user
-- **Header user switcher** appears automatically when more than one user exists
-- **Global language setting** in Settings: choose between English (`en`) and Spanish (`es`); shared across all users; default English. Drives UI strings (via a flat-key `t()` dictionary in `frontend/src/lib/i18n.ts`) and date/number formatting (`en` → `en-US`, `es` → `es-ES`)
-- **Global currency setting** in Settings (above the habit list): a curated dropdown (EUR, USD, GBP, JPY, CHF, CAD, AUD) shared across all users; default EUR. Used for the "Cost spent" field on bad habits — surfaces in the entries list (`cost N EUR`), the Cost-spent form label (`Cost spent (EUR)`), and the "Bad habit total cost" score card
-- **Habit definitions management** in Settings: list grouped by type (Workout / Writing / Custom), add/edit/delete via a modal form, positive toggle visible only for Custom habits, type selector locked once entries exist. **Habits are per-user** — each user manages their own list
-- **Per-user seeding**: when a new user is created, eight example habits are auto-inserted for that user (running, rowing, writing, reading, meat consuming, fast food consuming, cooking, social interactions) with rotating colors from a positive palette (red reserved for negative habits)
-- **Log entries**: a `+` icon in the sticky header opens a modal with habit picker (alphabetical), a custom mobile-friendly date picker (defaults to today, supports backfill, bounded to today as max), and dynamic fields per habit type (Workout: duration/distance/weight/repetitions/notes; Writing: words/time; Custom: repetitions/cost spent/duration). The icon is disabled until there is an active user and at least one habit definition
-- **Recent entries list** on Home with cursor-based infinite scroll (15 entries per page, "See more →" link), sorted newest-first by date. Each row shows a habit-colored 2px dot, the habit name, and a mono uppercase type label (`WORKOUT` / `WRITING` / `CUSTOM`), plus a summary line with date and logged data. Home has its own habit filter at the top of the page (ordered by most active over the last 13 weeks), shared between the weekly chart and the entries list
-- **Edit and delete entries**: edit reuses the same modal pre-filled (habit locked, date and data editable); delete shows a confirmation dialog
-- **Habit-definition guards now active**: a definition with existing entries cannot be deleted (409) and its type cannot be changed (409)
-- **Home weekly chart**: the Home screen shows a full-width Nivo stacked bar chart of entries per day for the current week (Mon–Sun), reacting to the same habit filter as the entries list
-- **Metrics page**: dedicated `/metrics` view. It contains:
-  - **Summary score cards** for the last 30 days: most-logged habit, least-logged habit (zero-entry habits can win this card), total cost (sum of the `amount` field) across negative ("bad") habits, and number of active habits (with a "of N total" hint). Two cards per row on mobile, four per row on `md+`
-  - A stacked bar chart of entries by individual habit over the last 13 weeks (Mon–Sun aligned, ~3 months), using each habit's assigned color
-  - One heatmap per habit definition over the last 26 weeks (~6 months) — a 26×7 grid where opacity indicates the per-day count. Two cards per row on `md+` viewports (single column on mobile); cells fill the available width via CSS grid. Positive habits use their assigned color, negative habits use ember. Habits with no entries still render an empty grid. Habits are ordered by their most recent in-range entry (newest first); empty habits sink to the bottom
-  - **CSV export** at the top of the Metrics page, collapsed behind a chevron toggle: expand it to pick user + from/to dates (via the same custom date picker as the entry form), click Export, the browser downloads `habits-{user}-{from}-{to}.csv` with one row per entry and a unified set of columns (data fields not applicable to an archetype are blank)
+## Settings
 
+- **User management**: add, rename inline, delete, mark one as default
+- **Language**: English or Spanish — shared across all users, default English. Drives UI strings and date/number formatting
+- **Currency**: curated dropdown (EUR, USD, GBP, JPY, CHF, CAD, AUD) — shared across all users, default EUR. Used for the "Cost spent" field on negative custom habits
+- **Habit definitions**: per-user list grouped by archetype. Add/edit/delete via modal. The "positive" toggle is only meaningful for Custom habits; the type selector is locked once entries exist
+- **Per-user seeding**: each new user starts with eight example habits (running, rowing, writing, reading, meat consuming, fast food consuming, cooking, social interactions), using rotating positive-palette colors (red is reserved for negative habits)
 
-## Product decisions worth knowing
+## Logging entries
 
-These were settled during scoping and are intentional design constraints, not omissions:
+A `+` button in the header opens a modal with:
 
-- **No login/registration** — users are just names on a list
-- **No goals or targets** — metrics are raw counts only
-- **Metrics count repetitions, not entries** — for workout and custom habits the `number` (repetitions) field is summed; writing entries and entries without a `number` count as one
-- **No categories** — explicitly cut from MVP scope to keep the data model lean
-- **No automated insights** — analysis is manual; the app surfaces numbers, not recommendations
-- **No PWA in v1** — installability and offline support are deferred
-- **Habit type cannot change** once entries exist for a definition (data integrity)
-- **Habit definitions cannot be deleted** if entries exist (data integrity)
+- a habit picker (alphabetical)
+- a mobile-friendly date picker — defaults to today, supports backfill, bounded by today
+- dynamic fields per archetype:
+  - **Workout**: duration, distance, weight, repetitions, notes
+  - **Writing**: words, time
+  - **Custom**: repetitions, cost spent, duration
 
+The button stays disabled until there is an active user **and** at least one habit definition. Entries can be edited (habit locked, date and data editable) or deleted (with confirmation).
+
+## Home
+
+- Weekly stacked bar chart of entries per day for the current week (Mon–Sun)
+- Recent entries list with infinite scroll (15 per page, newest first). Each row shows a habit-colored dot, the habit name, the archetype label, date, and logged data
+- A habit filter at the top — ordered by most active over the last 13 weeks — drives both the chart and the entries list
+
+## Metrics
+
+- **Summary score cards** for the last 30 days: most-logged habit, least-logged habit (zero-entry habits can win this), total cost across negative habits, and number of active habits (with an "of N total" hint). Two cards per row on mobile, four on larger screens
+- **Stacked bar chart** of entries by individual habit over the last 13 weeks, using each habit's color
+- **One heatmap per habit** over the last 26 weeks — a 26×7 grid where opacity reflects per-day count. Positive habits use their assigned color, negative habits use ember. Habits with no entries still render an empty grid. Habits are ordered by their most recent in-range entry (empty habits sink to the bottom)
+- **CSV export**, collapsed behind a chevron toggle: pick user and date range, then download `habits-{user}-{from}-{to}.csv` with one row per entry (columns not applicable to the archetype are blank)
+
+## Counting rules
+
+- Metrics count **repetitions, not entries**. For Workout and Custom habits the repetitions field is summed; entries without a repetitions field — and all Writing entries — count as one
+- "Bad habit" total cost only includes Custom habits — only Custom can be negative
 
 ## Periods
 
 - **Week** starts Monday
 - **Month** = rolling 30 days
-- **Year view** = last 3 months only (a full year doesn't fit a phone screen)
+- **Year view** is the last 3 months only — a full year doesn't fit a phone screen
 
-## How to try the implemented features
+## Product decisions worth knowing
 
-```bash
-npm install
-npm run dev
-```
+Intentional constraints settled during scoping, not omissions:
 
+- **No login/registration** — users are just names on a list
+- **No goals or targets** — metrics are raw counts only
+- **No categories** — cut from MVP scope to keep the data model lean
+- **No automated insights** — analysis is manual; the app surfaces numbers, not recommendations
+- **No PWA in v1** — installability and offline support are deferred
+- **Habit type cannot change** once entries exist (data integrity)
+- **Habit definitions cannot be deleted** if entries exist (data integrity)
+- **Habits are per-user**; **users** are the only globally shared entity
+- **Settings (language, currency) are global**, shared across all users
