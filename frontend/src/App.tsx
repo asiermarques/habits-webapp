@@ -6,9 +6,11 @@ import { Metrics } from '@/pages/Metrics';
 import { Settings } from '@/pages/Settings';
 import { UserProvider } from '@/users/UserContext';
 import { LogEntryDialogProvider } from '@/entries/LogEntryDialog';
+import { LocaleProvider } from '@/settings/LocaleProvider';
 
 export function App() {
   return (
+    <LocaleProvider>
     <UserProvider>
       <LogEntryDialogProvider>
         <div className="min-h-full text-ink">
@@ -34,5 +36,6 @@ export function App() {
         </div>
       </LogEntryDialogProvider>
     </UserProvider>
+    </LocaleProvider>
   );
 }

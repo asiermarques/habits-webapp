@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useUserContext } from '@/users/UserContext';
+import { t } from '@/lib/i18n';
 import { HabitForm } from './HabitForm';
 import {
   useCreateHabitDefinition,
@@ -32,11 +33,13 @@ import {
   useUpdateHabitDefinition,
 } from './queries';
 
-const TYPE_LABELS: Record<HabitType, string> = {
-  workout: 'Workout',
-  writing: 'Writing',
-  custom: 'Custom',
-};
+function getTypeLabels(): Record<HabitType, string> {
+  return {
+    workout: t('habitType.workout'),
+    writing: t('habitType.writing'),
+    custom: t('habitType.custom'),
+  };
+}
 
 type DialogState =
   | { kind: 'closed' }
@@ -53,6 +56,7 @@ export function HabitsSection() {
   const [dialog, setDialog] = useState<DialogState>({ kind: 'closed' });
   const [pendingDelete, setPendingDelete] = useState<HabitDefinition | null>(null);
 
+  const typeLabels = getTypeLabels();
   const grouped = HABIT_TYPES.map((type) => ({
     type,
     items: habits.filter((h) => h.type === type),
@@ -63,10 +67,8 @@ export function HabitsSection() {
   if (!activeUser) {
     return (
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Habit Definitions</h2>
-        <p className="text-sm text-ink-soft">
-          Add a user above to start defining habits.
-        </p>
+        <h2 className="text-lg font-semibold">{t('settings.habits.title')}</h2>
+        <p className="text-sm text-ink-soft">{t('settings.habits.noUser')}</p>
       </section>
     );
   }
@@ -75,23 +77,21 @@ export function HabitsSection() {
     <section className="space-y-4">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Habit Definitions</h2>
+          <h2 className="text-lg font-semibold">{t('settings.habits.title')}</h2>
           <p className="text-sm text-ink-soft">
-            Habits for <span className="font-medium">{activeUser.name}</span>. Each user has their own list.
+            {t('settings.habits.perUser')} <span className="font-medium">{activeUser.name}</span>. {t('settings.habits.perUserSuffix')}
           </p>
         </div>
         <Button size="sm" onClick={() => setDialog({ kind: 'add' })}>
           <Plus className="h-4 w-4" />
-          New
+          {t('settings.habits.new')}
         </Button>
       </header>
 
-      {isLoading && <p className="text-sm text-ink-soft">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-soft">{t('settings.habits.loading')}</p>}
 
       {!isLoading && habits.length === 0 && (
-        <p className="text-sm text-ink-soft">
-          No habits yet. The default seed should provide examples — restart the backend if you see this.
-        </p>
+        <p className="text-sm text-ink-soft">{t('settings.habits.empty')}</p>
       )}
 
       <div className="space-y-6">
@@ -99,7 +99,7 @@ export function HabitsSection() {
           items.length === 0 ? null : (
             <div key={type}>
               <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-ink-soft">
-                {TYPE_LABELS[type]}
+                {typeLabels[type]}
               </h3>
               <ul className="divide-y divide-hairline rounded-md border border-hairline bg-card">
                 {items.map((habit) => (
@@ -120,17 +120,19 @@ export function HabitsSection() {
       <Dialog open={dialog.kind !== 'closed'} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{dialog.kind === 'edit' ? 'Edit habit' : 'New habit'}</DialogTitle>
+            <DialogTitle>
+              {dialog.kind === 'edit' ? t('settings.habits.editTitle') : t('settings.habits.newTitle')}
+            </DialogTitle>
             <DialogDescription>
               {dialog.kind === 'edit'
-                ? 'Update the habit name, type, or whether it is positive.'
-                : `Add a new habit for ${activeUser.name}.`}
+                ? t('settings.habits.editDescription')
+                : `${t('settings.habits.newDescription')} ${activeUser.name}.`}
             </DialogDescription>
           </DialogHeader>
 
           {dialog.kind === 'add' && (
             <HabitForm
-              submitLabel="Add habit"
+              submitLabel={t('settings.habits.addSubmit')}
               pending={createHabit.isPending}
               onSubmit={(values) => {
                 createHabit.mutate(values, { onSuccess: closeDialog });
@@ -142,7 +144,7 @@ export function HabitsSection() {
           {dialog.kind === 'edit' && (
             <HabitForm
               initial={dialog.habit}
-              submitLabel="Save changes"
+              submitLabel={t('action.save')}
               typeLocked={dialog.habit.hasEntries}
               pending={updateHabit.isPending}
               onSubmit={(values) => {
@@ -164,16 +166,16 @@ export function HabitsSection() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {pendingDelete?.name ?? 'this habit'}?
+              {t('settings.habits.deleteTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDelete?.hasEntries
-                ? 'This habit has logged entries and cannot be deleted.'
-                : 'This action cannot be undone.'}
+                ? t('settings.habits.deleteBlocked')
+                : t('action.cantUndo')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('action.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (pendingDelete) deleteHabit.mutate(pendingDelete.id);
@@ -182,7 +184,7 @@ export function HabitsSection() {
               disabled={pendingDelete?.hasEntries}
               className="bg-ember hover:bg-ember/90"
             >
-              Delete
+              {t('action.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -210,13 +212,13 @@ function HabitRow({ habit, onEdit, onDelete, deletePending }: HabitRowProps) {
         <span className="truncate">{habit.name}</span>
         {!habit.positive && (
           <span className="rounded-full bg-ember-tint px-2 py-0.5 text-xs font-medium text-ember">
-            negative
+            {t('settings.habits.negative')}
           </span>
         )}
       </span>
 
       <div className="flex shrink-0 items-center gap-1">
-        <Button size="icon" variant="ghost" onClick={onEdit} aria-label={`Edit ${habit.name}`}>
+        <Button size="icon" variant="ghost" onClick={onEdit} aria-label={`${t('settings.users.rename')} ${habit.name}`}>
           <Pencil className="h-4 w-4" />
         </Button>
         <Button
@@ -224,7 +226,7 @@ function HabitRow({ habit, onEdit, onDelete, deletePending }: HabitRowProps) {
           variant="ghost"
           onClick={onDelete}
           disabled={deletePending}
-          aria-label={`Delete ${habit.name}`}
+          aria-label={`${t('action.delete')} ${habit.name}`}
           className="text-ember hover:text-ember/80"
         >
           <Trash2 className="h-4 w-4" />

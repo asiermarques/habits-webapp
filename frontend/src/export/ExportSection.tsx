@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { useUserContext } from '@/users/UserContext';
+import { t } from '@/lib/i18n';
 import { todayIso } from '@/entries/date';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
@@ -45,7 +46,7 @@ export function ExportSection() {
       });
       const res = await fetch(`${API_URL}/export/csv?${params.toString()}`);
       if (!res.ok) {
-        let message = `Request failed: ${res.status}`;
+        let message = `${t('export.error')} ${res.status}`;
         try {
           const data = await res.json();
           if (data?.error) message = data.error;
@@ -65,7 +66,7 @@ export function ExportSection() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Export failed');
+      setError(err instanceof Error ? err.message : t('export.error'));
     } finally {
       setPending(false);
     }
@@ -87,7 +88,7 @@ export function ExportSection() {
         ) : (
           <ChevronRight className="h-4 w-4 text-ink-soft" aria-hidden />
         )}
-        Export CSV
+        {t('export.title')}
       </button>
 
       {open && (
@@ -98,7 +99,7 @@ export function ExportSection() {
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="export-from">From</Label>
+              <Label htmlFor="export-from">{t('export.from')}</Label>
               <DatePicker
                 id="export-from"
                 value={from}
@@ -107,7 +108,7 @@ export function ExportSection() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="export-to">To</Label>
+              <Label htmlFor="export-to">{t('export.to')}</Label>
               <DatePicker
                 id="export-to"
                 value={to}
@@ -125,7 +126,7 @@ export function ExportSection() {
           )}
 
           <Button type="submit" disabled={!valid || pending} className="w-full">
-            {pending ? 'Exporting…' : 'Export'}
+            {pending ? t('export.exporting') : t('export.export')}
           </Button>
         </form>
       )}

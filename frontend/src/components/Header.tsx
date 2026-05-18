@@ -4,6 +4,7 @@ import { UserSwitcher } from '@/users/UserSwitcher';
 import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useLogEntryDialog } from '@/entries/LogEntryDialog';
+import { t } from '@/lib/i18n';
 
 export function Header() {
   const location = useLocation();
@@ -22,7 +23,7 @@ export function Header() {
       <div className="flex h-16 items-center justify-between px-5 sm:px-8">
         {isHome ? (
           <Link to="/" className="group flex items-baseline gap-2">
-            <span className="font-display text-2xl tracking-tight">Habits</span>
+            <span className="font-display text-2xl tracking-tight">{t('app.title')}</span>
             <span
               aria-hidden
               className="ml-0.5 h-1.5 w-1.5 rounded-full bg-moss transition group-hover:scale-125"
@@ -32,7 +33,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            aria-label="Back to home"
+            aria-label={t('header.backToHome')}
             className={iconBtn}
           >
             <ArrowLeft className="h-[18px] w-[18px]" />
@@ -47,15 +48,15 @@ export function Header() {
                 type="button"
                 onClick={openLog}
                 disabled={!canLog}
-                aria-label="Log entry"
+                aria-label={t('header.logEntry')}
                 className={`${iconBtn} disabled:cursor-not-allowed disabled:text-ink-faint/50 disabled:hover:bg-transparent disabled:hover:text-ink-faint/50`}
               >
                 <PlusCircle className="h-[18px] w-[18px]" />
               </button>
-              <Link to="/metrics" aria-label="Metrics" className={iconBtn}>
+              <Link to="/metrics" aria-label={t('header.metrics')} className={iconBtn}>
                 <BarChart3 className="h-[18px] w-[18px]" />
               </Link>
-              <Link to="/settings" aria-label="Settings" className={iconBtn}>
+              <Link to="/settings" aria-label={t('header.settings')} className={iconBtn}>
                 <SettingsIcon className="h-[18px] w-[18px]" />
               </Link>
             </nav>

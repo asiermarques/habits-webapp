@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useUserContext } from './UserContext';
 import { useCreateUser, useDeleteUser, useUpdateUser } from './queries';
+import { t } from '@/lib/i18n';
 
 export function UsersSection() {
   const { users, isLoading } = useUserContext();
@@ -23,10 +24,8 @@ export function UsersSection() {
   return (
     <section className="space-y-4">
       <header>
-        <h2 className="text-lg font-semibold">Users</h2>
-        <p className="text-sm text-ink-soft">
-          Names that can log habits. The default user is pre-selected when logging.
-        </p>
+        <h2 className="text-lg font-semibold">{t('settings.users.title')}</h2>
+        <p className="text-sm text-ink-soft">{t('settings.users.description')}</p>
       </header>
 
       <form onSubmit={handleAdd} className="flex gap-2">
@@ -34,18 +33,18 @@ export function UsersSection() {
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="New user name"
-          aria-label="New user name"
+          placeholder={t('settings.users.placeholder')}
+          aria-label={t('settings.users.placeholder')}
         />
         <Button type="submit" disabled={createUser.isPending || !newName.trim()}>
-          Add
+          {t('action.add')}
         </Button>
       </form>
 
-      {isLoading && <p className="text-sm text-ink-soft">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-soft">{t('settings.users.loading')}</p>}
 
       {!isLoading && users.length === 0 && (
-        <p className="text-sm text-ink-soft">No users yet. Add one above to get started.</p>
+        <p className="text-sm text-ink-soft">{t('settings.users.empty')}</p>
       )}
 
       <ul className="divide-y divide-hairline rounded-md border border-hairline bg-card">
@@ -58,7 +57,6 @@ export function UsersSection() {
             onDelete={() => deleteUser.mutate(user.id)}
             renameDisabled={updateUser.isPending}
             deleteDisabled={deleteUser.isPending || users.length <= 1}
-            deleteDisabledReason={users.length <= 1 ? 'At least one user is required' : undefined}
           />
         ))}
       </ul>
@@ -73,7 +71,6 @@ type UserRowProps = {
   onDelete: () => void;
   renameDisabled: boolean;
   deleteDisabled: boolean;
-  deleteDisabledReason?: string;
 };
 
 function UserRow({
@@ -83,7 +80,6 @@ function UserRow({
   onDelete,
   renameDisabled,
   deleteDisabled,
-  deleteDisabledReason,
 }: UserRowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(user.name);
@@ -113,7 +109,7 @@ function UserRow({
               setDraft(user.name);
             }
           }}
-          aria-label={`Rename ${user.name}`}
+          aria-label={`${t('settings.users.rename')} ${user.name}`}
         />
       ) : (
         <span className="flex items-center gap-2 truncate">
@@ -121,7 +117,7 @@ function UserRow({
           {user.isDefault && (
             <span className="inline-flex items-center gap-1 rounded-full bg-clay/15 px-2 py-0.5 text-xs font-medium text-clay">
               <Star className="h-3 w-3" />
-              Default
+              {t('settings.users.default')}
             </span>
           )}
         </span>
@@ -130,7 +126,7 @@ function UserRow({
       <div className="flex shrink-0 items-center gap-1">
         {editing ? (
           <>
-            <Button size="icon" variant="ghost" onClick={submit} aria-label="Save name" disabled={renameDisabled}>
+            <Button size="icon" variant="ghost" onClick={submit} aria-label={t('settings.users.saveName')} disabled={renameDisabled}>
               <Check className="h-4 w-4" />
             </Button>
             <Button
@@ -140,7 +136,7 @@ function UserRow({
                 setEditing(false);
                 setDraft(user.name);
               }}
-              aria-label="Cancel rename"
+              aria-label={t('settings.users.cancelRename')}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -148,20 +144,19 @@ function UserRow({
         ) : (
           <>
             {!user.isDefault && (
-              <Button size="icon" variant="ghost" onClick={onSetDefault} aria-label={`Set ${user.name} as default`}>
+              <Button size="icon" variant="ghost" onClick={onSetDefault} aria-label={`${t('settings.users.setDefault')} ${user.name}`}>
                 <Star className="h-4 w-4" />
               </Button>
             )}
-            <Button size="icon" variant="ghost" onClick={() => setEditing(true)} aria-label={`Rename ${user.name}`}>
+            <Button size="icon" variant="ghost" onClick={() => setEditing(true)} aria-label={`${t('settings.users.rename')} ${user.name}`}>
               <Pencil className="h-4 w-4" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
               onClick={onDelete}
-              aria-label={`Delete ${user.name}`}
+              aria-label={`${t('action.delete')} ${user.name}`}
               disabled={deleteDisabled}
-              title={deleteDisabledReason}
               className="text-ember hover:text-ember/80"
             >
               <Trash2 className="h-4 w-4" />

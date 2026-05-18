@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getLocale } from '@/lib/locale';
 
 type DatePickerProps = {
   id?: string;
@@ -33,7 +34,7 @@ function formatTrigger(iso: string): string {
   const parsed = parseIso(iso);
   if (!parsed) return '';
   const date = new Date(parsed.y, parsed.m, parsed.d);
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(getLocale(), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -128,7 +129,8 @@ export function DatePicker({
       <button
         id={id}
         type="button"
-        aria-label="Open date picker"
+        data-testid="date-picker-trigger"
+        data-value={value}
         aria-haspopup="dialog"
         aria-expanded={open}
         {...aria}

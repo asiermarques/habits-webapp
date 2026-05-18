@@ -30,4 +30,29 @@ describe('Settings API', () => {
     const res = await request(app).put('/settings/currency').send({});
     expect(res.status).toBe(400);
   });
+
+  it('GET /settings returns the default locale (en)', async () => {
+    const res = await request(app).get('/settings');
+    expect(res.status).toBe(200);
+    expect((res.body as AppSettings).locale).toBe('en');
+  });
+
+  it('PUT /settings/locale updates the locale', async () => {
+    const put = await request(app).put('/settings/locale').send({ locale: 'es' });
+    expect(put.status).toBe(200);
+    expect((put.body as AppSettings).locale).toBe('es');
+
+    const get = await request(app).get('/settings');
+    expect((get.body as AppSettings).locale).toBe('es');
+  });
+
+  it('PUT /settings/locale rejects unsupported codes', async () => {
+    const res = await request(app).put('/settings/locale').send({ locale: 'fr' });
+    expect(res.status).toBe(400);
+  });
+
+  it('PUT /settings/locale rejects missing body', async () => {
+    const res = await request(app).put('/settings/locale').send({});
+    expect(res.status).toBe(400);
+  });
 });

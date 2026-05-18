@@ -16,6 +16,7 @@ import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useSettingsQuery } from '@/settings/queries';
 import { formatCurrency } from '@/lib/currency';
+import { t } from '@/lib/i18n';
 import { useDeleteEntry, useEntriesInfinite } from './queries';
 import { formatDate } from './date';
 
@@ -42,7 +43,7 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
 
   if (!activeUser) {
     return (
-      <p className="text-sm text-ink-soft">Add a user in Settings to start logging.</p>
+      <p className="text-sm text-ink-soft">{t('entries.noUser')}</p>
     );
   }
 
@@ -51,12 +52,12 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
   return (
     <section className="space-y-3">
       {isFetching && entries.length === 0 && (
-        <p className="text-sm text-ink-soft">Loading…</p>
+        <p className="text-sm text-ink-soft">{t('action.loading')}</p>
       )}
 
       {!isFetching && entries.length === 0 && (
         <p className="rounded-md border border-dashed border-hairline p-4 text-center text-sm text-ink-soft">
-          No entries yet. Tap “Log” above to add your first.
+          {t('entries.empty')}
         </p>
       )}
 
@@ -82,7 +83,7 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
             disabled={isFetchingNextPage}
             className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition hover:text-moss-deep disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isFetchingNextPage ? 'Loading…' : 'See more →'}
+            {isFetchingNextPage ? t('action.loading') : t('entries.seeMore')}
           </button>
           <div className="h-px flex-1 bg-hairline" />
         </div>
@@ -91,13 +92,11 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
       <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t('entries.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('action.cantUndo')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('action.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (pendingDelete) deleteEntry.mutate(pendingDelete.id);
@@ -105,7 +104,7 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
               }}
               className="bg-ember hover:bg-ember/90"
             >
-              Delete
+              {t('action.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -132,7 +131,7 @@ function EntryCard({ entry, habit, currency, onEdit, onDelete }: EntryCardProps)
             className="inline-block h-2 w-2 shrink-0 rounded-full"
             style={{ backgroundColor: habit?.color ?? 'var(--ink-faint)' }}
           />
-          <span className="truncate font-medium">{habit?.name ?? 'Unknown habit'}</span>
+          <span className="truncate font-medium">{habit?.name ?? t('entries.unknownHabit')}</span>
           <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-faint">
             {entry.type}
           </span>
@@ -140,14 +139,14 @@ function EntryCard({ entry, habit, currency, onEdit, onDelete }: EntryCardProps)
         <EntrySummary entry={entry} currency={currency} />
       </div>
       <div className="flex shrink-0 items-center">
-        <Button size="icon" variant="ghost" onClick={onEdit} aria-label="Edit entry">
+        <Button size="icon" variant="ghost" onClick={onEdit} aria-label={t('entries.editAria')}>
           <Pencil className="h-4 w-4" />
         </Button>
         <Button
           size="icon"
           variant="ghost"
           onClick={onDelete}
-          aria-label="Delete entry"
+          aria-label={t('entries.deleteAria')}
           className="text-ember hover:text-ember/80"
         >
           <Trash2 className="h-4 w-4" />
@@ -162,21 +161,22 @@ function EntrySummary({ entry, currency }: { entry: Entry; currency: CurrencyCod
   const d = entry.data as Record<string, unknown>;
 
   if (entry.type === 'workout') {
-    if (typeof d.duration === 'number') parts.push(`${d.duration} min`);
-    if (typeof d.distance === 'number') parts.push(`${d.distance} km`);
-    if (typeof d.weight === 'number') parts.push(`${d.weight} kg`);
-    if (typeof d.number === 'number') parts.push(`${d.number} reps`);
+    if (typeof d.duration === 'number') parts.push(`${d.duration} ${t('unit.min')}`);
+    if (typeof d.distance === 'number') parts.push(`${d.distance} ${t('unit.km')}`);
+    if (typeof d.weight === 'number') parts.push(`${d.weight} ${t('unit.kg')}`);
+    if (typeof d.number === 'number') parts.push(`${d.number} ${t('unit.reps')}`);
   } else if (entry.type === 'writing') {
-    if (typeof d.words === 'number') parts.push(`${d.words} words`);
-    if (typeof d.time === 'number') parts.push(`${d.time} min`);
+    if (typeof d.words === 'number') parts.push(`${d.words} ${t('unit.words')}`);
+    if (typeof d.time === 'number') parts.push(`${d.time} ${t('unit.min')}`);
   } else {
-    if (typeof d.number === 'number') parts.push(`${d.number} reps`);
-    if (typeof d.amount === 'number') parts.push(`cost ${formatCurrency(d.amount, currency)}`);
-    if (typeof d.duration === 'number') parts.push(`${d.duration} min`);
+    if (typeof d.number === 'number') parts.push(`${d.number} ${t('unit.reps')}`);
+    if (typeof d.amount === 'number') parts.push(`${t('unit.cost')} ${formatCurrency(d.amount, currency)}`);
+    if (typeof d.duration === 'number') parts.push(`${d.duration} ${t('unit.min')}`);
   }
 
   const date = formatDate(entry.date);
-  const text = parts.length > 0 ? `${date} → ${parts.join(' · ')}` : date;
+  const sep = t('unit.separator');
+  const text = parts.length > 0 ? `${date} → ${parts.join(sep)}` : date;
 
   return <p className="mt-0.5 truncate text-sm text-ink-soft">{text}</p>;
 }

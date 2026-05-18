@@ -4,6 +4,8 @@ import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useSettingsQuery } from '@/settings/queries';
 import { formatCurrency } from '@/lib/currency';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 import { useSummaryMetrics } from './queries';
 
 export function SummaryCards() {
@@ -26,7 +28,7 @@ export function SummaryCards() {
   return (
     <section className="space-y-4">
       <div className="flex items-baseline gap-3">
-        <span className="eyebrow">last 30 days</span>
+        <span className="eyebrow">{t('summary.eyebrow')}</span>
         <div className="h-px flex-1 bg-hairline" />
         {periodLabel && (
           <span className="font-mono text-[11px] tracking-wider text-ink-faint">
@@ -36,19 +38,19 @@ export function SummaryCards() {
       </div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
       <ScoreCard
-        label="Most logged"
+        label={t('summary.mostLogged')}
         habit={data?.mostRegistered}
         habitsById={habitsById}
         loading={isLoading}
       />
       <ScoreCard
-        label="Least logged"
+        label={t('summary.leastLogged')}
         habit={data?.leastRegistered}
         habitsById={habitsById}
         loading={isLoading}
       />
       <ScoreCard
-        label="Bad habit total cost"
+        label={t('summary.badHabitCost')}
         display={
           data === undefined
             ? undefined
@@ -58,9 +60,9 @@ export function SummaryCards() {
         tone={data && data.badHabitsTotalCost > 0 ? 'ember' : undefined}
       />
       <ScoreCard
-        label="Active habits"
+        label={t('summary.activeHabits')}
         value={data?.activeHabitsCount}
-        hint={habits.length > 0 ? `of ${habits.length}` : undefined}
+        hint={habits.length > 0 ? `${t('summary.of')} ${habits.length}` : undefined}
         loading={isLoading}
         tone={data && data.activeHabitsCount > 0 ? 'moss' : undefined}
       />
@@ -72,7 +74,7 @@ export function SummaryCards() {
 function formatPeriod(rangeStart: string, rangeEnd: string): string {
   const fmt = (iso: string) => {
     const [y, m, d] = iso.split('-').map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    return new Date(y, m - 1, d).toLocaleDateString(getLocale(), {
       month: 'short',
       day: 'numeric',
     });
@@ -83,11 +85,8 @@ function formatPeriod(rangeStart: string, rangeEnd: string): string {
 type ScoreCardProps = {
   label: string;
   loading?: boolean;
-  // Habit-flavored cards take a HabitCount + lookup map.
   habit?: HabitCount | null;
   habitsById?: Map<number, HabitDefinition>;
-  // Value-flavored cards take either a numeric `value` or a pre-formatted
-  // `display` string (used for currency-formatted amounts).
   value?: number;
   display?: string;
   hint?: string;
@@ -143,10 +142,10 @@ function HabitCardBody({
           style={{ backgroundColor: def?.color ?? '#999' }}
         />
         <span className="truncate text-sm font-semibold">
-          {def?.name ?? 'Unknown'}
+          {def?.name ?? t('metrics.unknown')}
         </span>
       </div>
-      <div className="mt-0.5 text-xs text-ink-soft">{habit.count} reps</div>
+      <div className="mt-0.5 text-xs text-ink-soft">{habit.count} {t('summary.reps')}</div>
     </>
   );
 }

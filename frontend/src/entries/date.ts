@@ -1,3 +1,5 @@
+import { getLocale } from '@/lib/locale';
+
 // Date helpers. Entries are stored as YYYY-MM-DD (date-only, no time zone).
 // Uses the user's *local* calendar day on purpose: a habit logged at 11:55 PM
 // belongs to that day from the user's perspective, even if UTC has rolled over.
@@ -18,10 +20,12 @@ export function formatDate(iso: string): string {
   const today = new Date();
   const sameYear = today.getFullYear() === y;
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(getLocale(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
     year: sameYear ? undefined : 'numeric',
-  }).format(date);
+  })
+    .format(date)
+    .toLowerCase();
 }

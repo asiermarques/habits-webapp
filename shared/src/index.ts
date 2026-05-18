@@ -9,12 +9,20 @@ export type HealthResponse = {
 export const SUPPORTED_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD'] as const;
 export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number];
 
+export const SUPPORTED_LOCALES = ['en', 'es'] as const;
+export type LocaleCode = (typeof SUPPORTED_LOCALES)[number];
+
 export type AppSettings = {
   currency: CurrencyCode;
+  locale: LocaleCode;
 };
 
 export type UpdateCurrencyBody = {
   currency: CurrencyCode;
+};
+
+export type UpdateLocaleBody = {
+  locale: LocaleCode;
 };
 
 export type User = {

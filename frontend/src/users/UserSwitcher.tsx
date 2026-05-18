@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUserContext } from './UserContext';
+import { t } from '@/lib/i18n';
 
 export function UserSwitcher() {
   const { users, activeUser, setActiveUserId } = useUserContext();
@@ -17,7 +18,7 @@ export function UserSwitcher() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label="Switch user"
+          aria-label={t('userSwitcher.aria')}
           className="flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium hover:bg-paper-deep"
         >
           <UserRound className="h-4 w-4" />

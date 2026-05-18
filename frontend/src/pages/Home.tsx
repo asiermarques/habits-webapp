@@ -12,6 +12,8 @@ import { EntriesList } from '@/entries/EntriesList';
 import { useLogEntryDialog } from '@/entries/LogEntryDialog';
 import { WeekChartSection } from '@/metrics/WeekChartSection';
 import { useByHabitMetrics } from '@/metrics/queries';
+import { getLocale } from '@/lib/locale';
+import { t } from '@/lib/i18n';
 
 const ALL_HABITS = 'all';
 
@@ -35,7 +37,7 @@ export function Home() {
     });
   }, [habits, byHabit]);
   const habitDefinitionId = filter === ALL_HABITS ? undefined : Number(filter);
-  const today = new Date().toLocaleDateString(undefined, {
+  const today = new Date().toLocaleDateString(getLocale(), {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -49,31 +51,31 @@ export function Home() {
           <h1 className="font-display text-4xl leading-[1.05] tracking-tight sm:text-5xl">
             {activeUser ? (
               <>
-                Hello,{' '}
+                {t('home.greeting')}{' '}
                 <span className="italic text-moss-deep">{activeUser.name}</span>.
               </>
             ) : (
-              <>A quiet ledger of small acts.</>
+              <>{t('home.empty')}</>
             )}
           </h1>
         </div>
         <p className="max-w-md text-[0.95rem] leading-relaxed text-ink-soft">
-          Mark what you did. Not what you should have done.
+          {t('home.subtitle')}
         </p>
       </section>
 
       <div className="flex items-center justify-between gap-3">
-        <span className="eyebrow">this week</span>
+        <span className="eyebrow">{t('home.thisWeek')}</span>
         <div className="h-px flex-1 bg-hairline" />
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger
             className="h-9 w-auto min-w-[10rem] rounded-full border-hairline text-sm shadow-none"
-            aria-label="Filter by habit"
+            aria-label={t('home.filter.aria')}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_HABITS}>All habits</SelectItem>
+            <SelectItem value={ALL_HABITS}>{t('home.filter.all')}</SelectItem>
             {sortedHabits.map((h) => (
               <SelectItem key={h.id} value={String(h.id)}>
                 {h.name}
@@ -87,7 +89,7 @@ export function Home() {
 
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <span className="eyebrow">recent entries</span>
+          <span className="eyebrow">{t('home.recentEntries')}</span>
           <div className="h-px flex-1 bg-hairline" />
         </div>
         <EntriesList habitDefinitionId={habitDefinitionId} onEdit={openEdit} />

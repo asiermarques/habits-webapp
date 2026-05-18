@@ -17,6 +17,7 @@ import {
 import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useSettingsQuery } from '@/settings/queries';
+import { t } from '@/lib/i18n';
 import { EntryForm } from './EntryForm';
 import { useCreateEntry, useUpdateEntry } from './queries';
 
@@ -54,11 +55,13 @@ export function LogEntryDialogProvider({ children }: { children: ReactNode }) {
       <Dialog open={state.kind !== 'closed'} onOpenChange={(o) => !o && close()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{state.kind === 'edit' ? 'Edit entry' : 'Log entry'}</DialogTitle>
+            <DialogTitle>
+              {state.kind === 'edit' ? t('logEntry.titleEdit') : t('logEntry.titleNew')}
+            </DialogTitle>
             <DialogDescription>
               {state.kind === 'edit'
-                ? 'Update the details of this habit entry.'
-                : 'Record a new entry for one of your habits.'}
+                ? t('logEntry.descriptionEdit')
+                : t('logEntry.descriptionNew')}
             </DialogDescription>
           </DialogHeader>
 

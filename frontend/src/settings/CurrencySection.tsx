@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { t } from '@/lib/i18n';
 import { useSettingsQuery, useUpdateCurrency } from './queries';
 
 export function CurrencySection() {
@@ -17,13 +18,11 @@ export function CurrencySection() {
   return (
     <section className="space-y-2">
       <div>
-        <h2 className="text-lg font-semibold">Currency</h2>
-        <p className="text-sm text-ink-soft">
-          Used for displaying the "Cost spent" amount on bad habits. Shared across all users.
-        </p>
+        <h2 className="text-lg font-semibold">{t('settings.currency.title')}</h2>
+        <p className="text-sm text-ink-soft">{t('settings.currency.description')}</p>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="settings-currency">Currency code</Label>
+        <Label htmlFor="settings-currency">{t('settings.currency.label')}</Label>
         <Select
           value={value}
           onValueChange={(v) => updateCurrency.mutate(v as CurrencyCode)}

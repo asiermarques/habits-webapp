@@ -4,6 +4,7 @@ import type { ByHabitMetrics, HabitDefinition } from '@habitsapp/shared';
 import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useByHabitMetrics } from './queries';
+import { t } from '@/lib/i18n';
 
 const CHART_THEME = {
   axis: {
@@ -31,16 +32,16 @@ export function ByTypeChartSection() {
 
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-semibold">By habit (last 3 months)</h2>
+      <h2 className="text-lg font-semibold">{t('metrics.byHabit')}</h2>
 
       <div className="rounded-md border border-hairline bg-card p-2">
         {isLoading || !data ? (
           <p className="px-2 py-12 text-center text-sm text-ink-soft">
-            Loading…
+            {t('metrics.loading')}
           </p>
         ) : !hasAnyEntry ? (
           <p className="px-2 py-12 text-center text-sm text-ink-soft">
-            No entries in the last 3 months.
+            {t('metrics.noEntriesMonths')}
           </p>
         ) : (
           <>
@@ -75,7 +76,7 @@ export function ByTypeChartSection() {
                           className="inline-block h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: habit?.color ?? '#999' }}
                         />
-                        <span className="font-medium">{habit?.name ?? 'Unknown'}</span>
+                        <span className="font-medium">{habit?.name ?? t('metrics.unknown')}</span>
                       </div>
                       <div className="text-ink-soft">
                         {String(indexValue)}: {value}

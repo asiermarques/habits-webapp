@@ -146,7 +146,7 @@ test.describe('Metrics page', () => {
       await page.goto('/metrics');
 
       await expect(
-        page.getByRole('heading', { name: 'Heatmaps (last 6 months)' }),
+        page.getByRole('heading', { name: 'Heatmaps' }),
       ).toBeVisible();
     });
 
@@ -181,9 +181,9 @@ test.describe('Metrics page', () => {
       // Each heatmap card shows "N entries" as a span next to the habit name.
       // Assert at least one such count is visible anywhere in the heatmap section.
       const heatmapSection = page.locator('section').filter({
-        has: page.getByRole('heading', { name: 'Heatmaps (last 6 months)' }),
+        has: page.getByRole('heading', { name: 'Heatmaps' }),
       });
-      await expect(heatmapSection.getByText(/\d+ entries/).first()).toBeVisible();
+      await expect(heatmapSection.getByText(/\d+ entries/i).first()).toBeVisible();
     });
 
     test('heatmap card shows the habit name as a heading', async ({ page }) => {

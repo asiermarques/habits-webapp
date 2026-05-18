@@ -51,8 +51,8 @@ test.describe('CSV export feature', () => {
 
     await page.getByRole('button', { name: /Export CSV/i }).click();
 
-    const fromValue = await page.getByLabel('From').inputValue();
-    const toValue = await page.getByLabel('To', { exact: true }).inputValue();
+    const fromValue = await page.getByLabel('From').getAttribute('data-value');
+    const toValue = await page.getByLabel('To', { exact: true }).getAttribute('data-value');
     expect(fromValue).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(toValue).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
@@ -86,8 +86,8 @@ test.describe('CSV export feature', () => {
 
     await page.getByRole('button', { name: /Export CSV/i }).click();
 
-    const from = await page.getByLabel('From').inputValue();
-    const to = await page.getByLabel('To', { exact: true }).inputValue();
+    const from = await page.getByLabel('From').getAttribute('data-value');
+    const to = await page.getByLabel('To', { exact: true }).getAttribute('data-value');
 
     const [download] = await Promise.all([
       page.waitForEvent('download'),

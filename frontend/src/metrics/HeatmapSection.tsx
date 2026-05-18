@@ -3,6 +3,7 @@ import type { HabitDefinition, HabitHeatmap } from '@habitsapp/shared';
 import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useHeatmapMetrics } from './queries';
+import { t } from '@/lib/i18n';
 
 const NEGATIVE_COLOR = '#ef4444';
 const EMPTY_CELL = 'oklch(0.93 0.012 75)';
@@ -28,18 +29,18 @@ export function HeatmapSection() {
   return (
     <section className="space-y-5">
       <div className="flex items-baseline gap-3">
-        <span className="eyebrow">last 6 months</span>
+        <span className="eyebrow">{t('metrics.heatmaps.eyebrow')}</span>
         <div className="h-px flex-1 bg-hairline" />
-        <h2 className="font-display text-2xl tracking-tight">Heatmaps</h2>
+        <h2 className="font-display text-2xl tracking-tight">{t('metrics.heatmaps')}</h2>
       </div>
 
       {isLoading || !heatmap ? (
         <p className="surface px-3 py-16 text-center text-sm text-ink-soft">
-          Loading…
+          {t('metrics.loading')}
         </p>
       ) : heatmap.habits.length === 0 ? (
         <p className="surface px-3 py-16 text-center text-sm text-ink-soft">
-          No habits configured yet.
+          {t('metrics.noHabits')}
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -96,7 +97,7 @@ function HabitHeatmapCard({ habit, definition, rangeStart }: CardProps) {
           <h3 className="font-display text-lg tracking-tight">{definition.name}</h3>
         </div>
         <span className="font-mono text-[11px] tracking-wider text-ink-faint">
-          {total} ENTRIES
+          {total} {t('metrics.entries')}
         </span>
       </div>
 
@@ -182,7 +183,7 @@ function Cell({ date, count, max, color, gridRow, gridColumn }: CellProps) {
     <div
       role="gridcell"
       title={`${date}: ${count}`}
-      aria-label={`${date}: ${count} ${count === 1 ? 'entry' : 'entries'}`}
+      aria-label={`${date}: ${count} ${t('metrics.entries').toLowerCase()}`}
       style={{
         gridRow,
         gridColumn,

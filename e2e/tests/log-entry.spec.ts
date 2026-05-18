@@ -186,14 +186,25 @@ test.describe('Log entry feature', () => {
       await page.getByRole('button', { name: 'Log entry' }).click();
 
       const today = localIso();
-      await expect(page.getByLabel('Date')).toHaveValue(today);
+      await expect(page.getByLabel('Date')).toHaveAttribute('data-value', today);
     });
 
     test('backfilling a past date is reflected in the entry card', async ({ page }) => {
       await openLogDialogForHabit(page, 'Rowing');
 
       const pastDate = '2026-01-15';
-      await page.getByLabel('Date').fill(pastDate);
+      // Open the picker and navigate back to January 2026, then click day 15.
+      await page.getByLabel('Date').click();
+      const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const target = { year: 2026, month: 0, day: 15 };
+      while (true) {
+        const header = await page.getByRole('dialog', { name: /choose date/i }).textContent();
+        if (header?.includes(`${MONTH_NAMES[target.month]} ${target.year}`)) break;
+        await page.getByRole('button', { name: /previous month/i }).click();
+      }
+      await page.getByRole('dialog', { name: /choose date/i })
+        .getByRole('button', { name: new RegExp(`^${target.day}$`) })
+        .click();
       await page.getByLabel('Duration (min)').fill('20');
       await page.getByRole('button', { name: 'Log entry' }).click();
 

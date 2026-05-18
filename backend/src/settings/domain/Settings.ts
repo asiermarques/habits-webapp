@@ -1,4 +1,5 @@
-import type { CurrencyCode } from '@habitsapp/shared';
+import type { CurrencyCode, LocaleCode } from '@habitsapp/shared';
 
-export type { CurrencyCode };
+export type { CurrencyCode, LocaleCode };
 export const DEFAULT_CURRENCY: CurrencyCode = 'EUR';
+export const DEFAULT_LOCALE: LocaleCode = 'en';
