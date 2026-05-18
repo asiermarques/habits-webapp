@@ -97,7 +97,40 @@ It must run **both backend and frontend workspace suites** and exit clean. If an
 
 Don't declare the task done while tests are red.
 
-### 2. Update the workflow files (if they exist for this task)
+### 2. Run the end-to-end suite and make it green
+
+```bash
+npm run test:e2e
+```
+
+This is **not optional**. The unit/integration suites pass with the new code; the e2e suite proves the feature still works through a real browser against a real backend, and — just as importantly — that **the rest of the app still works** after your changes.
+
+Vertical slices routinely break existing e2e flows in ways unit tests can't see:
+
+- A new section on Settings can push a previously-visible element below the fold, breaking a selector.
+- A new modal can intercept clicks that another test assumed went straight to the page.
+- A new query on a page can race with an existing assertion that didn't `await` it.
+- A new migration can leave the e2e DB in a state the global setup didn't expect.
+- A new i18n key added in one language but not another can crash a localized e2e run.
+
+When `npm run test:e2e` is red, do **not**:
+
+- Mark the failures as flaky and re-run.
+- Add `test.skip` / `test.fixme` to silence them.
+- Comment out assertions.
+- Declare the task done with a note like "e2e failures unrelated, will fix later."
+
+Instead, for **every failing e2e test**, decide which of these applies and act:
+
+1. **The test is asserting old behavior your change intentionally replaced.** Update the test to assert the new behavior. This is the most common case for UI work. The test stays — only the expectation changes.
+2. **The test is asserting general behavior your change accidentally broke.** That's a regression. Fix the production code; do not loosen the assertion.
+3. **The feature you just added is e2e-worthy and not yet covered.** Add a new e2e spec under `e2e/tests/` that exercises the user-visible flow end-to-end (the same one your task description demoed). Follow the patterns and helpers already in `e2e/helpers.ts` — don't introduce a parallel setup.
+
+Loop: run `npm run test:e2e`, fix or update, re-run. The task is not done until the full e2e suite exits clean — same bar as `npm test`.
+
+If a failure looks like genuine Playwright flake (timing, network jitter, headless quirks) and not a behavior change, **first** prove it with a targeted re-run (`npx playwright test <file> --repeat-each=3`) before adjusting anything. Don't paper over a real failure as flake.
+
+### 3. Update the workflow files (if they exist for this task)
 
 This project uses `.workflow/` for the upstream artifacts that birthed the task:
 
@@ -113,7 +146,7 @@ Before declaring the implementation complete:
 
 If none of these files exist (or the task is unrelated to any feature in `.workflow/`), say so in the summary and skip this step. Don't create workflow files defensively.
 
-### 3. Update the documentation
+### 4. Update the documentation
 
 The project's `CLAUDE.md` is explicit: when implementation diverges from the public docs, the docs must be updated. Walk each doc and update it as needed:
 
@@ -125,12 +158,13 @@ The project's `CLAUDE.md` is explicit: when implementation diverges from the pub
 
 If none of the docs need updating, say so explicitly in the final summary — don't quietly skip.
 
-### 4. Summary to the user
+### 5. Summary to the user
 
 Report back with:
 
 - A one-line description of what shipped
-- The test command and the result (pass count or "all suites pass")
+- The result of `npm test` (pass count or "all suites pass")
+- The result of `npm run test:e2e` (pass count, plus a list of e2e specs that were **added** or **updated** to reflect new behavior)
 - Which workflow files were updated (task file, plan, requisites) — or "no associated workflow artifact"
 - Which docs were updated (or "no doc changes needed because …")
 - Anything explicitly **not** implemented that the task description could have implied — give the user a chance to redirect
@@ -140,6 +174,8 @@ Report back with:
 
 - **No code before a failing test.** If you find yourself typing `export function` before there's a red test, stop and write the test.
 - **No skipping `npm test` at the end.** Even if the tests you wrote pass in isolation, the full suite catches the rest.
+- **No skipping `npm run test:e2e` at the end.** A green `npm test` is not enough — the e2e suite is the final gate. Run it, and if it's red, update broken specs to assert the new behavior (or add new specs for new features) until it's green. UI/UX work that doesn't end with green e2e is not done.
+- **No silencing e2e failures.** Don't `test.skip` / `test.fixme` / comment out assertions / loosen selectors to "make it pass." Either fix the production code (regression) or update the test to assert the new intended behavior (changed UX).
 - **No raw color classes in UI.** `bg-neutral-*`, `text-red-*`, `border-gray-*` etc. are banned. Use design tokens from `docs/DESIGN.md`.
 - **No `db.transaction()` outside Drizzle adapters.**
 - **No hand-rolled `req.body` checks in routes.** Always go through `validateBody` / `validateQuery` with a Zod schema.
@@ -154,3 +190,5 @@ Report back with:
 - Adding feature flags, backwards-compatibility shims, or "in case we need it later" parameters.
 - Catching and re-throwing errors with no added context. Let them propagate.
 - Adding new dependencies for problems the existing stack already solves.
+- Declaring the task done with green unit tests but unreviewed e2e. The e2e suite is part of "done," not a follow-up.
+- Updating an e2e test to expect *nothing* (`expect(...).toBeTruthy()` on something trivially true) instead of expecting the new behavior. If the change altered UX, the test should now positively assert the new UX, not just stop failing.
