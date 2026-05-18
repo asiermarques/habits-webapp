@@ -1,109 +1,32 @@
 # Architecture
 
-This document describes the **current implemented state** of the codebase.
+This document is the **agent harness** for working in the codebase: structure, conventions, tech tradeoffs, and reference files to copy when adding a slice. For *what* the app does, see [`PRODUCT.md`](./PRODUCT.md). For setup and run commands, see the [`README`](../README.md). For canonical vocabulary, see [`UBIQUITOUS_LANGUAGE.md`](./UBIQUITOUS_LANGUAGE.md).
 
-## Domain model
+## Stack
 
-Three core entities. **User** and **HabitDefinition** are implemented; **HabitEntry** lands in Slice 3.
-
-```
-User (1) ─────┐
-              ├──< HabitEntry >── (N) HabitDefinition
-              │                         │ type: workout | writing | custom
-              │                         │
-              │                         └─ has one type-specific payload:
-              │                            WorkoutData | WritingData | CustomData
-              │
-              └─ "active user" is selected one at a time on the client
-```
-
-### User — implemented
-
-| Field | Type | Notes |
+| Concern | Choice | Why |
 |---|---|---|
-| `id` | integer PK | autoincrement |
-| `name` | text | display name |
-| `isDefault` | boolean | exactly one user is the default at any time |
-| `createdAt` | text | timestamp |
+| Backend runtime | Node.js (ESM, `"type": "module"`) | Single language across stack |
+| HTTP framework | Express 4 | Minimal, well-known, easy to navigate |
+| Database | SQLite via `better-sqlite3` (WAL + `foreign_keys=ON`) | Zero-ops; single-instance app |
+| ORM / migrations | Drizzle + `drizzle-kit` | Typed schema, lightweight runtime |
+| Frontend | React 18 + Vite 5 | Fast dev loop; ESM end-to-end |
+| Styling | Tailwind v4 + shadcn primitives | v4 reads config from CSS (`@theme inline` in `index.css`) — **no `tailwind.config.js`** |
+| Data fetching | TanStack Query | Caching + global mutation-error toasts via `MutationCache` |
+| Validation | Zod via `validateBody` / `validateQuery` middleware | Single way to validate; never hand-roll `req.body` checks |
+| Shared types | `@habitsapp/shared` workspace | TS source consumed directly — no build step |
+| Tests | Vitest + supertest (backend), Vitest + RTL (frontend), Playwright (e2e) | Same runner across packages |
+| Charts | `@nivo` | Mocked in tests so assertions hit the chart model, not SVG |
+| Toasts | `sonner` | Mounted once in `App.tsx`; piped from `MutationCache.onError` |
 
-Invariants enforced in `users/domain/User.ts` (pure functions) and applied by `DrizzleUserRepository` inside transactions:
-- The first user created is automatically default
-- Setting a user as default un-sets all others
-- Deleting the default promotes the next-oldest user
-- The last remaining user cannot be deleted → HTTP 409
+## Non-obvious tradeoffs
 
-### HabitDefinition — implemented
-
-A per-user catalogue of habits. Each user manages their own list; users are the only globally-shared entity.
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | integer PK | autoincrement |
-| `userId` | integer FK → users.id | owner; cascade-deletes with the user |
-| `name` | text | display name |
-| `type` | enum | `workout` \| `writing` \| `custom` |
-| `positive` | boolean | direction; drives metric framing and heatmap color |
-| `color` | text | hex; auto-assigned at creation |
-| `createdAt` | text | timestamp |
-| `hasEntries` | boolean | response-only; computed via `hasEntriesForDefinition`. Drives the UI's type-lock and delete-block affordances |
-
-Invariants enforced in `habit-definitions/domain/HabitDefinition.ts` (pure functions) and applied by `DrizzleHabitDefinitionRepository` inside transactions:
-- Definitions are scoped per `userId`: `GET /habit-definitions?userId=` returns only that user's habits, and `POST` requires a `userId` in the body
-- Workout and Writing are **always** positive (`positive` is forced to true regardless of input)
-- Custom is the only type with a meaningful `positive` flag
-- Color is auto-assigned at creation:
-  - Negative → red (`#ef4444`)
-  - Positive → next color in the rotating 8-color palette, based on the count of existing positive habits **for that user**
-- Type cannot change once entries reference the definition → HTTP 409
-- Definitions with existing entries cannot be deleted → HTTP 409
-- The last two checks go through `EntryRepository.hasEntriesForDefinition(id)` (injected port); both rules are enforced as of Slice 3
-- Entry creation rejects with HTTP 403 if the supplied `habitDefinitionId` belongs to a different user than the entry's `userId`
-
-### HabitEntry — implemented
-
-A single logged occurrence of a habit by a specific user on a specific date. Multiple entries for the same `(user, definition, date)` are allowed.
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | integer PK | |
-| `habitDefinitionId` | integer FK | references HabitDefinition |
-| `userId` | integer FK | references User |
-| `date` | text | `d-m-Y` |
-| `createdAt` | text | timestamp |
-
-The data fields are split into a child table per archetype so each row only carries its valid columns:
-
-**WorkoutData** (`entry_workout_data`)
-| Field | Required |
-|---|---|
-| `duration` | yes |
-| `distance` | optional |
-| `weight` | optional |
-| `number` | optional (repetitions; UI label "Repetitions") |
-| `notes` | optional |
-
-**WritingData** (`entry_writing_data`)
-| Field | Required |
-|---|---|
-| `words` | yes |
-| `time` | optional |
-
-**CustomData** (`entry_custom_data`)
-| Field | Required |
-|---|---|
-| `number` | optional (UI label "Repetitions") |
-| `amount` | optional (UI label "Cost spent") |
-| `duration` | optional |
-
-(`name` and `positive` for Custom live on the parent HabitDefinition, not on the entry.)
-
-### Cross-cutting rules
-
-- **No goals or targets** — metrics are raw counts only
-- **No categories** — explicitly cut from MVP scope
-- **Habit definitions are global**, not per-user
-- **Active user is selected one at a time** on the client; persisted in `localStorage`; metrics are always single-user
-- **Periods**: week starts Monday; month = rolling 30 days; Metrics view = last 3 months
+- **Unauthenticated multi-user.** There is no auth layer. `userId` is sent by the client. Every multi-user query filters by `userId`; cross-user access is enforced in the http/domain layer (e.g. entry creation rejects with HTTP 403 if `habitDefinitionId` belongs to a different user).
+- **No build step for `shared/`.** Backend and frontend import `.ts` source directly through the workspace symlink, using Node 22's `--experimental-transform-types` at runtime in Docker. Don't add a `dist/`.
+- **Entries split by archetype.** Each archetype gets its own child table (`entry_workout_data`, `entry_writing_data`, `entry_custom_data`) joined to `entries`. Each row only carries columns valid for its type, at the cost of one join.
+- **Migrations run on startup.** `runMigrations()` is called from `createApp()`, so dev and prod pick up new migrations automatically.
+- **Seeding is on user creation, not startup.** `createUser()` calls `seedHabitDefinitionsForUser(userId)`. **Skipped when `NODE_ENV=test`** so backend tests can assert exact counts.
+- **`createApp()` factory.** Express setup is separated from the listener (`src/index.ts`) so `supertest` can hit the app without binding a port.
 
 ## Repository layout
 
@@ -112,35 +35,30 @@ npm workspaces monorepo: `backend/` (Express API), `frontend/` (React SPA), `sha
 ```
 habitsapp/
 ├── backend/src/
-│   ├── app.ts          createApp() factory
+│   ├── app.ts             createApp() factory (index.ts owns the listener)
 │   ├── shared/
-│   │   ├── domain/
-│   │   │   ├── errors/          DomainError subclasses
-│   │   │   └── value-objects/   IsoDate, Currency
-│   │   ├── db/                  Drizzle connection, schema, migrations
-│   │   └── middleware/          errorHandler, validateBody/validateQuery
-│   ├── users/          command slice
-│   ├── habit-definitions/  command slice
-│   ├── entries/        command slice
-│   ├── settings/       command slice
-│   ├── metrics/        read-model slice
-│   └── export/         read-model slice
+│   │   ├── domain/        DomainError subclasses, value objects (IsoDate, Currency)
+│   │   ├── db/            Drizzle connection, schema, migrations
+│   │   └── middleware/    errorHandler, validateBody / validateQuery
+│   ├── users/             command slice
+│   ├── habit-definitions/ command slice
+│   ├── entries/           command slice
+│   ├── settings/          command slice
+│   ├── metrics/           read-model slice
+│   └── export/            read-model slice
 ├── frontend/src/
-│   ├── pages/          Home, Metrics, Settings
-│   ├── components/     Header + shadcn ui/ primitives
-│   ├── users/          Slice 1
-│   ├── habits/         Slice 2
-│   ├── entries/        Slice 3
-│   ├── metrics/        Slices 4–5
-│   ├── export/         Slice 6
-│   ├── settings/       currency settings
-│   └── lib/            apiFetch, currency formatter, cn()
-├── shared/src/index.ts shared TypeScript types (no build step)
-├── e2e/                Playwright tests
+│   ├── pages/             Home, Metrics, Settings
+│   ├── components/        Header + shadcn ui/ primitives
+│   ├── users/ habits/ entries/ metrics/ export/ settings/
+│   └── lib/               apiFetch, currency formatter, i18n, locale, cn()
+├── shared/src/index.ts    shared types (no build step)
+├── e2e/                   Playwright tests
 └── playwright.config.ts
 ```
 
-### Backend slice patterns
+## Backend slice patterns
+
+The backend is split into **vertical slices**. Each slice owns its domain, persistence, and HTTP surface.
 
 **Command slices** (`users/`, `habit-definitions/`, `entries/`, `settings/`):
 
@@ -161,9 +79,35 @@ habitsapp/
 └── __tests__/
 ```
 
-### Reference implementations for new slices
+### Slice rules
 
-When adding a new command slice, use `habit-definitions/` as the template:
+- **Domain is pure** — no Drizzle imports; functions are synchronous and throw `DomainError` subclasses
+- **Infrastructure owns transactions** — `db.transaction(...)` lives only in Drizzle adapters
+- **Repositories return domain values or throw `DomainError`** — no `{ status: 'not_found' }` objects
+- **`http/` routes use `validateBody` / `validateQuery`** — never read `req.body` directly
+- **Cross-slice dependencies go through injected repository ports**, not direct file imports
+- **Router factories take their repo as a parameter** — composition happens in `app.ts`
+
+### DomainError → HTTP mapping
+
+All errors thrown from domain or repository code must extend `DomainError` (`backend/src/shared/domain/errors/DomainError.ts`). `domainErrorHandler` middleware translates them to HTTP responses of the form `{ "error": "<message>" }`. Anything else falls through to Express's default 500 handler.
+
+| Subclass | Status | Use for |
+|---|---|---|
+| `ValidationError` | 400 | Domain invariants beyond what Zod can express (e.g. forbidden state transitions) |
+| `ForbiddenError` | 403 | Cross-user access attempts (e.g. entry references another user's habit) |
+| `NotFoundError` | 404 | Repository lookups that miss |
+| `ConflictError` | 409 | State conflicts: deleting the last user, changing type after entries exist, deleting a habit with entries |
+
+Zod failures from `validateBody` / `validateQuery` short-circuit with their own 400 response before reaching the domain layer — don't try to mirror Zod errors with `ValidationError`.
+
+### `userId` trust boundary
+
+There is no auth, by design. The client sends `userId` in every multi-user request (query string for GETs, body for POST/PUT). The HTTP layer trusts it verbatim — **every repository method that touches a multi-user table takes `userId` and filters by it**. This is the only thing standing between users; treat it as a load-bearing invariant, not boilerplate to refactor away. Cross-user references (e.g. an entry pointing at another user's habit) are caught in the slice's domain/http layer and rejected with `ForbiddenError`.
+
+### Reference implementations
+
+When adding a new **command slice**, copy `habit-definitions/`:
 
 | Layer | Reference file |
 |---|---|
@@ -175,7 +119,7 @@ When adding a new command slice, use `habit-definitions/` as the template:
 | Zod schemas | `backend/src/habit-definitions/http/schemas.ts` |
 | integration tests | `backend/src/habit-definitions/__tests__/habit-definitions.test.ts` |
 
-When adding a new read-model slice, use `metrics/` as the template:
+When adding a new **read-model slice**, copy `metrics/`:
 
 | Layer | Reference file |
 |---|---|
@@ -183,125 +127,157 @@ When adding a new read-model slice, use `metrics/` as the template:
 | router factory | `backend/src/metrics/http/routes.ts` |
 | Zod schemas | `backend/src/metrics/http/schemas.ts` |
 
-## Backend
+## Domain model
 
-- **Runtime**: Node.js (ESM, `"type": "module"`)
-- **Framework**: Express 4 with `cors` and `express.json()`
-- **Pattern**: `createApp()` factory in `src/app.ts` separates the Express instance from the listener in `src/index.ts`. This makes the app testable via `supertest` without binding to a port.
-- **Endpoints implemented**:
-  - `GET /health` → `{ ok: true }`
-  - `GET /users`, `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
-  - `GET /habit-definitions?userId=`, `POST /habit-definitions` (body must include `userId`), `PUT /habit-definitions/:id`, `DELETE /habit-definitions/:id`
-  - `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT /entries/:id`, `DELETE /entries/:id`
-  - `GET /metrics/weekly?userId=&habitDefinitionId=&today=` — current week (Mon–Sun) bucketed per day with sparse `counts` per habit definition. `habitDefinitionId` and `today` are optional; `today` (YYYY-MM-DD) anchors the week and is used by tests. Counts sum repetitions: workout/custom entries contribute their `number` field (repetitions) when set, otherwise the entry contributes 1.
-  - `GET /metrics/by-type?userId=&today=` — repetition counts per archetype (workout/writing/custom) per week across the 13-week range (Mon–Sun aligned) that ends with the anchor week. Always returns 13 ordered weeks (oldest first), zero-filled. Same repetition-summing rule as `/metrics/weekly`.
-  - `GET /metrics/by-habit?userId=&today=` — same 13-week range as `by-type`, but broken down by individual habit definition instead of archetype. Each week contains a sparse `habits: HabitCount[]` array (only habits with entries appear). Uses the same repetition-summing rule.
-  - `GET /metrics/summary?userId=&today=` — last-30-day rollup for the score cards on `/metrics`: `mostRegistered`, `leastRegistered` (zero-entry habits can win and are returned with `count: 0`), `badHabitsTotalCost` (sum of `entry_custom_data.amount` across entries belonging to `positive=false` custom habits — only custom habits can be negative), and `activeHabitsCount` (distinct habits with at least one entry). Most/least use the same repetition-summing rule as the other endpoints.
-  - `GET /metrics/heatmap?userId=&today=` — for every habit definition, a sparse `{ date, count }[]` over the rolling 26-week range (~6 months, Mon–Sun aligned) that ends with the anchor week. `count` is the per-day sum of repetitions (same rule as the other metrics endpoints). Habits are ordered by their most recent in-range entry (newest first); habits with no in-range entries are listed last with an empty `days` array.
-  - `GET /export/csv?userId=&from=&to=` — returns a CSV (`text/csv; charset=utf-8`, `Content-Disposition: attachment`) with one row per entry inside the inclusive `[from, to]` window. Columns: `date, habit_name, type, positive, duration, distance, weight, amount, notes, words, time, number`. `duration` and `number` are shared across workout/custom; `amount` is custom-only. For each row only the columns that apply to its archetype are filled, the rest are empty. Text fields are RFC-4180 escaped.
-  - `GET /settings`, `PUT /settings/currency`, `PUT /settings/locale` — global singleton settings (key/value table). Currency defaults to `EUR`; `PUT /settings/currency` accepts `{ currency: <code> }` validated against `SUPPORTED_CURRENCIES` (`EUR`, `USD`, `GBP`, `JPY`, `CHF`, `CAD`, `AUD`). Locale defaults to `en`; `PUT /settings/locale` accepts `{ locale: <code> }` validated against `SUPPORTED_LOCALES` (`en`, `es`). `GET /settings` returns both: `{ currency, locale }`.
-- **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`), `FRONTEND_DIST_DIR` (production only — path to the compiled frontend assets, default `../../frontend/dist` relative to the compiled backend).
-- **Production static serving**: when `NODE_ENV=production`, `createApp()` registers `express.static(FRONTEND_DIST_DIR)` after all API routes, plus a catch-all `GET *` that serves `index.html` for React Router deep links. In all other environments this block is skipped and the API returns 404 for unknown routes.
+```
+User (1) ─< HabitDefinition (1) ─< HabitEntry >─ has one of:
+                                                   WorkoutData | WritingData | CustomData
+```
+
+### User
+Global; `id`, `name`, `isDefault`, `createdAt`. Invariants in `users/domain/User.ts`:
+- First user created is automatically default
+- Setting one default un-sets the others
+- Deleting the default promotes the next-oldest
+- The last user cannot be deleted (HTTP 409)
+
+### HabitDefinition
+Per-user; `id`, `userId` (FK, cascade), `name`, `type` (`workout` | `writing` | `custom`), `positive`, `color`, `createdAt`. Plus a response-only `hasEntries` computed via `EntryRepository.hasEntriesForDefinition` (drives the UI's type-lock and delete-block affordances). Invariants in `habit-definitions/domain/HabitDefinition.ts`:
+- Workout and Writing are forced to `positive: true`
+- Color is auto-assigned: negative → red (`#ef4444`); positive → next in a rotating 8-color palette, counted **per user**
+- Type cannot change once entries reference the definition (HTTP 409)
+- Cannot be deleted while entries exist (HTTP 409)
+
+### HabitEntry
+`id`, `habitDefinitionId` (FK, restrict), `userId` (FK, cascade), `date` (`YYYY-MM-DD`), `createdAt`. Cross-user `habitDefinitionId` is rejected with HTTP 403. Archetype data lives in child tables, each with `entry_id` PK FK→cascade:
+
+- `entry_workout_data` — `duration` (int, required), `distance` (real), `weight` (real), `number` (real, repetitions), `notes` (text)
+- `entry_writing_data` — `words` (int, required), `time` (int)
+- `entry_custom_data` — `number` (real, repetitions), `amount` (real, cost spent), `duration` (int)
+
+`name` and `positive` for Custom live on the parent `HabitDefinition`, not on the entry.
+
+### Adding a new archetype
+
+The three archetypes (`workout`, `writing`, `custom`) are spread across many files. To add a fourth, touch all of these in one slice — order matters because TypeScript will catch missed updates once the shared types change:
+
+1. **Shared types** — extend the `HabitType` union and the entry data discriminated union in `shared/src/index.ts`.
+2. **DB schema** — add a new `entry_<archetype>_data` table in `backend/src/shared/db/schema.ts` (PK FK→`entries.id` cascade), then `npm run db:generate` and review the SQL.
+3. **Domain** — update the `HabitDefinition` invariants in `habit-definitions/domain/HabitDefinition.ts` if the new archetype has rules like Workout/Writing being forced `positive: true`.
+4. **Entries http** — extend the discriminated `data` schema in `entries/http/schemas.ts` and the create/update branching in `entries/http/routes.ts`.
+5. **Entries infrastructure** — add the insert/update/delete branch in the Drizzle adapter so the child row is written inside the same `db.transaction(...)`.
+6. **Metrics** — apply the repetition-counting rule (sum `number` when set, otherwise count as 1, unless the archetype is count-as-1 like Writing) in `metrics/queries/*`.
+7. **CSV export** — add any new columns to the header and row mapping in `export/queries` and `export/http/routes.ts`. Unused columns stay blank for other archetypes.
+8. **Seed** — extend `backend/src/habit-definitions/seed.ts` if the archetype should ship as a default habit.
+9. **Frontend** — add a form variant in `frontend/src/entries/EntryForm.tsx`, render in `EntriesList`, and update `HabitForm` so users can pick the new type.
+10. **Tests** — integration test under `backend/src/entries/__tests__/` covering create + list + cross-user 403; frontend RTL test for the form variant.
+
+### AppSettings
+Singleton key/value table — currently `currency` (default `EUR`) and `locale` (default `en`).
+
+## HTTP surface
+
+| Endpoint | Notes |
+|---|---|
+| `GET /health` | `{ ok: true }` |
+| `GET/POST /users`, `PUT/DELETE /users/:id` | CRUD |
+| `GET /habit-definitions?userId=`, `POST /habit-definitions` (body requires `userId`), `PUT/DELETE /habit-definitions/:id` | per-user list |
+| `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT/DELETE /entries/:id` | cursor pagination ordered by `(date DESC, id DESC)`; cursor is base64url JSON `{date, id}`; default page size 15, max 100 |
+| `GET /metrics/weekly?userId=&habitDefinitionId=&today=` | current week (Mon–Sun), per-day sparse `counts` per habit; `today` (YYYY-MM-DD) is optional and used by tests |
+| `GET /metrics/by-type?userId=&today=` | 13-week range (Mon–Sun) ending at the anchor week; per-archetype repetitions; always 13 ordered weeks, zero-filled |
+| `GET /metrics/by-habit?userId=&today=` | same 13-week range; per-habit instead of per-archetype; sparse |
+| `GET /metrics/summary?userId=&today=` | last-30-day rollup: `mostRegistered`, `leastRegistered` (zero-entry habits can win), `badHabitsTotalCost` (sum of `entry_custom_data.amount` where the definition is `positive=false`), `activeHabitsCount` |
+| `GET /metrics/heatmap?userId=&today=` | rolling 26 weeks per habit; sparse `{date, count}[]`; habits ordered by most-recent in-range entry, empty habits last |
+| `GET /export/csv?userId=&from=&to=` | `text/csv; charset=utf-8`, attachment. Columns: `date, habit_name, type, positive, duration, distance, weight, amount, notes, words, time, number`. RFC-4180 escaped; unused archetype columns are blank |
+| `GET /settings`, `PUT /settings/currency`, `PUT /settings/locale` | global singleton; currency validated against `SUPPORTED_CURRENCIES`, locale against `SUPPORTED_LOCALES` (`en`, `es`) |
+
+**Repetition-counting rule** shared across all metrics endpoints: for Workout and Custom entries, sum the `number` field when set, otherwise count the entry as 1. Writing entries always count as 1.
+
+## Backend runtime
+
+- **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`), `FRONTEND_DIST_DIR` (production only)
+- **Production static serving**: when `NODE_ENV=production`, `createApp()` registers `express.static(FRONTEND_DIST_DIR)` *after* the API routes and a catch-all `GET *` that serves `index.html` for React Router deep links. In other environments unknown routes return 404
 - **Dev runner**: `tsx watch src/index.ts`
 
-### Database layer
+## Database layer
 
-- **Engine**: SQLite via `better-sqlite3`
-- **ORM**: Drizzle (`drizzle-orm/better-sqlite3`)
-- **Connection** (`src/shared/db/index.ts`):
-  - Opens the DB file from `DATABASE_URL`
-  - Applies `journal_mode = WAL` and `foreign_keys = ON`
-  - Exports a `db` instance with the schema attached
-- **Schema** (`src/shared/db/schema.ts`):
-  - `users` (`id`, `name`, `is_default`, `created_at`)
-  - `habit_definitions` (`id`, `user_id` FK→cascade, `name`, `type` enum: workout/writing/custom, `positive`, `color`, `created_at`)
-  - `entries` (`id`, `habit_definition_id` FK→restrict, `user_id` FK→cascade, `date` text, `created_at`)
-  - Type-specific child tables, each with `entry_id` PK FK→cascade:
-    - `entry_workout_data` — `duration` (int, required), `distance` (real), `weight` (real), `number` (real, repetitions), `notes` (text)
-    - `entry_writing_data` — `words` (int, required), `time` (int)
-    - `entry_custom_data` — `number` (real), `amount` (real), `duration` (int)
-  - `app_settings` (`key` PK text, `value` text) — singleton key/value store. Currently holds `currency=EUR` by default (migration 0006).
-- **Pagination**: `GET /entries` uses cursor pagination ordered by `(date DESC, id DESC)`. The cursor is `{ date, id }` of the last item in the previous page, base64url-encoded as JSON. Default page size is 20.
-- **Migrations**: managed by `drizzle-kit`, output to `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied automatically on backend startup via `runMigrations()` in `src/shared/db/migrate.ts`.
-- **Seeding**: triggered inside `createUser()` — every new user gets the eight example habits via `seedHabitDefinitionsForUser(userId)`. Skipped when `NODE_ENV=test` so backend tests can assert exact habit counts. No startup-time seeding.
+- Connection (`src/shared/db/index.ts`): opens `DATABASE_URL`, applies `journal_mode = WAL` and `foreign_keys = ON`
+- Schema (`src/shared/db/schema.ts`): `users`, `habit_definitions`, `entries`, the three archetype child tables, and `app_settings`
+- Migrations live in `backend/drizzle/`. Generate with `npm run db:generate`, apply with `npm run db:migrate`. Also applied on startup via `runMigrations()` in `src/shared/db/migrate.ts`
+- Seeding is **not** at startup — it's triggered in `createUser()` and skipped when `NODE_ENV=test`
 
 ## Frontend
 
-- **Build tool**: Vite 5 (port 5173)
-- **Plugins**: `@vitejs/plugin-react`, `@tailwindcss/vite`
-- **Path alias**: `@/*` → `src/*` (defined in both `tsconfig.json` and `vite.config.ts`)
+- Build: Vite 5 (port 5173); plugins `@vitejs/plugin-react`, `@tailwindcss/vite`
+- Path alias `@/*` → `src/*` (defined in both `tsconfig.json` and `vite.config.ts`)
 
-### Entry & providers
+### Provider stack
 
-The provider stack is split between `src/main.tsx` (transport-level) and `src/App.tsx` (app-level).
-
-`src/main.tsx` mounts (outer → inner):
+Transport-level in `src/main.tsx` (outer → inner):
 1. `React.StrictMode`
-2. `QueryClientProvider` — TanStack Query with `staleTime: 30s`, `refetchOnWindowFocus: false`, and a `MutationCache` whose `onError` surfaces failures as `sonner` toasts (global error notifications for every mutation)
+2. `QueryClientProvider` — TanStack Query with `staleTime: 30s`, `refetchOnWindowFocus: false`, and a `MutationCache` whose `onError` surfaces toasts via `sonner` (every mutation error becomes a toast for free)
 3. `BrowserRouter`
 4. `<App />`
 
-`src/App.tsx` adds (outer → inner):
-1. `UserProvider` — active user state + localStorage persistence
+App-level in `src/App.tsx` (outer → inner):
+1. `UserProvider` — active user state + `localStorage` persistence
 2. `LogEntryDialogProvider` — owns the shared Log/Edit modal opened from the header and the entries list
-3. `Header` + `Routes` + `<Toaster richColors position="top-center" />` (sonner mount point)
+3. `LocaleProvider` — calls `setActiveLocale()` and re-keys its subtree so static `t(...)` calls re-evaluate on locale change
+4. `Header` + `Routes` + `<Toaster richColors position="top-center" />`
 
 ### Routing
 
-`src/App.tsx` defines three routes:
-| Path | Component | Purpose |
-|---|---|---|
-| `/` | `Home` | Default; demonstrates API connectivity by calling `/health` |
-| `/metrics` | `Metrics` | Last-3-months bar chart by archetype + per-habit heatmaps + CSV export |
-| `/settings` | `Settings` | User management and habit definitions management (Slices 1–2) |
-
-### Header
-
-`src/components/Header.tsx` is sticky and mobile-friendly. The `UserSwitcher` is rendered on every route (it stays hidden until more than one user exists). Beyond that, it conditionally renders:
-- **On `/`**: app title on the left; on the right, the Log entry button (Lucide `PlusCircle`, disabled until there is an active user **and** at least one habit definition), Metrics icon (`BarChart3`), and Settings icon (`Settings`)
-- **On any other route**: back arrow that navigates home (Lucide `ArrowLeft`); the route-specific icons are hidden
-
-The Log button opens the shared Log/Edit modal via `useLogEntryDialog()`.
-
-### Styling
-
-- **Tailwind CSS v4** loaded via `@tailwindcss/vite` (no PostCSS config needed)
-- `src/index.css` contains:
-  - `@import "tailwindcss"`
-  - `:root` block with shadcn neutral color tokens (oklch values)
-  - `@theme inline` block mapping tokens to Tailwind color utilities
-  - `@layer base` for global resets (border, background, full-height layout, font)
-- **No `tailwind.config.js`** — v4 reads config from CSS
+| Path | Component |
+|---|---|
+| `/` | `Home` |
+| `/metrics` | `Metrics` |
+| `/settings` | `Settings` |
 
 ### UI primitives
 
-`src/components/ui/` contains shadcn components installed via `npx shadcn@latest add`:
-- `button.tsx`, `input.tsx`, `select.tsx`, `dialog.tsx`, `dropdown-menu.tsx`, `switch.tsx`, `label.tsx`, `alert-dialog.tsx`
-- `date-picker.tsx` — custom mobile-first calendar picker (Mon-first grid, month nav, min/max bounds, design-token styled). Used wherever a date is selected (entry form, CSV export). Not a shadcn install — built in-house to avoid pulling in Popover/Calendar deps
-- **Locale & i18n**: the active locale is driven by the `settings.locale` value (`en` | `es`) and applied by `LocaleProvider` in `App.tsx`, which calls `setActiveLocale()` in `src/lib/i18n.ts` and re-keys its subtree so static `t(...)` calls re-evaluate on change. UI strings go through `t(key)` against a flat-key dictionary in `src/lib/i18n.ts`. Date/number formatting goes through `getLocale()` in `src/lib/locale.ts`, which maps `en` → `en-US`, `es` → `es-ES`. `VITE_LOCALE` still works as a build-time override for tests. Never call `Intl.DateTimeFormat(undefined, …)` or `Date#toLocaleDateString(undefined, …)` — always pass `getLocale()`
-- Use `cn()` from `@/lib/utils` (clsx + tailwind-merge) to compose classes
+- shadcn components under `src/components/ui/`: `button`, `input`, `select`, `dialog`, `dropdown-menu`, `switch`, `label`, `alert-dialog`
+- `date-picker.tsx` is **in-house** (not a shadcn install) — built to avoid pulling Popover/Calendar deps. Used in the entry form and the CSV export
+- Compose classes with `cn()` from `@/lib/utils` (clsx + tailwind-merge)
 - Use the `radix-ui` umbrella package for primitives (Slot, Dialog, Select)
-- `sonner` provides toast notifications; the `<Toaster>` is mounted once in `App.tsx` and the `QueryClient`'s `MutationCache` pipes mutation errors into it
+
+### Styling
+
+- Tailwind v4 via `@tailwindcss/vite` — **no PostCSS, no `tailwind.config.js`**
+- `src/index.css` contains:
+  - `@import "tailwindcss"`
+  - `:root` with shadcn neutral tokens (oklch)
+  - `@theme inline` mapping tokens to Tailwind utilities
+  - `@layer base` resets (border, background, full-height layout, font)
+
+### i18n and locale
+
+- `settings.locale` (`en` | `es`) is the source of truth, applied by `LocaleProvider`
+- UI strings: `t(key)` against a flat-key dictionary in `src/lib/i18n.ts`
+- Date/number formatting: `getLocale()` in `src/lib/locale.ts` maps `en` → `en-US`, `es` → `es-ES`
+- **Never** call `Intl.DateTimeFormat(undefined, …)` or `Date#toLocaleDateString(undefined, …)` — always pass `getLocale()`
+- `VITE_LOCALE` works as a build-time override for tests
 
 ### API client
 
-`src/lib/api.ts` exports a single `apiFetch<T>(path, options)` function that:
-- Prefixes `path` with `import.meta.env.VITE_API_URL`
-- Defaults to `Content-Type: application/json`
-- Serializes the body with `JSON.stringify` when provided
-- Throws on non-2xx responses
-- Returns `response.json()` typed as `T`
+`src/lib/api.ts` exports `apiFetch<T>(path, options)` which prefixes `VITE_API_URL`, defaults `Content-Type: application/json`, serializes the body, throws on non-2xx, and returns `response.json()` typed as `T`.
+
+### Data fetching conventions
+
+Each frontend feature folder (`entries/`, `habits/`, `users/`, `metrics/`) owns a `queries.ts` that exports its TanStack Query hooks and a `<feature>Key(...)` builder. Conventions:
+
+- **Query keys** are tuples starting with the feature name, e.g. `['entries', userId, habitDefinitionId ?? 'all']`. Always include `userId` so switching active user invalidates cleanly.
+- **`enabled: userId > 0`** on any query that depends on the active user — `UserProvider` returns `0` before a user is selected.
+- **Mutation hooks invalidate by feature prefix**, not by exact key: `qc.invalidateQueries({ queryKey: ['entries'] })`. Anything that changes entries also invalidates `['metrics']` since metrics are derived. Follow the same pattern when adding new derived read models.
+- **No manual error toasts** — `MutationCache.onError` in `main.tsx` already surfaces every mutation error. Only catch in components for inline UI state.
+- **Cursor pagination** uses `useInfiniteQuery` with `getNextPageParam: (lastPage) => lastPage.nextCursor`; see `useEntriesInfinite` for the canonical example.
+
+### Active user
+
+`UserProvider` (`frontend/src/users/UserContext.tsx`) owns the active `userId` and persists it to `localStorage`. Components read it via the `useUserContext()` hook. Before the first user exists or is selected, the active id is `0` — feature queries gate on `userId > 0` rather than rendering empty states from a request that 400s.
 
 ## Shared types
 
-`shared/src/index.ts` is imported as `@habitsapp/shared` from both backend and frontend. It is the contract for every slice and groups types by feature area:
-- **Health**: `HealthResponse`
-- **Users**: `User`, `CreateUserBody`, `UpdateUserBody`
-- **Habit definitions**: `HabitType` (+ the `HABIT_TYPES` runtime list), `HabitDefinition`, `CreateHabitDefinitionBody`, `UpdateHabitDefinitionBody`
-- **Entries**: `Entry`, `EntryData` (the union of `WorkoutData` / `WritingData` / `CustomData`), `EntryCursor`, `EntriesPage`, `CreateEntryBody`, `UpdateEntryBody`
-- **Metrics**: `WeeklyMetrics` (+ `WeekDayMetrics`, `HabitCount`), `ByTypeMetrics` (+ `ByTypeWeek`), `HeatmapMetrics` (+ `HabitHeatmap`, `HeatmapDay`)
-
-The package has no build step — both apps consume the `.ts` source directly.
+`shared/src/index.ts` is imported as `@habitsapp/shared` from both packages. It is the contract for every slice and groups types by feature area (Health, Users, HabitDefinitions, Entries, Metrics). No build step — both apps consume `.ts` source directly.
 
 ## Communication
 
@@ -311,29 +287,20 @@ The package has no build step — both apps consume the `.ts` source directly.
 
 ## Testing
 
-- **Backend**: Vitest + supertest. Setup file at `src/test-setup.ts` runs migrations against an in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users`, `habit_definitions`, and the entries tables before each test. Tests live in `backend/src/**/__tests__/`. Covers `/health`, Users (CRUD + default-user invariants), Habit Definitions (CRUD, color rotation, positive-flag enforcement, seeding), Entries (CRUD per archetype, cursor pagination, type-lock/delete-block guards), `/metrics/weekly` (Mon–Sun range, per-day aggregation, habit filter, user isolation), `/metrics/by-type` + `/metrics/heatmap` (13/26-week range, archetype/per-habit aggregation, range edge exclusion, user isolation, recent-first ordering), and `/export/csv` (validation, CSV escaping, archetype column mapping, range filter, user isolation).
-- **Frontend**: Vitest + jsdom + `@testing-library/react` + `@testing-library/jest-dom`. Setup file at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (Radix UI primitives need it). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + UserProvider + LogEntryDialogProvider) used by component tests; tests that need routing add their own `MemoryRouter`. Tests live in `src/**/__tests__/`. Covers the `Header`, `apiFetch`, `HabitForm`, `EntryForm`, `WeekChartSection`, `ByTypeChartSection` (Nivo `ResponsiveBar` is mocked so tests assert on the chart model — keys, data, colors, and empty state), `HeatmapSection` (asserts the 26×7 grid, totals, and per-habit color choice), and `ExportSection` (URL params, error rendering, blob download trigger).
-- **E2E**: Playwright (`@playwright/test`) at the repo root. Config at `playwright.config.ts`. Tests live in `e2e/tests/`. Key characteristics:
-  - Uses a **separate SQLite database** (`backend/habits.e2e.db`) so it never touches the dev DB.
-  - `e2e/global-setup.ts` deletes the test DB files before the suite runs, ensuring a clean state.
-  - `playwright.config.ts` launches both servers via `webServer`: backend on port **4001** (env injected by Playwright: `DATABASE_URL=./habits.e2e.db`, `PORT=4001`, `CORS_ORIGIN=http://localhost:4173`) and frontend on port **4173** (reads `frontend/.env.e2e` for `VITE_API_URL=http://localhost:4001`).
-  - `workers: 1` / `fullyParallel: false` — enforced because tests share a single SQLite file.
-  - `NODE_ENV` is not set to `test`, so seeding runs as in production.
-  - Browser binary not included in the repo; install once with `npm run test:e2e:install`.
+- **Backend**: Vitest + supertest. `src/test-setup.ts` runs migrations against in-memory SQLite (`DATABASE_URL=:memory:` set in `vitest.config.ts`) and truncates `users`, `habit_definitions`, and the entries tables before each test. Tests live in `backend/src/**/__tests__/`
+- **Frontend**: Vitest + jsdom + `@testing-library/react`. Setup at `src/test/setup.ts` registers matchers, per-test cleanup, and a `ResizeObserver` polyfill (needed by Radix). `src/test/test-utils.tsx` exports a `TestProviders` wrapper (QueryClient + UserProvider + LogEntryDialogProvider); tests that need routing add their own `MemoryRouter`. Nivo `ResponsiveBar` is mocked so chart tests assert keys/data/colors instead of SVG output
+- **E2E**: Playwright at the repo root (`playwright.config.ts`, tests in `e2e/tests/`):
+  - Separate DB (`backend/habits.e2e.db`); `e2e/global-setup.ts` deletes it before each suite run
+  - Backend on port **4001** (`DATABASE_URL=./habits.e2e.db`, `CORS_ORIGIN=http://localhost:4173`), frontend on **4173** (reads `frontend/.env.e2e` for `VITE_API_URL=http://localhost:4001`)
+  - `workers: 1` / `fullyParallel: false` — enforced because tests share one SQLite file
+  - `NODE_ENV` is **not** `test`, so seeding runs as in production
+  - Install Chromium once with `npm run test:e2e:install`
 
-## Docker
+## Deployment
 
-The repo ships a multi-stage `Dockerfile` that produces a single production image (~266 MB). The frontend is compiled with `VITE_API_URL=""` so all API calls are relative to the same origin, and Express serves the static assets when `NODE_ENV=production`.
+The repo ships a multi-stage `Dockerfile` that produces a single production image (~266 MB). The frontend is compiled with `VITE_API_URL=""` so API calls are same-origin, and Express serves the static assets when `NODE_ENV=production`. SQLite persistence is a named Docker volume declared in `docker-compose.yml`.
 
-The shared package (`@habitsapp/shared`) has no separate build step — its TypeScript source is loaded at runtime via the npm workspace symlink using Node 22's `--experimental-transform-types` flag.
-
-SQLite persistence is handled by a named Docker volume declared in `docker-compose.yml`:
-
-```
-Dockerfile          # multi-stage: deps → frontend-build → backend-build → runtime
-docker-compose.yml  # service + named volume db-data mounted at /data
-.dockerignore       # excludes node_modules, dist, *.db, .env*, .git, etc.
-```
+The shared package is **not** built — its TypeScript is loaded at runtime via the workspace symlink using Node 22's `--experimental-transform-types`.
 
 ## CI
 
@@ -341,20 +308,9 @@ CircleCI (`.circleci/config.yml`) runs two sequential jobs on every push.
 
 ## Commands
 
+The canonical run/setup commands live in [`README.md`](../README.md). Drizzle-specific:
+
 ```bash
-npm install                  # install all workspaces
-npm run dev                  # both backend and frontend (via concurrently)
-npm run dev:backend          # backend only (port 3001)
-npm run dev:frontend         # frontend only (port 5173)
-npm test                     # all workspace tests (Vitest)
-npm run typecheck            # TypeScript type check (all workspaces, no emit)
-npm run build                # production builds
-npm run db:generate          # generate Drizzle migrations
-npm run db:migrate           # apply pending migrations
-npm run test:e2e:install     # download Playwright's Chromium binary (run once)
-npm run test:e2e             # run Playwright e2e suite
-npm run test:e2e:ui          # open Playwright UI mode
-docker compose up -d         # build image and start production container
-docker compose down          # stop container (volume kept)
-docker compose down -v       # stop container and delete volume (data lost)
+npm run db:generate    # generate migrations from schema changes
+npm run db:migrate     # apply pending migrations
 ```
