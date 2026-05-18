@@ -144,7 +144,7 @@ function UserRow({
         ) : (
           <>
             {!user.isDefault && (
-              <Button size="icon" variant="ghost" onClick={onSetDefault} aria-label={`${t('settings.users.setDefault')} ${user.name}`}>
+              <Button size="icon" variant="ghost" onClick={onSetDefault} aria-label={`${t('settings.users.setDefaultPrefix')} ${user.name} ${t('settings.users.setDefaultSuffix')}`}>
                 <Star className="h-4 w-4" />
               </Button>
             )}

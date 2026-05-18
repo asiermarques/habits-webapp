@@ -1,5 +1,4 @@
 import { SUPPORTED_CURRENCIES, type CurrencyCode } from '@habitsapp/shared';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -22,7 +21,6 @@ export function CurrencySection() {
         <p className="text-sm text-ink-soft">{t('settings.currency.description')}</p>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="settings-currency">{t('settings.currency.label')}</Label>
         <Select
           value={value}
           onValueChange={(v) => updateCurrency.mutate(v as CurrencyCode)}

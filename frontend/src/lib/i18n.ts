@@ -110,8 +110,10 @@ const en = {
   'settings.users.loading': 'Loading…',
   'settings.users.empty': 'No users yet. Add one above to get started.',
   'settings.users.default': 'Default',
-  'settings.users.setDefault': 'Set as default',
+  'settings.users.setDefaultPrefix': 'Set',
+  'settings.users.setDefaultSuffix': 'as default',
   'settings.users.rename': 'Rename',
+  'settings.habits.edit': 'Edit',
   'settings.users.saveName': 'Save name',
   'settings.users.cancelRename': 'Cancel rename',
   'settings.habits.title': 'Habit Definitions',
@@ -127,7 +129,7 @@ const en = {
   'settings.habits.editDescription': 'Update the habit name, type, or whether it is positive.',
   'settings.habits.newDescription': 'Add a new habit for',
   'settings.habits.addSubmit': 'Add habit',
-  'settings.habits.deleteTitle': 'Delete habit?',
+  'settings.habits.deleteTitle': 'Delete {name}?',
   'settings.habits.deleteBlocked': 'This habit has logged entries and cannot be deleted.',
   'settings.currency.title': 'Currency',
   'settings.currency.description': 'Used for displaying the "Cost spent" amount on bad habits. Shared across all users.',
@@ -249,8 +251,10 @@ const es: Record<keyof typeof en, string> = {
   'settings.users.loading': 'Cargando…',
   'settings.users.empty': 'Sin usuarios aún. Añade uno arriba para empezar.',
   'settings.users.default': 'Por defecto',
-  'settings.users.setDefault': 'Establecer como predeterminado',
+  'settings.users.setDefaultPrefix': 'Establecer',
+  'settings.users.setDefaultSuffix': 'como predeterminado',
   'settings.users.rename': 'Renombrar',
+  'settings.habits.edit': 'Editar',
   'settings.users.saveName': 'Guardar nombre',
   'settings.users.cancelRename': 'Cancelar renombre',
   'settings.habits.title': 'Definiciones de hábitos',
@@ -266,7 +270,7 @@ const es: Record<keyof typeof en, string> = {
   'settings.habits.editDescription': 'Actualiza el nombre, tipo o dirección del hábito.',
   'settings.habits.newDescription': 'Añadir un nuevo hábito para',
   'settings.habits.addSubmit': 'Añadir hábito',
-  'settings.habits.deleteTitle': '¿Eliminar hábito?',
+  'settings.habits.deleteTitle': '¿Eliminar {name}?',
   'settings.habits.deleteBlocked': 'Este hábito tiene entradas registradas y no puede eliminarse.',
   'settings.currency.title': 'Moneda',
   'settings.currency.description': 'Se usa para mostrar el "Coste" de los malos hábitos. Compartido entre todos los usuarios.',
@@ -306,6 +310,8 @@ export function getActiveLocale(): LocaleCode {
   return active;
 }
 
-export function t(key: TranslationKey): string {
-  return dictionaries[active][key] ?? key;
+export function t(key: TranslationKey, params?: Record<string, string>): string {
+  const raw = dictionaries[active][key] ?? key;
+  if (!params) return raw;
+  return Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, v), raw);
 }

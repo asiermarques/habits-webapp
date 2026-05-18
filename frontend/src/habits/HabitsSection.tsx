@@ -166,7 +166,7 @@ export function HabitsSection() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t('settings.habits.deleteTitle')}
+              {t('settings.habits.deleteTitle', { name: pendingDelete?.name ?? '' })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDelete?.hasEntries
@@ -218,7 +218,7 @@ function HabitRow({ habit, onEdit, onDelete, deletePending }: HabitRowProps) {
       </span>
 
       <div className="flex shrink-0 items-center gap-1">
-        <Button size="icon" variant="ghost" onClick={onEdit} aria-label={`${t('settings.users.rename')} ${habit.name}`}>
+        <Button size="icon" variant="ghost" onClick={onEdit} aria-label={`${t('settings.habits.edit')} ${habit.name}`}>
           <Pencil className="h-4 w-4" />
         </Button>
         <Button

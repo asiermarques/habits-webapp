@@ -1,5 +1,4 @@
 import { SUPPORTED_LOCALES, type LocaleCode } from '@habitsapp/shared';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -22,7 +21,6 @@ export function LocaleSection() {
         <p className="text-sm text-ink-soft">{t('settings.locale.description')}</p>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="settings-locale">{t('settings.locale.label')}</Label>
         <Select
           value={value}
           onValueChange={(v) => updateLocale.mutate(v as LocaleCode)}

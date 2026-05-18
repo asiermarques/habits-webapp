@@ -31,11 +31,9 @@ test.describe('Currency feature', () => {
       ).toBeVisible();
     });
 
-    test('shows a "Currency code" label for the dropdown', async ({ page }) => {
+    test('shows a currency combobox', async ({ page }) => {
       await page.goto('/settings');
 
-      // getByLabel doesn't resolve Radix button triggers via htmlFor; check text + combobox separately.
-      await expect(page.getByText('Currency code')).toBeVisible();
       await expect(page.getByRole('combobox', { name: 'Currency' })).toBeVisible();
     });
 
