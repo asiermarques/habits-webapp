@@ -26,4 +26,7 @@ export interface EntryRepository {
   update(id: number, patch: UpdateInput): Entry;
   delete(id: number): void;
   hasEntriesForDefinition(id: number): boolean;
+  // True when the definition already has any entry on the given date. Used by
+  // backup import to skip duplicates (merge semantics).
+  existsOnDate(habitDefinitionId: number, date: string): boolean;
 }

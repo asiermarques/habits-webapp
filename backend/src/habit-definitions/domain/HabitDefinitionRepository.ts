@@ -7,6 +7,9 @@ export type InsertInput = {
   name: string;
   type: HabitType;
   positive?: boolean;
+  // Optional explicit color, used when restoring a backup so the original
+  // palette survives the round-trip. When omitted, a color is auto-assigned.
+  color?: string;
 };
 
 export interface HabitDefinitionRepository {

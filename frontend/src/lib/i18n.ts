@@ -100,6 +100,15 @@ const en = {
   'export.exporting': 'Exporting…',
   'export.export': 'Export',
   'export.error': 'Request failed:',
+  'backup.title': 'Backup & restore',
+  'backup.description':
+    'Download all of this user’s habits and entries as a JSON file, or restore from one. Importing adds anything missing and skips duplicates.',
+  'backup.export': 'Export backup',
+  'backup.exporting': 'Exporting…',
+  'backup.import': 'Import backup',
+  'backup.importing': 'Importing…',
+  'backup.invalidFile': 'That file isn’t a valid backup.',
+  'backup.imported': 'Imported {habits} habits and {entries} entries ({skipped} skipped).',
 
   // Settings
   'settings.title': 'Settings',
@@ -255,6 +264,15 @@ const es: Record<keyof typeof en, string> = {
   'export.exporting': 'Exportando…',
   'export.export': 'Exportar',
   'export.error': 'La solicitud falló:',
+  'backup.title': 'Copia de seguridad',
+  'backup.description':
+    'Descarga todos los hábitos y entradas de este usuario como un archivo JSON, o restaura desde uno. La importación añade lo que falte y omite duplicados.',
+  'backup.export': 'Exportar copia',
+  'backup.exporting': 'Exportando…',
+  'backup.import': 'Importar copia',
+  'backup.importing': 'Importando…',
+  'backup.invalidFile': 'Ese archivo no es una copia válida.',
+  'backup.imported': 'Importados {habits} hábitos y {entries} entradas ({skipped} omitidas).',
 
   'settings.title': 'Ajustes',
   'settings.eyebrow': 'preferencias',

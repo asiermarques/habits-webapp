@@ -4,7 +4,7 @@ What the app does today. For *how* it's built, see [`ARCHITECTURE.md`](./ARCHITE
 
 ## Vision
 
-A mobile-first web app for tracking habits across multiple unauthenticated users on the same instance. Habits fall into three archetypes — **Workout**, **Writing**, **Custom** — and are logged with type-specific fields. The app surfaces top habits by frequency for the last week, last 30 days, and last 3 months, plus per-habit GitHub-style heatmaps and CSV export. No goals, no targets — only raw counts. The user draws their own conclusions.
+A mobile-first web app for tracking habits across multiple unauthenticated users on the same instance. Habits fall into three archetypes — **Workout**, **Writing**, **Custom** — and are logged with type-specific fields. The app surfaces top habits by frequency for the last week, last 30 days, and last 3 months, plus per-habit GitHub-style heatmaps, CSV export, and JSON backup/restore. No goals, no targets — only raw counts. The user draws their own conclusions.
 
 The visual identity is **"Quiet Discipline"** — an editorial, warm-paper aesthetic with a deep moss-green primary accent, ember red for negative signals, and a Fraunces serif paired with Geist sans. The full design system (tokens, typography, rules) lives in [`DESIGN.md`](./DESIGN.md) — read it before adding UI.
 
@@ -22,6 +22,7 @@ The visual identity is **"Quiet Discipline"** — an editorial, warm-paper aesth
 - **Currency**: curated dropdown (EUR, USD, GBP, JPY, CHF, CAD, AUD) — shared across all users, default EUR. Used for the "Cost spent" field on negative custom habits
 - **Habit definitions**: per-user list grouped by archetype. Add/edit/delete via modal. The "positive" toggle is only meaningful for Custom habits; the type selector is locked once entries exist
 - **Per-user seeding**: each new user starts with eight example habits (running, rowing, writing, reading, meat consuming, fast food consuming, cooking, social interactions), using rotating positive-palette colors (red is reserved for negative habits)
+- **Backup & restore**, collapsed behind a chevron toggle: **export** the active user's habit definitions and entries as a single JSON file, or **import** one back. Import merges — it adds definitions/entries that aren't already present and skips duplicates (a definition matching by name, an entry matching by habit + date), so re-importing the same file is safe. Colors round-trip; ids do not (entries reference their definition by name, so a backup restores cleanly into a different instance)
 
 ## Logging entries
 

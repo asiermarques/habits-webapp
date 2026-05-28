@@ -233,3 +233,39 @@ export type GateStatus = {
 export type GateLoginResponse = {
   authenticated: boolean;
 };
+
+// --- Backup (import/export of a single user's definitions + entries) ---
+
+export const BACKUP_VERSION = 1;
+
+// A habit definition as it appears in a backup bundle. Identified by `name`
+// (ids are instance-local and not portable across instances).
+export type BackupHabitDefinition = {
+  name: string;
+  type: HabitType;
+  positive: boolean;
+  color: string;
+};
+
+// An entry in a backup bundle, linked to its definition by `habitName`.
+export type BackupEntry = {
+  habitName: string;
+  date: string; // YYYY-MM-DD
+  data: EntryData;
+};
+
+// The full export/import payload for one user.
+export type BackupBundle = {
+  version: number;
+  exportedAt: string; // YYYY-MM-DD, informational
+  habitDefinitions: BackupHabitDefinition[];
+  entries: BackupEntry[];
+};
+
+// Summary returned by POST /api/backup/import (merge-skip semantics).
+export type ImportResult = {
+  habitsCreated: number;
+  habitsSkipped: number;
+  entriesCreated: number;
+  entriesSkipped: number;
+};

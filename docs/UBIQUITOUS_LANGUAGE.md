@@ -49,6 +49,7 @@ Canonical vocabulary for the habits app. Bootstrapped from `PRODUCT.md` and `ARC
 | ------------ | ----------------------------------------------------------------------------------------------------------- | -------------------- |
 | **Settings** | Global singleton key/value store shared across all **Users**.                                               | Config, preferences  |
 | **Currency** | The ISO code (`EUR`, `USD`, `GBP`, `JPY`, `CHF`, `CAD`, `AUD`) used to render **Cost Spent**. Default `EUR`. | Money unit           |
+| **Backup**   | A portable JSON bundle of one **User**'s **Habit Definitions** and **Entries**, used to export and re-import their data. **Entries** reference their **Habit Definition** by name. | Dump, snapshot, archive |
 
 ## Relationships
 

@@ -7,7 +7,7 @@ test.describe('Entries list feature', () => {
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
     page.setViewportSize(MOBILE_VIEWPORT);
-    await createUser(page, 'Log Entry Test User');
+    await createUser(page, 'Entries List Test User');
     await page.close();
   });
 

@@ -45,11 +45,12 @@ habitsapp/
 │   ├── entries/           command slice
 │   ├── settings/          command slice
 │   ├── metrics/           read-model slice
-│   └── export/            read-model slice
+│   ├── export/            read-model slice
+│   └── backup/            JSON export (read) + import orchestration over injected ports
 ├── frontend/src/
 │   ├── pages/             Home, Metrics, Settings
 │   ├── components/        Header + shadcn ui/ primitives
-│   ├── users/ habits/ entries/ metrics/ export/ settings/
+│   ├── users/ habits/ entries/ metrics/ export/ backup/ settings/
 │   └── lib/               apiFetch, currency formatter, i18n, locale, cn()
 ├── shared/src/index.ts    shared types (no build step)
 ├── e2e/                   Playwright tests
@@ -78,6 +79,8 @@ The backend is split into **vertical slices**. Each slice owns its domain, persi
 ├── http/        createXxxRouter() factory + Zod schemas
 └── __tests__/
 ```
+
+**`backup/`** is a hybrid: export is a read-model `queries/buildBackup.ts`, but import is a *write* that spans two slices. Rather than touch their tables, `importBackup.ts` orchestrates the injected `HabitDefinitionRepository` and `EntryRepository` ports (so per-type validation, ownership, and FK mapping are reused), and `createBackupRouter(habitRepo, entryRepo)` is wired in `app.ts`. The bundle is fully validated in `http/schemas.ts` before any write, so a bad row never half-applies; merge-skip then makes re-import idempotent. Import is intentionally non-atomic (one transaction per repo call).
 
 ### Slice rules
 
@@ -168,8 +171,9 @@ The three archetypes (`workout`, `writing`, `custom`) are spread across many fil
 5. **Entries infrastructure** — add the insert/update/delete branch in the Drizzle adapter so the child row is written inside the same `db.transaction(...)`.
 6. **Metrics** — apply the repetition-counting rule (sum `number` when set, otherwise count as 1, unless the archetype is count-as-1 like Writing) in `metrics/queries/*`.
 7. **CSV export** — add any new columns to the header and row mapping in `export/queries` and `export/http/routes.ts`. Unused columns stay blank for other archetypes.
-8. **Seed** — extend `backend/src/habit-definitions/seed.ts` if the archetype should ship as a default habit.
-9. **Frontend** — add a form variant in `frontend/src/entries/EntryForm.tsx`, render in `EntriesList`, and update `HabitForm` so users can pick the new type.
+8. **Backup** — `backup/queries/buildBackup.ts` reconstructs the new archetype's `data` from its child table, and `backup/http/schemas.ts` validates the new per-type invariants on import (it mirrors `entries/domain` rather than importing it).
+9. **Seed** — extend `backend/src/habit-definitions/seed.ts` if the archetype should ship as a default habit.
+10. **Frontend** — add a form variant in `frontend/src/entries/EntryForm.tsx`, render in `EntriesList`, and update `HabitForm` so users can pick the new type.
 10. **Tests** — integration test under `backend/src/entries/__tests__/` covering create + list + cross-user 403; frontend RTL test for the form variant.
 
 ### AppSettings
@@ -192,6 +196,8 @@ All data-bearing endpoints are mounted under an **`/api`** prefix (an `express.R
 | `GET /api/metrics/summary?userId=&today=` | last-30-day rollup: `mostRegistered`, `leastRegistered` (zero-entry habits can win), `badHabitsTotalCost` (sum of `entry_custom_data.amount` where the definition is `positive=false`), `activeHabitsCount` |
 | `GET /api/metrics/heatmap?userId=&today=` | rolling 26 weeks per habit; sparse `{date, count}[]`; habits ordered by most-recent in-range entry, empty habits last |
 | `GET /api/export/csv?userId=&from=&to=` | `text/csv; charset=utf-8`, attachment. Columns: `date, habit_name, type, positive, duration, distance, weight, amount, notes, words, time, number`. RFC-4180 escaped; unused archetype columns are blank |
+| `GET /api/backup?userId=` | `application/json`, attachment. Full round-trippable bundle `{ version, exportedAt, habitDefinitions[], entries[] }` for one user; entries reference their definition by `habitName` |
+| `POST /api/backup/import` | body `{ userId, version, habitDefinitions[], entries[] }` → `ImportResult { habitsCreated, habitsSkipped, entriesCreated, entriesSkipped }`. Merge-skip (definition by name, entry by habit+date); whole bundle is Zod-validated up-front, then applied via the habit-definition + entry repository ports |
 | `GET /api/settings`, `PUT /api/settings/currency`, `PUT /api/settings/locale` | global singleton; currency validated against `SUPPORTED_CURRENCIES`, locale against `SUPPORTED_LOCALES` (`en`, `es`) |
 
 The frontend never hardcodes the prefix per call: `apiFetch` prepends `/api` once (`frontend/src/lib/api.ts`), and feature hooks pass bare paths like `/entries`.

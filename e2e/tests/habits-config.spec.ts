@@ -57,7 +57,7 @@ test.describe('Habits configuration feature', () => {
     test('shows the "New" button to add a habit', async ({ page }) => {
       await page.goto('/settings');
 
-      await expect(page.getByRole('button', { name: 'New' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'New', exact: true })).toBeVisible();
     });
   });
 
@@ -134,7 +134,7 @@ test.describe('Habits configuration feature', () => {
     test('clicking "New" opens a dialog with title "New habit"', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       await expect(page.getByRole('dialog')).toBeVisible();
       await expect(
@@ -145,7 +145,7 @@ test.describe('Habits configuration feature', () => {
     test('dialog shows the add description mentioning the user name', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       // The description uses the active user's name, which may be any user in the shared DB.
       await expect(page.getByText(/Add a new habit for .+\./)).toBeVisible();
@@ -156,7 +156,7 @@ test.describe('Habits configuration feature', () => {
     }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       await expect(page.getByRole('dialog').getByLabel('Name')).toBeVisible();
       // The Type field is a Radix Select rendered as a combobox.
@@ -167,7 +167,7 @@ test.describe('Habits configuration feature', () => {
     test('type defaults to Custom', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       await expect(page.getByRole('combobox', { name: 'Type' })).toHaveText(/Custom/);
     });
@@ -175,7 +175,7 @@ test.describe('Habits configuration feature', () => {
     test('"Positive habit" toggle is visible when type is Custom', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       // Type defaults to Custom, so the toggle should be visible immediately.
       await expect(page.getByLabel('Positive habit')).toBeVisible();
@@ -184,7 +184,7 @@ test.describe('Habits configuration feature', () => {
     test('"Positive habit" toggle is hidden when type is Workout', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       // Switch to Workout type.
       await page.getByRole('combobox', { name: 'Type' }).click();
@@ -196,7 +196,7 @@ test.describe('Habits configuration feature', () => {
     test('"Positive habit" toggle is hidden when type is Writing', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       // Switch to Writing type.
       await page.getByRole('combobox', { name: 'Type' }).click();
@@ -208,7 +208,7 @@ test.describe('Habits configuration feature', () => {
     test('adding a custom habit places it in the CUSTOM section', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       await page.getByRole('dialog').getByLabel('Name').fill('My Custom Habit');
       // Type is already Custom by default.
@@ -231,7 +231,7 @@ test.describe('Habits configuration feature', () => {
     test('adding a workout habit places it in the WORKOUT section', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       await page.getByRole('dialog').getByLabel('Name').fill('My Workout Habit');
       await page.getByRole('combobox', { name: 'Type' }).click();
@@ -255,7 +255,7 @@ test.describe('Habits configuration feature', () => {
     test('clicking Cancel closes the dialog without adding a habit', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       await page.getByRole('dialog').getByLabel('Name').fill('Habit That Should Not Appear');
       await page.getByRole('button', { name: 'Cancel' }).click();
@@ -271,7 +271,7 @@ test.describe('Habits configuration feature', () => {
     test('toggle defaults to on (positive) for a new custom habit', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       // The switch should be checked (aria-checked="true") by default.
       await expect(page.getByRole('switch', { name: 'Positive habit' })).toHaveAttribute(
@@ -283,7 +283,7 @@ test.describe('Habits configuration feature', () => {
     test('turning the toggle off gives the saved habit a "negative" badge', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       await page.getByRole('dialog').getByLabel('Name').fill('My Negative Custom');
       // Toggle is on by default — click it to turn it off.
@@ -310,7 +310,7 @@ test.describe('Habits configuration feature', () => {
     test('a positive custom habit does not show a "negative" badge after save', async ({ page }) => {
       await page.goto('/settings');
 
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
 
       await page.getByRole('dialog').getByLabel('Name').fill('My Positive Custom');
       // Leave toggle at its default (on = positive).
@@ -374,7 +374,7 @@ test.describe('Habits configuration feature', () => {
       await page.goto('/settings');
 
       // Add a habit to edit so we do not permanently rename a seed habit.
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
       await page.getByRole('dialog').getByLabel('Name').fill('Habit To Rename');
       await page.getByRole('button', { name: 'Add habit' }).click();
       await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -421,7 +421,7 @@ test.describe('Habits configuration feature', () => {
     }) => {
       // Create a new workout habit via the UI.
       await page.goto('/settings');
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
       await page.getByRole('dialog').getByLabel('Name').fill('Locked Type Habit');
       await page.getByRole('combobox', { name: 'Type' }).click();
       await page.getByRole('option', { name: 'Workout' }).click();
@@ -460,7 +460,7 @@ test.describe('Habits configuration feature', () => {
       await page.goto('/settings');
 
       // Add a deletable habit.
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
       await page.getByRole('dialog').getByLabel('Name').fill('Deletable Habit');
       await page.getByRole('button', { name: 'Add habit' }).click();
       await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -489,7 +489,7 @@ test.describe('Habits configuration feature', () => {
       await page.goto('/settings');
 
       // Add a fresh habit with no entries.
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
       await page.getByRole('dialog').getByLabel('Name').fill('No Entries Habit');
       await page.getByRole('button', { name: 'Add habit' }).click();
       await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -513,7 +513,7 @@ test.describe('Habits configuration feature', () => {
       await page.goto('/settings');
 
       // Add a habit to delete.
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
       await page.getByRole('dialog').getByLabel('Name').fill('Habit To Delete');
       await page.getByRole('button', { name: 'Add habit' }).click();
       await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -532,7 +532,7 @@ test.describe('Habits configuration feature', () => {
       await page.goto('/settings');
 
       // Add a habit.
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
       await page.getByRole('dialog').getByLabel('Name').fill('Kept Habit');
       await page.getByRole('button', { name: 'Add habit' }).click();
       await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -560,7 +560,7 @@ test.describe('Habits configuration feature', () => {
     test('alert dialog shows block message and Delete button is disabled', async ({ page }) => {
       // Create a habit via the UI.
       await page.goto('/settings');
-      await page.getByRole('button', { name: 'New' }).click();
+      await page.getByRole('button', { name: 'New', exact: true }).click();
       await page.getByRole('dialog').getByLabel('Name').fill('Blocked Delete Habit');
       await page.getByRole('combobox', { name: 'Type' }).click();
       await page.getByRole('option', { name: 'Workout' }).click();

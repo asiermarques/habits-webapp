@@ -275,4 +275,13 @@ export class DrizzleEntryRepository implements EntryRepository {
       .get();
     return (result?.count ?? 0) > 0;
   }
+
+  existsOnDate(habitDefinitionId: number, date: string): boolean {
+    const result = db
+      .select({ count: sql<number>`count(*)` })
+      .from(entries)
+      .where(and(eq(entries.habitDefinitionId, habitDefinitionId), eq(entries.date, date)))
+      .get();
+    return (result?.count ?? 0) > 0;
+  }
 }

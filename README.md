@@ -14,6 +14,7 @@ This is also a **demo project used in talks and training sessions** about Claude
 - Home dashboard with a weekly chart and an infinite-scroll history of entries
 - Dedicated metrics view: stacked bar chart of entries per archetype over the last 13 weeks, plus per-habit heatmaps over the last 26 weeks (one column on mobile, two on tablet+)
 - CSV export for any user and date range
+- JSON backup & restore per user (export definitions + entries, re-import with merge/skip-duplicates)
 - Pre-seeded example habits to start logging immediately
 - Optional single-password instance gate for public deployments (off by default — see env vars below)
 

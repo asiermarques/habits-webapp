@@ -11,6 +11,7 @@ import { createEntriesRouter } from './entries/http/routes.js';
 import { DrizzleEntryRepository } from './entries/infrastructure/DrizzleEntryRepository.js';
 import { createMetricsRouter } from './metrics/http/routes.js';
 import { createExportRouter } from './export/http/routes.js';
+import { createBackupRouter } from './backup/http/routes.js';
 import { createSettingsRouter } from './settings/http/routes.js';
 import { DrizzleSettingsRepository } from './settings/infrastructure/DrizzleSettingsRepository.js';
 import { domainErrorHandler } from './shared/middleware/errorHandler.js';
@@ -58,6 +59,7 @@ export function createApp() {
   api.use('/entries', createEntriesRouter(entryRepo));
   api.use('/metrics', createMetricsRouter());
   api.use('/export', createExportRouter());
+  api.use('/backup', createBackupRouter(habitRepo, entryRepo));
   api.use('/settings', createSettingsRouter(new DrizzleSettingsRepository()));
   app.use('/api', api);
 

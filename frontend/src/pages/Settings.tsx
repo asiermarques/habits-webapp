@@ -2,6 +2,7 @@ import { UsersSection } from '@/users/UsersSection';
 import { HabitsSection } from '@/habits/HabitsSection';
 import { CurrencySection } from '@/settings/CurrencySection';
 import { LocaleSection } from '@/settings/LocaleSection';
+import { BackupSection } from '@/backup/BackupSection';
 import { GateSection } from '@/gate/GateSection';
 import { t } from '@/lib/i18n';
 
@@ -20,6 +21,7 @@ export function Settings() {
         <CurrencySection />
       </div>
       <HabitsSection />
+      <BackupSection />
       <GateSection />
     </div>
   );

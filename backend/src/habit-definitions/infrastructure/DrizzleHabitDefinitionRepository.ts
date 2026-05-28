@@ -68,8 +68,8 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
       if (!user) throw new UserNotFoundError(input.userId);
 
       const positive = resolvePositive(input.type, input.positive);
-      const positiveCount = this.countPositiveByUserInTx(input.userId, tx);
-      const color = pickColor(positive, positiveCount);
+      // Honor an explicit color (backup restore); otherwise auto-assign from the palette.
+      const color = input.color ?? pickColor(positive, this.countPositiveByUserInTx(input.userId, tx));
 
       const inserted = tx
         .insert(habitDefinitions)
