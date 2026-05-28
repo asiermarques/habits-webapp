@@ -177,11 +177,12 @@ Singleton key/value table — currently `currency` (default `EUR`) and `locale` 
 
 ## HTTP surface
 
-All data-bearing endpoints are mounted under an **`/api`** prefix (an `express.Router()` group in `app.ts`). This keeps them from colliding with the SPA's client-side routes (`/`, `/metrics`, `/settings`) — without it, a hard-reload/deep-link to `/settings` would hit the API and return JSON instead of the app shell. `GET /health` deliberately stays at the **root** (un-prefixed) so platform healthchecks have a stable path; it is also the natural carve-out for any future gate middleware (gate `/api/*`, leave `/health` open).
+All data-bearing endpoints are mounted under an **`/api`** prefix (an `express.Router()` group in `app.ts`). This keeps them from colliding with the SPA's client-side routes (`/`, `/metrics`, `/settings`) — without it, a hard-reload/deep-link to `/settings` would hit the API and return JSON instead of the app shell. `GET /health` deliberately stays at the **root** (un-prefixed) so platform healthchecks have a stable path; it is also the carve-out from the instance gate (the gate guards `/api/*`, leaving `/health` and the static SPA open).
 
 | Endpoint | Notes |
 |---|---|
 | `GET /health` | `{ ok: true }` — **root, not under `/api`** |
+| `GET /api/auth/status`, `POST /api/auth/login`, `POST /api/auth/logout` | instance password gate (see "Instance password gate"). **Open** — mounted before the gate middleware. `status` returns `{ gated, authenticated }`; `login` takes `{ password }` and sets a signed session cookie |
 | `GET/POST /api/users`, `PUT/DELETE /api/users/:id` | CRUD |
 | `GET /api/habit-definitions?userId=`, `POST /api/habit-definitions` (body requires `userId`), `PUT/DELETE /api/habit-definitions/:id` | per-user list |
 | `GET /api/entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /api/entries`, `PUT/DELETE /api/entries/:id` | cursor pagination ordered by `(date DESC, id DESC)`; cursor is base64url JSON `{date, id}`; default page size 15, max 100 |
@@ -199,8 +200,17 @@ The frontend never hardcodes the prefix per call: `apiFetch` prepends `/api` onc
 
 ## Backend runtime
 
-- **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`), `FRONTEND_DIST_DIR` (production only)
+- **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`), `FRONTEND_DIST_DIR` (production only), `GATE_PASSWORD` + `SESSION_SECRET` (instance gate, see below)
 - **Production static serving**: when `NODE_ENV=production`, `createApp()` registers `express.static(FRONTEND_DIST_DIR)` *after* the API routes and a catch-all `GET *` that serves `index.html` for React Router deep links. In other environments unknown routes return 404
+
+### Instance password gate
+
+An optional, instance-wide barrier for public deployments — **not** per-user auth. It lives in `backend/src/shared/auth/gate.ts` (a cross-cutting concern, not a slice: no domain/infrastructure layer, no DB table). `app.ts` reads the config once via `readGateConfig()`, mounts the open `/api/auth` router, then `createGateMiddleware()` on the rest of `/api`.
+
+- **Fail-open**: when `GATE_PASSWORD` is unset the gate is disabled and every endpoint behaves as before. This keeps local dev and tests config-free (no gate env vars in `test-setup`).
+- **Session**: on a correct password the server issues a signed, HTTP-only cookie (`habits_gate`) — `base64url(payload).HMAC-SHA256(payload, SESSION_SECRET)` with a ~24h expiry, `Secure` in production. The middleware verifies the signature (timing-safe) and expiry on every `/api` request; the password itself is compared via fixed-length SHA-256 digests so there's no length leak.
+- **Startup guard**: `assertGateConfig()` throws if `GATE_PASSWORD` is set without `SESSION_SECRET`, so a gated instance can never boot with unsigned (forgeable) sessions.
+- **Frontend**: `GateGuard` (`frontend/src/gate/`) reads `GET /api/auth/status` above the feature providers and shows the unlock screen when `gated && !authenticated`. A `401` from any call re-checks status (handled centrally in `main.tsx`), so an expired session bounces the user back to the unlock screen instead of a toast.
 - **Dev runner**: `tsx watch src/index.ts`
 
 ## Database layer

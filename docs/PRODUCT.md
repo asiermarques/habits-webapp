@@ -64,7 +64,8 @@ The button stays disabled until there is an active user **and** at least one hab
 
 Intentional constraints settled during scoping, not omissions:
 
-- **No login/registration** — users are just names on a list
+- **No login/registration** — users are just names on a list. The optional instance password gate (below) is a separate, instance-level concern and does not change this: there are still no accounts, and switching user remains a client-side pick
+- **Optional instance password gate** — for public deployments, a single shared password (set via the `GATE_PASSWORD` env var) puts the whole instance behind an unlock screen. It's an operational deployment safeguard, *not* per-user authentication — one password unlocks everything equally, with no usernames, accounts, or roles. Unlocking lasts ~24h per browser (a signed, HTTP-only cookie). When `GATE_PASSWORD` is unset (local dev, tests), the gate is disabled and the app behaves exactly as before
 - **No goals or targets** — metrics are raw counts only
 - **No categories** — cut from MVP scope to keep the data model lean
 - **No automated insights** — analysis is manual; the app surfaces numbers, not recommendations

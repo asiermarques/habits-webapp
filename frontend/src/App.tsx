@@ -7,9 +7,11 @@ import { Settings } from '@/pages/Settings';
 import { UserProvider } from '@/users/UserContext';
 import { LogEntryDialogProvider } from '@/entries/LogEntryDialog';
 import { LocaleProvider } from '@/settings/LocaleProvider';
+import { GateGuard } from '@/gate/GateGuard';
 
 export function App() {
   return (
+    <GateGuard>
     <LocaleProvider>
     <UserProvider>
       <LogEntryDialogProvider>
@@ -37,5 +39,6 @@ export function App() {
       </LogEntryDialogProvider>
     </UserProvider>
     </LocaleProvider>
+    </GateGuard>
   );
 }

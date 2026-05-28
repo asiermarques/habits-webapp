@@ -17,6 +17,9 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   // Feature hooks pass bare paths like '/entries'; the prefix is added here.
   const response = await fetch(`${API_URL}/api${path}`, {
     ...rest,
+    // Send/receive the session cookie cross-origin (Vite :5173 → API :3001).
+    // Without this the gate's Set-Cookie is dropped and /auth/status stays unauthenticated.
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...headers,

@@ -14,6 +14,12 @@ import { createExportRouter } from './export/http/routes.js';
 import { createSettingsRouter } from './settings/http/routes.js';
 import { DrizzleSettingsRepository } from './settings/infrastructure/DrizzleSettingsRepository.js';
 import { domainErrorHandler } from './shared/middleware/errorHandler.js';
+import {
+  assertGateConfig,
+  createAuthRouter,
+  createGateMiddleware,
+  readGateConfig,
+} from './shared/auth/gate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,7 +27,10 @@ export function createApp() {
   const app = express();
   const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
 
-  app.use(cors({ origin: corsOrigin }));
+  // credentials: true so the browser stores and sends the gate session cookie
+  // on cross-origin requests (frontend origin → API). Requires a concrete origin,
+  // not '*', which corsOrigin already is.
+  app.use(cors({ origin: corsOrigin, credentials: true }));
   app.use(express.json());
 
   app.get('/health', (_req, res) => {
@@ -36,7 +45,14 @@ export function createApp() {
   // All data-bearing endpoints live under /api so they never collide with the
   // SPA's client-side routes (e.g. GET /settings would otherwise return JSON
   // instead of the app shell on a deep-link/hard-reload in production).
+  const gateConfig = readGateConfig();
+  assertGateConfig(gateConfig);
+
   const api = express.Router();
+  // Auth endpoints unlock the gate, so they must stay reachable while locked —
+  // mount them before the gate middleware. Everything after it is protected.
+  api.use('/auth', createAuthRouter(gateConfig));
+  api.use(createGateMiddleware(gateConfig));
   api.use('/users', createUsersRouter(userRepo));
   api.use('/habit-definitions', createHabitDefinitionsRouter(habitRepo));
   api.use('/entries', createEntriesRouter(entryRepo));

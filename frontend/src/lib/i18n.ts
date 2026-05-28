@@ -134,6 +134,12 @@ const en = {
   'settings.currency.title': 'Currency',
   'settings.currency.description': 'Used for displaying the "Cost spent" amount on bad habits. Shared across all users.',
   'settings.currency.label': 'Currency code',
+  'settings.gate.title': 'Session',
+  'settings.gate.description': 'Lock this instance again on this device.',
+  'settings.gate.logout': 'Log out',
+  'settings.gate.logoutConfirmTitle': 'Log out?',
+  'settings.gate.logoutConfirmDescription':
+    "You'll need the instance password to unlock the app again on this device.",
   'settings.locale.title': 'Language',
   'settings.locale.description': 'Language and date formatting used across the app.',
   'settings.locale.label': 'Language',
@@ -155,6 +161,13 @@ const en = {
 
   // User switcher
   'userSwitcher.aria': 'Switch user',
+
+  // Instance password gate
+  'gate.eyebrow': 'private instance',
+  'gate.subtitle': 'This instance is private. Enter the password to continue.',
+  'gate.password': 'Password',
+  'gate.submit': 'Unlock',
+  'gate.error': 'Incorrect password. Try again.',
 } as const;
 
 const es: Record<keyof typeof en, string> = {
@@ -275,6 +288,12 @@ const es: Record<keyof typeof en, string> = {
   'settings.currency.title': 'Moneda',
   'settings.currency.description': 'Se usa para mostrar el "Coste" de los malos hábitos. Compartido entre todos los usuarios.',
   'settings.currency.label': 'Código de moneda',
+  'settings.gate.title': 'Sesión',
+  'settings.gate.description': 'Vuelve a bloquear esta instancia en este dispositivo.',
+  'settings.gate.logout': 'Cerrar sesión',
+  'settings.gate.logoutConfirmTitle': '¿Cerrar sesión?',
+  'settings.gate.logoutConfirmDescription':
+    'Necesitarás la contraseña de la instancia para volver a desbloquear la app en este dispositivo.',
   'settings.locale.title': 'Idioma',
   'settings.locale.description': 'Idioma y formato de fechas usados en toda la aplicación.',
   'settings.locale.label': 'Idioma',
@@ -293,6 +312,13 @@ const es: Record<keyof typeof en, string> = {
   'habitForm.positiveHelp': 'Desactivado = algo que quieres hacer menos (p.ej. comida rápida).',
 
   'userSwitcher.aria': 'Cambiar usuario',
+
+  // Instance password gate
+  'gate.eyebrow': 'instancia privada',
+  'gate.subtitle': 'Esta instancia es privada. Introduce la contraseña para continuar.',
+  'gate.password': 'Contraseña',
+  'gate.submit': 'Desbloquear',
+  'gate.error': 'Contraseña incorrecta. Inténtalo de nuevo.',
 };
 
 const dictionaries: Record<LocaleCode, Record<string, string>> = { en, es };

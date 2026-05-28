@@ -15,6 +15,7 @@ This is also a **demo project used in talks and training sessions** about Claude
 - Dedicated metrics view: stacked bar chart of entries per archetype over the last 13 weeks, plus per-habit heatmaps over the last 26 weeks (one column on mobile, two on tablet+)
 - CSV export for any user and date range
 - Pre-seeded example habits to start logging immediately
+- Optional single-password instance gate for public deployments (off by default — see env vars below)
 
 ### Documentation
 
@@ -116,6 +117,10 @@ Environment variables (all optional, have defaults):
 | `DATABASE_URL` | `./habits.db` | Path to the SQLite file |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
 | `FRONTEND_DIST_DIR` | `/app/frontend-dist` | Path to the compiled frontend assets |
+| `GATE_PASSWORD` | _(unset)_ | Shared password for the instance gate. **Unset = no gate (fully open).** Set it to require an unlock screen before the app |
+| `SESSION_SECRET` | _(unset)_ | Random secret used to sign the gate session cookie. **Required when `GATE_PASSWORD` is set** — the server refuses to start gated without it |
+
+> ⚠️ **Deploying publicly?** The instance has **no gate by default** — anyone with the URL can read and write every user's data. Before exposing a public URL (Railway, a free tier, etc.), set **both** `GATE_PASSWORD` and `SESSION_SECRET` in the host's dashboard. This adds a single shared-password unlock screen (a ~24h session per browser); it is a deployment safeguard, not per-user authentication. Both are set in the environment only — no rebuild, nothing committed to the repo.
 
 ### Testing
 

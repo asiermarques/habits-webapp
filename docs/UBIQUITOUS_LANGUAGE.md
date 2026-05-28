@@ -86,3 +86,4 @@ Canonical vocabulary for the habits app. Bootstrapped from `PRODUCT.md` and `ARC
 - **"Number"** (the DB column) means **Repetitions** in the domain. The column name is kept for legacy reasons; never expose "number" in UI or specs.
 - **"Year view"** on `/metrics` is actually 13 **Weeks** (~3 months). The name is a product-vocabulary holdover — call it **Year View** when referring to that screen section, but never imply it covers 12 months.
 - **"Month"** always means a rolling 30-day window in this app, never a calendar month.
+- **"Instance Gate"** (the optional shared-password unlock screen for public deployments) is **not** a **User**, an account, or a "login". It's a deployment-level barrier with no identity attached — one password unlocks the whole instance. Keep it out of the domain vocabulary: never model or name it as a **User** or "login", and don't let "log in" (the gate) bleed into the **User** concept (which has no authentication).

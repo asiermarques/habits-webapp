@@ -214,3 +214,22 @@ export type SummaryMetrics = {
   badHabitsTotalCost: number;
   activeHabitsCount: number;
 };
+
+// ---------------------------------------------------------------------------
+// Auth — instance password gate
+//
+// A deployment-level barrier, NOT per-User authentication. One shared password
+// (env-configured) unlocks the whole instance; when unconfigured the gate is
+// disabled (fail-open). See docs/PRODUCT.md "Product decisions worth knowing".
+
+// Returned by GET /api/auth/status so the client knows whether to show the
+// unlock screen. `authenticated` is always true when `gated` is false.
+export type GateStatus = {
+  gated: boolean;
+  authenticated: boolean;
+};
+
+// Returned by POST /api/auth/login.
+export type GateLoginResponse = {
+  authenticated: boolean;
+};
