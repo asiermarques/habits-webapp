@@ -14,7 +14,7 @@ import { BY_TYPE_WEEKS, byTypeRange, heatmapRange } from '../queries/date-utils.
 const app = createApp();
 
 async function createUser(name: string): Promise<User> {
-  const res = await request(app).post('/users').send({ name });
+  const res = await request(app).post('/api/users').send({ name });
   return res.body as User;
 }
 
@@ -23,7 +23,7 @@ async function createHabit(
   name: string,
   type: 'workout' | 'writing' | 'custom',
 ): Promise<HabitDefinition> {
-  const res = await request(app).post('/habit-definitions').send({ userId, name, type });
+  const res = await request(app).post('/api/habit-definitions').send({ userId, name, type });
   return res.body as HabitDefinition;
 }
 
@@ -35,7 +35,7 @@ async function logEntry(habit: HabitDefinition, userId: number, date: string) {
       ? { words: 100 }
       : { number: 1 };
   return request(app)
-    .post('/entries')
+    .post('/api/entries')
     .send({ habitDefinitionId: habit.id, userId, date, data });
 }
 
@@ -43,14 +43,14 @@ const ANCHOR = '2026-05-09'; // Saturday → current week 2026-05-04..2026-05-10
 
 describe('GET /metrics/by-type', () => {
   it('returns 400 when userId is missing', async () => {
-    const res = await request(app).get('/metrics/by-type');
+    const res = await request(app).get('/api/metrics/by-type');
     expect(res.status).toBe(400);
   });
 
   it('returns 400 when today is malformed', async () => {
     const user = await createUser('Alice');
     const res = await request(app).get(
-      `/metrics/by-type?userId=${user.id}&today=09-05-2026`,
+      `/api/metrics/by-type?userId=${user.id}&today=09-05-2026`,
     );
     expect(res.status).toBe(400);
   });
@@ -58,7 +58,7 @@ describe('GET /metrics/by-type', () => {
   it(`emits ${BY_TYPE_WEEKS} weeks (oldest first) covering the last 3 months`, async () => {
     const user = await createUser('Alice');
     const res = await request(app).get(
-      `/metrics/by-type?userId=${user.id}&today=${ANCHOR}`,
+      `/api/metrics/by-type?userId=${user.id}&today=${ANCHOR}`,
     );
     expect(res.status).toBe(200);
     const body = res.body as ByTypeMetrics;
@@ -90,7 +90,7 @@ describe('GET /metrics/by-type', () => {
     await logEntry(running, user.id, '2026-04-27');
 
     const body = (
-      await request(app).get(`/metrics/by-type?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/by-type?userId=${user.id}&today=${ANCHOR}`)
     ).body as ByTypeMetrics;
 
     const current = body.weeks.find((w) => w.weekStart === '2026-05-04')!;
@@ -118,7 +118,7 @@ describe('GET /metrics/by-type', () => {
     await logEntry(running, user.id, weekStarts[0]); // inside
 
     const body = (
-      await request(app).get(`/metrics/by-type?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/by-type?userId=${user.id}&today=${ANCHOR}`)
     ).body as ByTypeMetrics;
 
     const total = body.weeks.reduce(
@@ -139,10 +139,10 @@ describe('GET /metrics/by-type', () => {
     await logEntry(bobRunning, bob.id, '2026-05-05');
 
     const aliceBody = (
-      await request(app).get(`/metrics/by-type?userId=${alice.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/by-type?userId=${alice.id}&today=${ANCHOR}`)
     ).body as ByTypeMetrics;
     const bobBody = (
-      await request(app).get(`/metrics/by-type?userId=${bob.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/by-type?userId=${bob.id}&today=${ANCHOR}`)
     ).body as ByTypeMetrics;
 
     const aliceTotal = aliceBody.weeks.reduce((s, w) => s + w.workout, 0);
@@ -158,19 +158,19 @@ describe('GET /metrics/by-type', () => {
     const pushups = await createHabit(user.id, 'Pushups', 'custom');
     const journal = await createHabit(user.id, 'Journal', 'writing');
 
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id,
       userId: user.id,
       date: '2026-05-04',
       data: { duration: 30, number: 7 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: pushups.id,
       userId: user.id,
       date: '2026-05-05',
       data: { number: 50 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: journal.id,
       userId: user.id,
       date: '2026-05-06',
@@ -178,7 +178,7 @@ describe('GET /metrics/by-type', () => {
     });
 
     const body = (
-      await request(app).get(`/metrics/by-type?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/by-type?userId=${user.id}&today=${ANCHOR}`)
     ).body as ByTypeMetrics;
     const current = body.weeks.find((w) => w.weekStart === '2026-05-04')!;
     expect(current).toMatchObject({ workout: 7, writing: 1, custom: 50 });
@@ -187,7 +187,7 @@ describe('GET /metrics/by-type', () => {
 
 describe('GET /metrics/heatmap', () => {
   it('returns 400 when userId is missing', async () => {
-    const res = await request(app).get('/metrics/heatmap');
+    const res = await request(app).get('/api/metrics/heatmap');
     expect(res.status).toBe(400);
   });
 
@@ -202,7 +202,7 @@ describe('GET /metrics/heatmap', () => {
     await logEntry(writing, user.id, '2026-05-09');
 
     const body = (
-      await request(app).get(`/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
     ).body as HeatmapMetrics;
 
     const { rangeStart, rangeEnd } = heatmapRange(ANCHOR);
@@ -227,7 +227,7 @@ describe('GET /metrics/heatmap', () => {
     await logEntry(reading, user.id, '2026-05-04');
 
     const body = (
-      await request(app).get(`/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
     ).body as HeatmapMetrics;
 
     expect(body.habits).toHaveLength(2);
@@ -245,7 +245,7 @@ describe('GET /metrics/heatmap', () => {
     await logEntry(reading, user.id, rangeStart);
 
     const body = (
-      await request(app).get(`/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
     ).body as HeatmapMetrics;
 
     const total = body.habits.reduce(
@@ -266,10 +266,10 @@ describe('GET /metrics/heatmap', () => {
     await logEntry(bobReading, bob.id, '2026-05-05');
 
     const aliceBody = (
-      await request(app).get(`/metrics/heatmap?userId=${alice.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/heatmap?userId=${alice.id}&today=${ANCHOR}`)
     ).body as HeatmapMetrics;
     const bobBody = (
-      await request(app).get(`/metrics/heatmap?userId=${bob.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/heatmap?userId=${bob.id}&today=${ANCHOR}`)
     ).body as HeatmapMetrics;
 
     const aliceDays = aliceBody.habits.find((h) => h.habitDefinitionId === aliceReading.id)!.days;
@@ -284,19 +284,19 @@ describe('GET /metrics/heatmap', () => {
     const running = await createHabit(user.id, 'Running', 'workout');
     const pushups = await createHabit(user.id, 'Pushups', 'custom');
 
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id,
       userId: user.id,
       date: '2026-05-04',
       data: { duration: 30, number: 5 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id,
       userId: user.id,
       date: '2026-05-04',
       data: { duration: 20, number: 3 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: pushups.id,
       userId: user.id,
       date: '2026-05-04',
@@ -304,7 +304,7 @@ describe('GET /metrics/heatmap', () => {
     });
 
     const body = (
-      await request(app).get(`/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
     ).body as HeatmapMetrics;
 
     const runningEntry = body.habits.find((h) => h.habitDefinitionId === running.id)!;
@@ -325,7 +325,7 @@ describe('GET /metrics/heatmap', () => {
     await logEntry(newest, user.id, '2026-05-09');
 
     const body = (
-      await request(app).get(`/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/heatmap?userId=${user.id}&today=${ANCHOR}`)
     ).body as HeatmapMetrics;
 
     expect(body.habits.map((h) => h.habitDefinitionId)).toEqual([
@@ -339,7 +339,7 @@ describe('GET /metrics/heatmap', () => {
 
 describe('GET /metrics/by-habit', () => {
   it('returns 400 when userId is missing', async () => {
-    const res = await request(app).get('/metrics/by-habit');
+    const res = await request(app).get('/api/metrics/by-habit');
     expect(res.status).toBe(400);
   });
 
@@ -355,7 +355,7 @@ describe('GET /metrics/by-habit', () => {
     await logEntry(running, user.id, '2026-04-27');
 
     const body = (
-      await request(app).get(`/metrics/by-habit?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/by-habit?userId=${user.id}&today=${ANCHOR}`)
     ).body as ByHabitMetrics;
 
     const { rangeStart, rangeEnd } = byTypeRange(ANCHOR);
@@ -378,17 +378,17 @@ describe('GET /metrics/by-habit', () => {
     const user = await createUser('Alice');
     const pushups = await createHabit(user.id, 'Pushups', 'custom');
 
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: pushups.id, userId: user.id,
       date: '2026-05-04', data: { number: 30 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: pushups.id, userId: user.id,
       date: '2026-05-06', data: { number: 20 },
     });
 
     const body = (
-      await request(app).get(`/metrics/by-habit?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/by-habit?userId=${user.id}&today=${ANCHOR}`)
     ).body as ByHabitMetrics;
 
     const current = body.weeks.find((w) => w.weekStart === '2026-05-04')!;
@@ -406,10 +406,10 @@ describe('GET /metrics/by-habit', () => {
     await logEntry(bobRunning, bob.id, '2026-05-05');
 
     const aliceBody = (
-      await request(app).get(`/metrics/by-habit?userId=${alice.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/by-habit?userId=${alice.id}&today=${ANCHOR}`)
     ).body as ByHabitMetrics;
     const bobBody = (
-      await request(app).get(`/metrics/by-habit?userId=${bob.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/by-habit?userId=${bob.id}&today=${ANCHOR}`)
     ).body as ByHabitMetrics;
 
     const aliceTotal = aliceBody.weeks.reduce(
@@ -426,14 +426,14 @@ describe('GET /metrics/by-habit', () => {
 
 describe('GET /metrics/summary', () => {
   it('returns 400 when userId is missing', async () => {
-    const res = await request(app).get('/metrics/summary');
+    const res = await request(app).get('/api/metrics/summary');
     expect(res.status).toBe(400);
   });
 
   it('returns zero-valued cards when the user has no habits', async () => {
     const user = await createUser('Alice');
     const body = (
-      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
     ).body as SummaryMetrics;
     expect(body.mostRegistered).toBeNull();
     expect(body.leastRegistered).toBeNull();
@@ -445,37 +445,37 @@ describe('GET /metrics/summary', () => {
     const user = await createUser('Alice');
     const running = await createHabit(user.id, 'Running', 'workout');
     const journal = await createHabit(user.id, 'Journal', 'writing');
-    const fastFood = await request(app).post('/habit-definitions').send({
+    const fastFood = await request(app).post('/api/habit-definitions').send({
       userId: user.id, name: 'Fast food', type: 'custom', positive: false,
     });
     const fastFoodHabit = fastFood.body as HabitDefinition;
 
     // running: 10 + 5 = 15 reps inside window
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id, userId: user.id,
       date: '2026-05-04', data: { duration: 30, number: 10 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id, userId: user.id,
       date: '2026-05-09', data: { duration: 20, number: 5 },
     });
     // journal: 1 entry (writing has no `number`, counts as 1)
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: journal.id, userId: user.id,
       date: '2026-05-09', data: { words: 200 },
     });
     // fastFood: 12 + 8 = 20 in amount (cost) — drives the bad-habits total cost
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: fastFoodHabit.id, userId: user.id,
       date: '2026-05-05', data: { number: 3, amount: 12 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: fastFoodHabit.id, userId: user.id,
       date: '2026-05-06', data: { number: 2, amount: 8 },
     });
 
     const body = (
-      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
     ).body as SummaryMetrics;
 
     expect(body.mostRegistered).toEqual({ habitDefinitionId: running.id, count: 15 });
@@ -489,23 +489,23 @@ describe('GET /metrics/summary', () => {
   it('ignores cost from bad-habit entries that have no amount field', async () => {
     const user = await createUser('Alice');
     const fastFood = (
-      await request(app).post('/habit-definitions').send({
+      await request(app).post('/api/habit-definitions').send({
         userId: user.id, name: 'Fast food', type: 'custom', positive: false,
       })
     ).body as HabitDefinition;
 
     // No amount → contributes 0 cost despite logging the entry
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: fastFood.id, userId: user.id,
       date: '2026-05-05', data: { number: 5 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: fastFood.id, userId: user.id,
       date: '2026-05-06', data: { amount: 7 },
     });
 
     const body = (
-      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
     ).body as SummaryMetrics;
     expect(body.badHabitsTotalCost).toBe(7);
   });
@@ -514,13 +514,13 @@ describe('GET /metrics/summary', () => {
     const user = await createUser('Alice');
     const reading = await createHabit(user.id, 'Reading', 'custom'); // positive
 
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: reading.id, userId: user.id,
       date: '2026-05-05', data: { number: 1, amount: 99 },
     });
 
     const body = (
-      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
     ).body as SummaryMetrics;
     expect(body.badHabitsTotalCost).toBe(0);
   });
@@ -530,13 +530,13 @@ describe('GET /metrics/summary', () => {
     const running = await createHabit(user.id, 'Running', 'workout');
     const idle = await createHabit(user.id, 'Idle', 'custom');
 
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id, userId: user.id,
       date: '2026-05-09', data: { duration: 30 },
     });
 
     const body = (
-      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
     ).body as SummaryMetrics;
     expect(body.leastRegistered).toEqual({ habitDefinitionId: idle.id, count: 0 });
   });
@@ -546,17 +546,17 @@ describe('GET /metrics/summary', () => {
     const running = await createHabit(user.id, 'Running', 'workout');
 
     // Anchor is 2026-05-09; window starts 2026-04-10. 2026-04-09 is outside.
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id, userId: user.id,
       date: '2026-04-09', data: { duration: 30, number: 99 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id, userId: user.id,
       date: '2026-04-10', data: { duration: 30, number: 1 },
     });
 
     const body = (
-      await request(app).get(`/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
+      await request(app).get(`/api/metrics/summary?userId=${user.id}&today=${ANCHOR}`)
     ).body as SummaryMetrics;
     expect(body.mostRegistered).toEqual({ habitDefinitionId: running.id, count: 1 });
   });

@@ -6,7 +6,7 @@ import type { HabitDefinition, User } from '@habitsapp/shared';
 const app = createApp();
 
 async function createUser(name: string): Promise<User> {
-  const res = await request(app).post('/users').send({ name });
+  const res = await request(app).post('/api/users').send({ name });
   return res.body as User;
 }
 
@@ -17,7 +17,7 @@ async function createHabit(
     type: 'workout' | 'writing' | 'custom';
   },
 ): Promise<HabitDefinition> {
-  const res = await request(app).post('/habit-definitions').send({ userId, ...body });
+  const res = await request(app).post('/api/habit-definitions').send({ userId, ...body });
   return res.body as HabitDefinition;
 }
 
@@ -28,7 +28,7 @@ async function logEntry(
   data: Record<string, unknown>,
 ) {
   return request(app)
-    .post('/entries')
+    .post('/api/entries')
     .send({ habitDefinitionId, userId, date, data });
 }
 
@@ -72,14 +72,14 @@ function parseCsv(csv: string): string[][] {
 
 describe('GET /export/csv', () => {
   it('returns 400 when userId is missing', async () => {
-    const res = await request(app).get('/export/csv?from=2026-01-01&to=2026-01-31');
+    const res = await request(app).get('/api/export/csv?from=2026-01-01&to=2026-01-31');
     expect(res.status).toBe(400);
   });
 
   it('returns 400 when from is malformed', async () => {
     const user = await createUser('Alice');
     const res = await request(app).get(
-      `/export/csv?userId=${user.id}&from=01-01-2026&to=2026-01-31`,
+      `/api/export/csv?userId=${user.id}&from=01-01-2026&to=2026-01-31`,
     );
     expect(res.status).toBe(400);
   });
@@ -87,7 +87,7 @@ describe('GET /export/csv', () => {
   it('returns 400 when from is after to', async () => {
     const user = await createUser('Alice');
     const res = await request(app).get(
-      `/export/csv?userId=${user.id}&from=2026-02-01&to=2026-01-01`,
+      `/api/export/csv?userId=${user.id}&from=2026-02-01&to=2026-01-01`,
     );
     expect(res.status).toBe(400);
   });
@@ -95,7 +95,7 @@ describe('GET /export/csv', () => {
   it('returns a CSV header even when there are no rows', async () => {
     const user = await createUser('Alice');
     const res = await request(app).get(
-      `/export/csv?userId=${user.id}&from=2026-01-01&to=2026-01-31`,
+      `/api/export/csv?userId=${user.id}&from=2026-01-01&to=2026-01-31`,
     );
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/text\/csv/);
@@ -132,7 +132,7 @@ describe('GET /export/csv', () => {
     });
 
     const res = await request(app).get(
-      `/export/csv?userId=${user.id}&from=2026-01-01&to=2026-01-31`,
+      `/api/export/csv?userId=${user.id}&from=2026-01-01&to=2026-01-31`,
     );
     expect(res.status).toBe(200);
     const rows = parseCsv(res.text);
@@ -169,7 +169,7 @@ describe('GET /export/csv', () => {
     });
 
     const res = await request(app).get(
-      `/export/csv?userId=${user.id}&from=2026-02-01&to=2026-02-28`,
+      `/api/export/csv?userId=${user.id}&from=2026-02-01&to=2026-02-28`,
     );
     const rows = parseCsv(res.text);
     expect(rows[1][1]).toBe('Run, fast');
@@ -188,7 +188,7 @@ describe('GET /export/csv', () => {
     await logEntry(bobReading.id, bob.id, '2026-01-20', { number: 9 });
 
     const res = await request(app).get(
-      `/export/csv?userId=${alice.id}&from=2026-01-01&to=2026-01-31`,
+      `/api/export/csv?userId=${alice.id}&from=2026-01-01&to=2026-01-31`,
     );
     const rows = parseCsv(res.text);
     expect(rows).toHaveLength(2); // header + the single in-range Alice entry

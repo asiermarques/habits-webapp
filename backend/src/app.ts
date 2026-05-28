@@ -32,12 +32,18 @@ export function createApp() {
   const entryRepo = new DrizzleEntryRepository();
   const habitRepo = new DrizzleHabitDefinitionRepository(entryRepo);
   const userRepo = new DrizzleUserRepository({ seedFor: (id) => habitRepo.seedFor(id) });
-  app.use('/users', createUsersRouter(userRepo));
-  app.use('/habit-definitions', createHabitDefinitionsRouter(habitRepo));
-  app.use('/entries', createEntriesRouter(entryRepo));
-  app.use('/metrics', createMetricsRouter());
-  app.use('/export', createExportRouter());
-  app.use('/settings', createSettingsRouter(new DrizzleSettingsRepository()));
+
+  // All data-bearing endpoints live under /api so they never collide with the
+  // SPA's client-side routes (e.g. GET /settings would otherwise return JSON
+  // instead of the app shell on a deep-link/hard-reload in production).
+  const api = express.Router();
+  api.use('/users', createUsersRouter(userRepo));
+  api.use('/habit-definitions', createHabitDefinitionsRouter(habitRepo));
+  api.use('/entries', createEntriesRouter(entryRepo));
+  api.use('/metrics', createMetricsRouter());
+  api.use('/export', createExportRouter());
+  api.use('/settings', createSettingsRouter(new DrizzleSettingsRepository()));
+  app.use('/api', api);
 
   if (process.env.NODE_ENV === 'production') {
     const frontendDist =

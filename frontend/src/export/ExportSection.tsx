@@ -44,7 +44,7 @@ export function ExportSection() {
         from,
         to,
       });
-      const res = await fetch(`${API_URL}/export/csv?${params.toString()}`);
+      const res = await fetch(`${API_URL}/api/export/csv?${params.toString()}`);
       if (!res.ok) {
         let message = `${t('export.error')} ${res.status}`;
         try {

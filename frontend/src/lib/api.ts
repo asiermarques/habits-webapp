@@ -13,7 +13,9 @@ export class ApiError extends Error {
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, ...rest } = options;
-  const response = await fetch(`${API_URL}${path}`, {
+  // All backend endpoints are mounted under /api (see backend/src/app.ts).
+  // Feature hooks pass bare paths like '/entries'; the prefix is added here.
+  const response = await fetch(`${API_URL}/api${path}`, {
     ...rest,
     headers: {
       'Content-Type': 'application/json',

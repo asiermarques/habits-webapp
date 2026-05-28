@@ -32,7 +32,7 @@ export async function selectCurrency(page: Page, code: string) {
 }
 
 export async function resetCurrencyToEur(page: Page) {
-  await page.request.put(`${BACKEND_URL}/settings/currency`, {
+  await page.request.put(`${BACKEND_URL}/api/settings/currency`, {
     data: { currency: 'EUR' },
   });
 }

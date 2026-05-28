@@ -6,17 +6,17 @@ import type { Entry, HabitDefinition, User, WorkoutData } from '@habitsapp/share
 const app = createApp();
 
 async function seedUserAndHabits() {
-  const userRes = await request(app).post('/users').send({ name: 'Alice' });
+  const userRes = await request(app).post('/api/users').send({ name: 'Alice' });
   const user = userRes.body as User;
 
   const workoutRes = await request(app)
-    .post('/habit-definitions')
+    .post('/api/habit-definitions')
     .send({ userId: user.id, name: 'Running', type: 'workout' });
   const writingRes = await request(app)
-    .post('/habit-definitions')
+    .post('/api/habit-definitions')
     .send({ userId: user.id, name: 'Journal', type: 'writing' });
   const customRes = await request(app)
-    .post('/habit-definitions')
+    .post('/api/habit-definitions')
     .send({ userId: user.id, name: 'Reading', type: 'custom', positive: true });
 
   return {
@@ -28,7 +28,7 @@ async function seedUserAndHabits() {
 }
 
 async function logEntry(body: object) {
-  const res = await request(app).post('/entries').send(body);
+  const res = await request(app).post('/api/entries').send(body);
   return res;
 }
 
@@ -122,7 +122,7 @@ describe('Entries API', () => {
 
   describe('GET /entries', () => {
     it('requires userId', async () => {
-      const res = await request(app).get('/entries');
+      const res = await request(app).get('/api/entries');
       expect(res.status).toBe(400);
     });
 
@@ -132,7 +132,7 @@ describe('Entries API', () => {
       await logEntry({ habitDefinitionId: workout.id, userId: user.id, date: '2026-05-09', data: { duration: 20 } });
       await logEntry({ habitDefinitionId: workout.id, userId: user.id, date: '2026-05-09', data: { duration: 30 } });
 
-      const res = await request(app).get(`/entries?userId=${user.id}`);
+      const res = await request(app).get(`/api/entries?userId=${user.id}`);
       expect(res.status).toBe(200);
       const items = res.body.items as Entry[];
       expect(items.map((e) => (e.data as WorkoutData).duration)).toEqual([30, 20, 10]);
@@ -143,7 +143,7 @@ describe('Entries API', () => {
       await logEntry({ habitDefinitionId: workout.id, userId: user.id, date: '2026-05-09', data: { duration: 20 } });
       await logEntry({ habitDefinitionId: writing.id, userId: user.id, date: '2026-05-09', data: { words: 300 } });
 
-      const res = await request(app).get(`/entries?userId=${user.id}&habitDefinitionId=${writing.id}`);
+      const res = await request(app).get(`/api/entries?userId=${user.id}&habitDefinitionId=${writing.id}`);
       expect(res.body.items).toHaveLength(1);
       expect(res.body.items[0].type).toBe('writing');
     });
@@ -159,14 +159,14 @@ describe('Entries API', () => {
         });
       }
 
-      const first = await request(app).get(`/entries?userId=${user.id}&limit=2`);
+      const first = await request(app).get(`/api/entries?userId=${user.id}&limit=2`);
       expect(first.body.items).toHaveLength(2);
       expect(first.body.nextCursor).toBeTruthy();
       expect(first.body.items[0].data.duration).toBe(5);
       expect(first.body.items[1].data.duration).toBe(4);
 
       const second = await request(app).get(
-        `/entries?userId=${user.id}&limit=2&cursor=${encodeURIComponent(first.body.nextCursor)}`,
+        `/api/entries?userId=${user.id}&limit=2&cursor=${encodeURIComponent(first.body.nextCursor)}`,
       );
       expect(second.body.items).toHaveLength(2);
       expect(second.body.items[0].data.duration).toBe(3);
@@ -185,7 +185,7 @@ describe('Entries API', () => {
       });
 
       const res = await request(app)
-        .put(`/entries/${created.body.id}`)
+        .put(`/api/entries/${created.body.id}`)
         .send({ date: '2026-05-08', data: { duration: 45, notes: 'Long run' } });
 
       expect(res.status).toBe(200);
@@ -195,7 +195,7 @@ describe('Entries API', () => {
     });
 
     it('returns 404 for an unknown id', async () => {
-      const res = await request(app).put('/entries/9999').send({ date: '2026-05-09' });
+      const res = await request(app).put('/api/entries/9999').send({ date: '2026-05-09' });
       expect(res.status).toBe(404);
     });
   });
@@ -210,15 +210,15 @@ describe('Entries API', () => {
         data: { duration: 20 },
       });
 
-      const res = await request(app).delete(`/entries/${created.body.id}`);
+      const res = await request(app).delete(`/api/entries/${created.body.id}`);
       expect(res.status).toBe(204);
 
-      const list = await request(app).get(`/entries?userId=${user.id}`);
+      const list = await request(app).get(`/api/entries?userId=${user.id}`);
       expect(list.body.items).toEqual([]);
     });
 
     it('returns 404 for an unknown id', async () => {
-      const res = await request(app).delete('/entries/9999');
+      const res = await request(app).delete('/api/entries/9999');
       expect(res.status).toBe(404);
     });
   });
@@ -236,7 +236,7 @@ describe('Habit definition entry-protection (now wired)', () => {
       data: { duration: 20 },
     });
 
-    const res = await request(app).delete(`/habit-definitions/${workout.id}`);
+    const res = await request(app).delete(`/api/habit-definitions/${workout.id}`);
     expect(res.status).toBe(409);
   });
 
@@ -249,7 +249,7 @@ describe('Habit definition entry-protection (now wired)', () => {
       data: { duration: 20 },
     });
 
-    const res = await request(app).put(`/habit-definitions/${workout.id}`).send({ type: 'custom' });
+    const res = await request(app).put(`/api/habit-definitions/${workout.id}`).send({ type: 'custom' });
     expect(res.status).toBe(409);
   });
 
@@ -262,7 +262,7 @@ describe('Habit definition entry-protection (now wired)', () => {
       data: { duration: 20 },
     });
 
-    const res = await request(app).get(`/habit-definitions?userId=${user.id}`);
+    const res = await request(app).get(`/api/habit-definitions?userId=${user.id}`);
     expect(res.status).toBe(200);
     const list = res.body as HabitDefinition[];
     const workoutDef = list.find((d) => d.id === workout.id);

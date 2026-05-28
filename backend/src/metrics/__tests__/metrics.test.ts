@@ -7,7 +7,7 @@ import { currentWeekRange } from '../queries/date-utils.js';
 const app = createApp();
 
 async function createUser(name: string): Promise<User> {
-  const res = await request(app).post('/users').send({ name });
+  const res = await request(app).post('/api/users').send({ name });
   return res.body as User;
 }
 
@@ -16,7 +16,7 @@ async function createHabit(
   name: string,
   type: 'workout' | 'writing' | 'custom',
 ): Promise<HabitDefinition> {
-  const res = await request(app).post('/habit-definitions').send({ userId, name, type });
+  const res = await request(app).post('/api/habit-definitions').send({ userId, name, type });
   return res.body as HabitDefinition;
 }
 
@@ -28,7 +28,7 @@ async function logEntry(habit: HabitDefinition, userId: number, date: string) {
       ? { words: 100 }
       : { number: 1 };
   return request(app)
-    .post('/entries')
+    .post('/api/entries')
     .send({ habitDefinitionId: habit.id, userId, date, data });
 }
 
@@ -41,21 +41,21 @@ async function getWeekly(
   if (habitDefinitionId !== undefined) {
     params.set('habitDefinitionId', String(habitDefinitionId));
   }
-  return request(app).get(`/metrics/weekly?${params.toString()}`);
+  return request(app).get(`/api/metrics/weekly?${params.toString()}`);
 }
 
 const ANCHOR = '2026-05-09'; // Saturday → week 2026-05-04 (Mon) .. 2026-05-10 (Sun)
 
 describe('GET /metrics/weekly', () => {
   it('returns 400 when userId is missing', async () => {
-    const res = await request(app).get('/metrics/weekly');
+    const res = await request(app).get('/api/metrics/weekly');
     expect(res.status).toBe(400);
   });
 
   it('returns 400 when today is malformed', async () => {
     const user = await createUser('Alice');
     const res = await request(app).get(
-      `/metrics/weekly?userId=${user.id}&today=09-05-2026`,
+      `/api/metrics/weekly?userId=${user.id}&today=09-05-2026`,
     );
     expect(res.status).toBe(400);
   });
@@ -149,27 +149,27 @@ describe('GET /metrics/weekly', () => {
     const pushups = await createHabit(user.id, 'Pushups', 'custom');
     const journal = await createHabit(user.id, 'Journal', 'writing');
 
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id,
       userId: user.id,
       date: '2026-05-04',
       data: { duration: 30, number: 10 },
     });
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: pushups.id,
       userId: user.id,
       date: '2026-05-04',
       data: { number: 25 },
     });
     // Writing has no repetitions field → still counts as 1.
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: journal.id,
       userId: user.id,
       date: '2026-05-04',
       data: { words: 200 },
     });
     // Workout with no `number` falls back to 1.
-    await request(app).post('/entries').send({
+    await request(app).post('/api/entries').send({
       habitDefinitionId: running.id,
       userId: user.id,
       date: '2026-05-05',

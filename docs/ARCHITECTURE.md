@@ -177,19 +177,23 @@ Singleton key/value table — currently `currency` (default `EUR`) and `locale` 
 
 ## HTTP surface
 
+All data-bearing endpoints are mounted under an **`/api`** prefix (an `express.Router()` group in `app.ts`). This keeps them from colliding with the SPA's client-side routes (`/`, `/metrics`, `/settings`) — without it, a hard-reload/deep-link to `/settings` would hit the API and return JSON instead of the app shell. `GET /health` deliberately stays at the **root** (un-prefixed) so platform healthchecks have a stable path; it is also the natural carve-out for any future gate middleware (gate `/api/*`, leave `/health` open).
+
 | Endpoint | Notes |
 |---|---|
-| `GET /health` | `{ ok: true }` |
-| `GET/POST /users`, `PUT/DELETE /users/:id` | CRUD |
-| `GET /habit-definitions?userId=`, `POST /habit-definitions` (body requires `userId`), `PUT/DELETE /habit-definitions/:id` | per-user list |
-| `GET /entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /entries`, `PUT/DELETE /entries/:id` | cursor pagination ordered by `(date DESC, id DESC)`; cursor is base64url JSON `{date, id}`; default page size 15, max 100 |
-| `GET /metrics/weekly?userId=&habitDefinitionId=&today=` | current week (Mon–Sun), per-day sparse `counts` per habit; `today` (YYYY-MM-DD) is optional and used by tests |
-| `GET /metrics/by-type?userId=&today=` | 13-week range (Mon–Sun) ending at the anchor week; per-archetype repetitions; always 13 ordered weeks, zero-filled |
-| `GET /metrics/by-habit?userId=&today=` | same 13-week range; per-habit instead of per-archetype; sparse |
-| `GET /metrics/summary?userId=&today=` | last-30-day rollup: `mostRegistered`, `leastRegistered` (zero-entry habits can win), `badHabitsTotalCost` (sum of `entry_custom_data.amount` where the definition is `positive=false`), `activeHabitsCount` |
-| `GET /metrics/heatmap?userId=&today=` | rolling 26 weeks per habit; sparse `{date, count}[]`; habits ordered by most-recent in-range entry, empty habits last |
-| `GET /export/csv?userId=&from=&to=` | `text/csv; charset=utf-8`, attachment. Columns: `date, habit_name, type, positive, duration, distance, weight, amount, notes, words, time, number`. RFC-4180 escaped; unused archetype columns are blank |
-| `GET /settings`, `PUT /settings/currency`, `PUT /settings/locale` | global singleton; currency validated against `SUPPORTED_CURRENCIES`, locale against `SUPPORTED_LOCALES` (`en`, `es`) |
+| `GET /health` | `{ ok: true }` — **root, not under `/api`** |
+| `GET/POST /api/users`, `PUT/DELETE /api/users/:id` | CRUD |
+| `GET /api/habit-definitions?userId=`, `POST /api/habit-definitions` (body requires `userId`), `PUT/DELETE /api/habit-definitions/:id` | per-user list |
+| `GET /api/entries?userId=&habitDefinitionId=&cursor=&limit=`, `POST /api/entries`, `PUT/DELETE /api/entries/:id` | cursor pagination ordered by `(date DESC, id DESC)`; cursor is base64url JSON `{date, id}`; default page size 15, max 100 |
+| `GET /api/metrics/weekly?userId=&habitDefinitionId=&today=` | current week (Mon–Sun), per-day sparse `counts` per habit; `today` (YYYY-MM-DD) is optional and used by tests |
+| `GET /api/metrics/by-type?userId=&today=` | 13-week range (Mon–Sun) ending at the anchor week; per-archetype repetitions; always 13 ordered weeks, zero-filled |
+| `GET /api/metrics/by-habit?userId=&today=` | same 13-week range; per-habit instead of per-archetype; sparse |
+| `GET /api/metrics/summary?userId=&today=` | last-30-day rollup: `mostRegistered`, `leastRegistered` (zero-entry habits can win), `badHabitsTotalCost` (sum of `entry_custom_data.amount` where the definition is `positive=false`), `activeHabitsCount` |
+| `GET /api/metrics/heatmap?userId=&today=` | rolling 26 weeks per habit; sparse `{date, count}[]`; habits ordered by most-recent in-range entry, empty habits last |
+| `GET /api/export/csv?userId=&from=&to=` | `text/csv; charset=utf-8`, attachment. Columns: `date, habit_name, type, positive, duration, distance, weight, amount, notes, words, time, number`. RFC-4180 escaped; unused archetype columns are blank |
+| `GET /api/settings`, `PUT /api/settings/currency`, `PUT /api/settings/locale` | global singleton; currency validated against `SUPPORTED_CURRENCIES`, locale against `SUPPORTED_LOCALES` (`en`, `es`) |
+
+The frontend never hardcodes the prefix per call: `apiFetch` prepends `/api` once (`frontend/src/lib/api.ts`), and feature hooks pass bare paths like `/entries`.
 
 **Repetition-counting rule** shared across all metrics endpoints: for Workout and Custom entries, sum the `number` field when set, otherwise count the entry as 1. Writing entries always count as 1.
 
