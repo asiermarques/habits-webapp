@@ -25,6 +25,7 @@ See the [docs](./docs) directory:
 - [`ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — code structure, layers, conventions
 - [`PRODUCT.md`](./docs/PRODUCT.md) — implemented features and product decisions
 - [`UBIQUITOUS_LANGUAGE.md`](./docs/UBIQUITOUS_LANGUAGE.md) — canonical domain vocabulary
+- [`OBSERVABILITY.md`](./docs/OBSERVABILITY.md) — enabling backend telemetry (OpenTelemetry/OTLP)
 
 ### Project structure
 

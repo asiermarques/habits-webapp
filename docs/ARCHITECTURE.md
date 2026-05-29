@@ -206,7 +206,7 @@ The frontend never hardcodes the prefix per call: `apiFetch` prepends `/api` onc
 
 ## Backend runtime
 
-- **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`), `FRONTEND_DIST_DIR` (production only), `GATE_PASSWORD` + `SESSION_SECRET` (instance gate, see below)
+- **Config**: `dotenv` loads `backend/.env`. Variables: `PORT` (default 3001), `DATABASE_URL` (default `./habits.db`), `CORS_ORIGIN` (default `http://localhost:5173`), `FRONTEND_DIST_DIR` (production only), `GATE_PASSWORD` + `SESSION_SECRET` (instance gate, see below), and the standard `OTEL_*` vars (telemetry, see below)
 - **Production static serving**: when `NODE_ENV=production`, `createApp()` registers `express.static(FRONTEND_DIST_DIR)` *after* the API routes and a catch-all `GET *` that serves `index.html` for React Router deep links. In other environments unknown routes return 404
 
 ### Instance password gate
@@ -218,6 +218,16 @@ An optional, instance-wide barrier for public deployments — **not** per-user a
 - **Startup guard**: `assertGateConfig()` throws if `GATE_PASSWORD` is set without `SESSION_SECRET`, so a gated instance can never boot with unsigned (forgeable) sessions.
 - **Frontend**: `GateGuard` (`frontend/src/gate/`) reads `GET /api/auth/status` above the feature providers and shows the unlock screen when `gated && !authenticated`. A `401` from any call re-checks status (handled centrally in `main.tsx`), so an expired session bounces the user back to the unlock screen instead of a toast.
 - **Dev runner**: `tsx watch src/index.ts`
+
+### Telemetry / observability
+
+An optional OpenTelemetry layer that exports backend traces/metrics/logs to a managed external backend over OTLP — a cross-cutting concern in `backend/src/shared/observability/` (no domain/infrastructure layer, no DB table), like the instance gate. Full operator guide: [`OBSERVABILITY.md`](./OBSERVABILITY.md).
+
+- **Fail-open**: telemetry starts only when an OTLP endpoint (`OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) is configured, and is always inert under `NODE_ENV=test`. Unconfigured ⇒ no SDK, no overhead, behaviour identical to today. `readTelemetryConfig()` decides on/off; `startTelemetry()` boots the SDK once.
+- **Startup ordering**: `src/index.ts` imports `shared/observability/instrument.ts` *before* `app.ts`, so the SDK initialises ahead of any instrumentable module (express, `http`, better-sqlite3). The `createApp()`/`index.ts` split is preserved — `supertest` still builds the app without a port.
+- **Naming**: called *telemetry/observability* throughout; "Metrics" stays reserved for the habit Metrics product domain. Observability counters are *telemetry metrics*.
+- **Privacy**: no Entry Data, Cost Spent, habit names, or User names are ever exported — only operational attributes (route, status, duration, error class).
+- **Status**: the SDK bootstrap + fail-open config is implemented (the SDK connects but emits nothing on its own). Trace export with payload suppression, telemetry metrics, and correlated logs are planned on top of it.
 
 ## Database layer
 
