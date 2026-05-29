@@ -4,16 +4,23 @@ import { BrowserRouter } from 'react-router-dom';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { App } from './App';
-import { ApiError } from './lib/api';
+import { ApiError, OfflineError } from './lib/api';
 import { gateKey } from './gate/queries';
+import { t } from './lib/i18n';
 import './index.css';
 
 // A 401 means the instance gate locked us out (e.g. the session expired). Rather
 // than toasting a generic error, re-check the gate status so GateGuard can show
-// the unlock screen. All other errors surface as a toast, as before.
+// the unlock screen. An OfflineError means the request never reached the server,
+// so we say so plainly (US-004) — a mutation attempted offline failed and was
+// not saved. All other errors surface their message as a toast, as before.
 function handleError(error: unknown) {
   if (error instanceof ApiError && error.status === 401) {
     queryClient.invalidateQueries({ queryKey: gateKey() });
+    return;
+  }
+  if (error instanceof OfflineError) {
+    toast.error(t('error.offline'));
     return;
   }
   toast.error(error instanceof Error ? error.message : 'Request failed');

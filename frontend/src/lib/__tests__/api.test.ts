@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { apiFetch } from '../api';
+import { apiFetch, ApiError, OfflineError } from '../api';
 
 describe('apiFetch', () => {
   beforeEach(() => {
@@ -39,12 +39,21 @@ describe('apiFetch', () => {
     expect(init.headers['Content-Type']).toBe('application/json');
   });
 
-  it('throws when the response is not ok', async () => {
+  it('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(new Response('nope', { status: 500, statusText: 'Server Error' })),
     );
 
-    await expect(apiFetch('/anything')).rejects.toThrow(/500/);
+    await expect(apiFetch('/anything')).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('throws an OfflineError when the request never reaches the server', async () => {
+    // fetch rejects with a TypeError on a network-level failure (offline).
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+    await expect(apiFetch('/entries', { method: 'POST', body: {} })).rejects.toBeInstanceOf(
+      OfflineError,
+    );
   });
 });

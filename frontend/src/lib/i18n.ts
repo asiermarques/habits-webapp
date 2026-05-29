@@ -181,6 +181,18 @@ const en = {
   // PWA update prompt
   'pwa.updateAvailable': 'A new version is available.',
   'pwa.refresh': 'Refresh',
+
+  // PWA install affordance
+  'pwa.install.title': 'Install Habits',
+  'pwa.install.description': 'Add it to your home screen for a calmer, full-screen practice that opens offline.',
+  'pwa.install.action': 'Install',
+  'pwa.install.dismiss': 'Not now',
+  'pwa.install.close': 'Dismiss install prompt',
+  'pwa.install.iosTitle': 'Add to Home Screen',
+  'pwa.install.iosDescription': 'Tap the Share button below, then choose “Add to Home Screen”.',
+
+  // Errors
+  'error.offline': "You're offline — changes can't be saved right now.",
 } as const;
 
 const es: Record<keyof typeof en, string> = {
@@ -345,6 +357,18 @@ const es: Record<keyof typeof en, string> = {
   // PWA update prompt
   'pwa.updateAvailable': 'Hay una nueva versión disponible.',
   'pwa.refresh': 'Actualizar',
+
+  // PWA install affordance
+  'pwa.install.title': 'Instalar Hábitos',
+  'pwa.install.description': 'Añádela a tu pantalla de inicio para una práctica más tranquila, a pantalla completa y disponible sin conexión.',
+  'pwa.install.action': 'Instalar',
+  'pwa.install.dismiss': 'Ahora no',
+  'pwa.install.close': 'Descartar el aviso de instalación',
+  'pwa.install.iosTitle': 'Añadir a la pantalla de inicio',
+  'pwa.install.iosDescription': 'Pulsa el botón Compartir de abajo y elige «Añadir a pantalla de inicio».',
+
+  // Errors
+  'error.offline': 'Estás sin conexión: ahora mismo no se pueden guardar los cambios.',
 };
 
 const dictionaries: Record<LocaleCode, Record<string, string>> = { en, es };
