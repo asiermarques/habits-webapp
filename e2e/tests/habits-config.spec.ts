@@ -31,6 +31,21 @@ test.describe('Habits configuration feature', () => {
       const page = await ctx.newPage();
       page.setViewportSize(MOBILE_VIEWPORT);
 
+      // The shared e2e DB always has users, so UserProvider would auto-select a
+      // fallback as soon as the user list loads — racing the empty-state render.
+      // Stub the users endpoint to return none so "no active user" genuinely holds.
+      await page.route('**/api/users', async (route) => {
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: '[]',
+          });
+          return;
+        }
+        await route.continue();
+      });
+
       await page.goto('/settings');
 
       await expect(
