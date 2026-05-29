@@ -177,6 +177,10 @@ const en = {
   'gate.password': 'Password',
   'gate.submit': 'Unlock',
   'gate.error': 'Incorrect password. Try again.',
+
+  // PWA update prompt
+  'pwa.updateAvailable': 'A new version is available.',
+  'pwa.refresh': 'Refresh',
 } as const;
 
 const es: Record<keyof typeof en, string> = {
@@ -337,6 +341,10 @@ const es: Record<keyof typeof en, string> = {
   'gate.password': 'Contraseña',
   'gate.submit': 'Desbloquear',
   'gate.error': 'Contraseña incorrecta. Inténtalo de nuevo.',
+
+  // PWA update prompt
+  'pwa.updateAvailable': 'Hay una nueva versión disponible.',
+  'pwa.refresh': 'Actualizar',
 };
 
 const dictionaries: Record<LocaleCode, Record<string, string>> = { en, es };

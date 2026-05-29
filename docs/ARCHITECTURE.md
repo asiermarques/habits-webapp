@@ -305,6 +305,15 @@ Each frontend feature folder (`entries/`, `habits/`, `users/`, `metrics/`) owns 
 
 `UserProvider` (`frontend/src/users/UserContext.tsx`) owns the active `userId` and persists it to `localStorage`. Components read it via the `useUserContext()` hook. Before the first user exists or is selected, the active id is `0` — feature queries gate on `userId > 0` rather than rendering empty states from a request that 400s.
 
+### PWA / service worker
+
+The app is an installable PWA with read-only offline support, configured through `vite-plugin-pwa` (`generateSW`, Workbox under the hood) in `frontend/vite.config.ts`. No separate `sw.js` is hand-written — the worker is generated at `vite build`. It is built **only in production builds**; `vite dev` has no worker, and the plugin is `disable`d entirely under `--mode e2e`, so the Playwright harness never registers it.
+
+- **Registration / updates** — `registerType: 'prompt'`; `injectRegister: false`. `PwaUpdatePrompt` (`frontend/src/pwa/PwaUpdatePrompt.tsx`) calls `useRegisterSW` from `virtual:pwa-register/react`, which registers the worker and exposes `needRefresh`. When a new build is waiting it shows a persistent Sonner toast whose action calls `updateServiceWorker(true)` to skip-waiting and reload — so installed users never pin to a stale worker.
+- **App shell** — `globPatterns` precache the built JS/CSS/HTML/icons; `navigateFallback: 'index.html'` serves the SPA offline for `/`, `/metrics`, `/settings` (with `/api/` denied). Google Fonts are runtime-cached (`CacheFirst`/`StaleWhileRevalidate`) so type stays legible offline.
+- **Runtime API cache** — `GET /api/*` responses are cached `NetworkFirst` in the `habits-api-cache` (keyed by full URL, only 200s, `maxAgeSeconds` 1 day). Online always prefers fresh data; offline falls back to the last-fetched response. Non-GET methods are never cached.
+- **Gate × cache policy (RISK-G1)** — `/api/auth/*` is **deliberately excluded** from the runtime cache, so an expired gate can never be satisfied from cache. The "is this instance gated" flag is persisted by the gate module (`frontend/src/gate/storage.ts`); when the gate status can't be fetched (typically offline), `GateGuard` **fails closed** for instances last known to be gated — it shows the unlock screen rather than serving cached data, and lets known-open instances through so the offline shell still works. On logout, `clearApiCache()` (`frontend/src/pwa/cache.ts`) evicts the whole API cache. **Residual limitation:** because there is no server to consult offline, a gate session that expires purely by server-side timeout cannot be enforced while offline — the privacy guarantee holds for explicit lock/logout and for online expiry (401 → locked), not for unattended offline expiry.
+
 ## Shared types
 
 `shared/src/index.ts` is imported as `@habitsapp/shared` from both packages. It is the contract for every slice and groups types by feature area (Health, Users, HabitDefinitions, Entries, Metrics). No build step — both apps consume `.ts` source directly.

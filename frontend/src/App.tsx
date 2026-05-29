@@ -8,6 +8,7 @@ import { UserProvider } from '@/users/UserContext';
 import { LogEntryDialogProvider } from '@/entries/LogEntryDialog';
 import { LocaleProvider } from '@/settings/LocaleProvider';
 import { GateGuard } from '@/gate/GateGuard';
+import { PwaUpdatePrompt } from '@/pwa/PwaUpdatePrompt';
 
 export function App() {
   return (
@@ -17,6 +18,7 @@ export function App() {
       <LogEntryDialogProvider>
         <div className="min-h-full text-ink">
           <Header />
+          <PwaUpdatePrompt />
           <main className="px-5 pb-24 pt-2 sm:px-8">
             <Routes>
               <Route path="/" element={<Home />} />

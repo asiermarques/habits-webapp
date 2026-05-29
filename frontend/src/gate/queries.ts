@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GateLoginResponse, GateStatus } from '@habitsapp/shared';
 import { apiFetch } from '@/lib/api';
+import { clearApiCache } from '@/pwa/cache';
 
 export const gateKey = () => ['gate', 'status'] as const;
 
@@ -39,6 +40,9 @@ export function useGateLogout() {
         prev ? { ...prev, authenticated: false } : prev,
       );
       qc.removeQueries({ predicate: (query) => query.queryKey[0] !== 'gate' });
+      // Also drop the service worker's offline copy of API reads so a later
+      // offline session can't resurface this session's data (RISK-G1).
+      void clearApiCache();
     },
   });
 }
