@@ -1,7 +1,11 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { ATTR_SERVICE_NAME, ATTR_URL_FULL, ATTR_URL_QUERY } from '@opentelemetry/semantic-conventions';
+import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
+import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
+import { BetterSqlite3Instrumentation } from 'opentelemetry-plugin-better-sqlite3';
+import type { IncomingMessage } from 'http';
 
 /**
  * Telemetry / Observability bootstrap.
@@ -71,7 +75,30 @@ export function startTelemetry(config: TelemetryConfig = readTelemetryConfig()):
   sdk = new NodeSDK({
     resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: config.serviceName }),
     traceExporter: new OTLPTraceExporter(),
-    // instrumentations: [] — HTTP/SQLite spans + privacy suppression land here later.
+    instrumentations: [
+      new HttpInstrumentation({
+        // BR-002: Strip query strings from URL attributes so that query params
+        // (userId filters, cursor tokens) never reach the telemetry backend.
+        // Request/response bodies are not captured by this instrumentation by default.
+        requestHook: (span, request) => {
+          const url = (request as IncomingMessage).url;
+          if (!url) return;
+          const qIdx = url.indexOf('?');
+          if (qIdx < 0) return;
+          const pathOnly = url.slice(0, qIdx);
+          span.setAttribute(ATTR_URL_FULL, pathOnly);
+          span.setAttribute(ATTR_URL_QUERY, '');
+          span.setAttribute('http.url', pathOnly); // legacy attribute for older receivers
+        },
+      }),
+      // ExpressInstrumentation enriches HTTP spans with the route template
+      // (e.g. /api/entries/:entryId) rather than the raw URL, giving low-cardinality
+      // span names and keeping ids out of the span name.
+      new ExpressInstrumentation(),
+      // BetterSqlite3Instrumentation records the SQL template and operation as child
+      // spans nested under the request span. Bound parameter values are never captured.
+      new BetterSqlite3Instrumentation(),
+    ],
   });
   sdk.start();
 

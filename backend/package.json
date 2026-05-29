@@ -19,6 +19,8 @@
     "@habitsapp/shared": "*",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.218.0",
+    "@opentelemetry/instrumentation-express": "^0.66.0",
+    "@opentelemetry/instrumentation-http": "^0.218.0",
     "@opentelemetry/resources": "^2.7.1",
     "@opentelemetry/sdk-node": "^0.218.0",
     "@opentelemetry/semantic-conventions": "^1.41.1",
@@ -27,6 +29,7 @@
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.36.0",
     "express": "^4.21.1",
+    "opentelemetry-plugin-better-sqlite3": "^1.13.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
