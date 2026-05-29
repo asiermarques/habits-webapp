@@ -31,9 +31,20 @@ OpenTelemetry instruments. That is a deliberate, supported direction.
 ## Current scope and boundaries
 
 What is implemented today: the SDK **bootstrap** and its fail-open env
-configuration (this doc). The SDK initialises and connects to the configured
-OTLP backend, but no spans, telemetry metrics, or logs are emitted yet — that
-instrumentation is built on top of this foundation.
+configuration (this doc), plus the instrumentation built on top of it. Once an
+OTLP endpoint is configured the backend exports:
+
+- **Traces** — auto-instrumented HTTP, Express (route templates like
+  `/api/entries/:entryId`), and better-sqlite3 (SQL template child spans), with
+  query strings and bound parameters stripped for privacy.
+- **Telemetry metrics** — per-request count, latency histogram, and 5xx error
+  count (`httpTelemetryMetrics` middleware), plus process gauges (heap, RSS,
+  uptime).
+- **Logs** — structured OTel log records correlated with the active trace.
+  Today the only call site is the central error handler
+  (`shared/middleware/errorHandler.ts`): a `WARN` for each handled `DomainError`
+  (class + status only — never the message) and an `ERROR` for unexpected
+  failures (type + message). Other call sites are added as needed.
 
 What this work deliberately leaves out — boundaries of *the current scope*, not
 permanent limits on observability:
@@ -120,9 +131,9 @@ load-bearing requirement. Exported telemetry must **never** contain:
 
 Only operational attributes are exported: route templates, HTTP status,
 duration, and error class. Request/response bodies, query parameters, and SQL
-arguments must be **suppressed** and must never appear in any span, telemetry
-metric, or log — including once instrumentation is added on top of the current
-bootstrap, which on its own emits nothing.
+arguments are **suppressed** and must never appear in any span, telemetry
+metric, or log — a rule every new call site (logger or span attribute) must
+keep following.
 
 ## How it's wired
 

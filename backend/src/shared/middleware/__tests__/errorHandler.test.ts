@@ -1,7 +1,13 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { context, trace, SpanStatusCode } from '@opentelemetry/api';
+import { logs, SeverityNumber } from '@opentelemetry/api-logs';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import {
+  LoggerProvider,
+  InMemoryLogRecordExporter,
+  SimpleLogRecordProcessor,
+} from '@opentelemetry/sdk-logs';
 import type { Request, Response } from 'express';
 import { domainErrorHandler } from '../errorHandler.js';
 import {
@@ -17,8 +23,20 @@ const provider = new NodeTracerProvider({
 });
 provider.register();
 
+// Likewise capture emitted log records so we can assert on the OTLP log output.
+const logExporter = new InMemoryLogRecordExporter();
+const loggerProvider = new LoggerProvider({
+  processors: [new SimpleLogRecordProcessor(logExporter)],
+});
+logs.setGlobalLoggerProvider(loggerProvider);
+
+function fakeReq(method = 'GET'): Request {
+  return { method } as Request;
+}
+
 afterEach(() => {
   exporter.reset();
+  logExporter.reset();
 });
 
 function fakeRes(): Response {
@@ -34,7 +52,7 @@ describe('domainErrorHandler — span marking', () => {
     context.with(trace.setSpan(context.active(), span), () => {
       domainErrorHandler(
         new ForbiddenError('cross-user access'),
-        {} as Request,
+        fakeReq(),
         fakeRes(),
         () => {},
       );
@@ -52,7 +70,7 @@ describe('domainErrorHandler — span marking', () => {
     context.with(trace.setSpan(context.active(), span), () => {
       domainErrorHandler(
         new NotFoundError('habit not found'),
-        {} as Request,
+        fakeReq(),
         fakeRes(),
         () => {},
       );
@@ -69,7 +87,7 @@ describe('domainErrorHandler — span marking', () => {
     const nextFn = vi.fn();
 
     context.with(trace.setSpan(context.active(), span), () => {
-      domainErrorHandler(new Error('unexpected'), {} as Request, fakeRes(), nextFn);
+      domainErrorHandler(new Error('unexpected'), fakeReq(), fakeRes(), nextFn);
     });
 
     span.end();
@@ -83,10 +101,52 @@ describe('domainErrorHandler — span marking', () => {
     expect(() => {
       domainErrorHandler(
         new ValidationError('invalid'),
-        {} as Request,
+        fakeReq(),
         fakeRes(),
         () => {},
       );
     }).not.toThrow();
+  });
+});
+
+describe('domainErrorHandler — log emission', () => {
+  it('emits a WARN log record for a handled DomainError', () => {
+    domainErrorHandler(new NotFoundError('whatever'), fakeReq('POST'), fakeRes(), () => {});
+
+    const records = logExporter.getFinishedLogRecords();
+    expect(records).toHaveLength(1);
+    expect(records[0]?.severityNumber).toBe(SeverityNumber.WARN);
+    expect(records[0]?.attributes).toMatchObject({
+      'error.type': 'NotFoundError',
+      'http.status_code': 404,
+      'http.method': 'POST',
+    });
+  });
+
+  it('never exports the DomainError message (BR-002 — it can carry entity names)', () => {
+    const secret = 'My private habit name';
+    domainErrorHandler(new NotFoundError(secret), fakeReq(), fakeRes(), () => {});
+
+    const record = logExporter.getFinishedLogRecords()[0];
+    expect(record?.body).not.toContain(secret);
+    expect(JSON.stringify(record?.attributes)).not.toContain(secret);
+  });
+
+  it('emits an ERROR log record with type and message for an unexpected error', () => {
+    domainErrorHandler(
+      new Error('database connection lost'),
+      fakeReq('DELETE'),
+      fakeRes(),
+      () => {},
+    );
+
+    const records = logExporter.getFinishedLogRecords();
+    expect(records).toHaveLength(1);
+    expect(records[0]?.severityNumber).toBe(SeverityNumber.ERROR);
+    expect(records[0]?.attributes).toMatchObject({
+      'error.type': 'Error',
+      'error.message': 'database connection lost',
+      'http.method': 'DELETE',
+    });
   });
 });
