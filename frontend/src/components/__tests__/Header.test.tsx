@@ -51,9 +51,23 @@ describe('Header', () => {
     expect(screen.queryByLabelText('Back to home')).not.toBeInTheDocument();
   });
 
-  it('shows the back arrow and hides the Log icon on non-home routes', async () => {
+  it('shows the back arrow and the settings gear on the metrics route', async () => {
     render(
       <TestProviders initialPath="/metrics">
+        <Header />
+      </TestProviders>,
+    );
+
+    expect(screen.getByLabelText('Back to home')).toBeInTheDocument();
+    expect(screen.getByLabelText('Log entry')).toBeInTheDocument();
+    expect(screen.getByLabelText('Settings')).toBeInTheDocument();
+    // The link to the current page is omitted.
+    expect(screen.queryByLabelText('Metrics')).not.toBeInTheDocument();
+  });
+
+  it('hides the nav icons on routes without navigation', async () => {
+    render(
+      <TestProviders initialPath="/settings">
         <Header />
       </TestProviders>,
     );

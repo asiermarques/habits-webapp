@@ -10,6 +10,7 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === '/';
+  const isMetrics = location.pathname === '/metrics';
   const { activeUser } = useUserContext();
   const { data: habits = [] } = useHabitDefinitionsQuery(activeUser?.id ?? 0);
   const { openLog } = useLogEntryDialog();
@@ -42,7 +43,7 @@ export function Header() {
 
         <div className="flex items-center gap-1">
           <UserSwitcher />
-          {isHome && (
+          {(isHome || isMetrics) && (
             <nav className="ml-1 flex items-center gap-0.5 border-l border-hairline pl-1">
               <button
                 type="button"
@@ -53,9 +54,11 @@ export function Header() {
               >
                 <PlusCircle className="h-[18px] w-[18px]" />
               </button>
-              <Link to="/metrics" aria-label={t('header.metrics')} className={iconBtn}>
-                <BarChart3 className="h-[18px] w-[18px]" />
-              </Link>
+              {!isMetrics && (
+                <Link to="/metrics" aria-label={t('header.metrics')} className={iconBtn}>
+                  <BarChart3 className="h-[18px] w-[18px]" />
+                </Link>
+              )}
               <Link to="/settings" aria-label={t('header.settings')} className={iconBtn}>
                 <SettingsIcon className="h-[18px] w-[18px]" />
               </Link>
