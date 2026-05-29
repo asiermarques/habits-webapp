@@ -1,5 +1,10 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
+import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-proto';
+import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
+import { metrics } from '@opentelemetry/api';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME, ATTR_URL_FULL, ATTR_URL_QUERY } from '@opentelemetry/semantic-conventions';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
@@ -42,7 +47,10 @@ export type TelemetryConfig = {
  */
 export function readTelemetryConfig(env: NodeJS.ProcessEnv = process.env): TelemetryConfig {
   const otlpConfigured = Boolean(
-    env.OTEL_EXPORTER_OTLP_ENDPOINT || env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+    env.OTEL_EXPORTER_OTLP_ENDPOINT ||
+      env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ||
+      env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT ||
+      env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT,
   );
 
   // Config-free tests: never start under `NODE_ENV=test`, even if an operator
@@ -75,6 +83,10 @@ export function startTelemetry(config: TelemetryConfig = readTelemetryConfig()):
   sdk = new NodeSDK({
     resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: config.serviceName }),
     traceExporter: new OTLPTraceExporter(),
+    metricReaders: [
+      new PeriodicExportingMetricReader({ exporter: new OTLPMetricExporter() }),
+    ],
+    logRecordProcessors: [new BatchLogRecordProcessor(new OTLPLogExporter())],
     instrumentations: [
       new HttpInstrumentation({
         // BR-002: Strip query strings from URL attributes so that query params
@@ -102,6 +114,7 @@ export function startTelemetry(config: TelemetryConfig = readTelemetryConfig()):
   });
   sdk.start();
 
+  registerProcessMetrics();
   registerShutdownHook();
   return true;
 }
@@ -119,6 +132,32 @@ export async function shutdownTelemetry(): Promise<void> {
   } catch (err) {
     console.error('[telemetry] error during shutdown', err);
   }
+}
+
+/** Registers observable gauges for basic process/runtime telemetry metrics. */
+function registerProcessMetrics(): void {
+  const meter = metrics.getMeter('habits-backend-process');
+
+  meter
+    .createObservableGauge('process.memory.heap_used_bytes', {
+      description: 'Heap memory in use by the V8 engine, in bytes',
+      unit: 'By',
+    })
+    .addCallback((obs) => obs.observe(process.memoryUsage().heapUsed));
+
+  meter
+    .createObservableGauge('process.memory.rss_bytes', {
+      description: 'Resident set size of the process, in bytes',
+      unit: 'By',
+    })
+    .addCallback((obs) => obs.observe(process.memoryUsage().rss));
+
+  meter
+    .createObservableGauge('process.uptime_seconds', {
+      description: 'Number of seconds the process has been running',
+      unit: 's',
+    })
+    .addCallback((obs) => obs.observe(process.uptime()));
 }
 
 /** Flush pending spans on the usual termination signals (registered once). */

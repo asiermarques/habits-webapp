@@ -15,6 +15,7 @@ import { createBackupRouter } from './backup/http/routes.js';
 import { createSettingsRouter } from './settings/http/routes.js';
 import { DrizzleSettingsRepository } from './settings/infrastructure/DrizzleSettingsRepository.js';
 import { domainErrorHandler } from './shared/middleware/errorHandler.js';
+import { httpTelemetryMetrics } from './shared/observability/http-telemetry-metrics.js';
 import {
   assertGateConfig,
   createAuthRouter,
@@ -33,6 +34,7 @@ export function createApp() {
   // not '*', which corsOrigin already is.
   app.use(cors({ origin: corsOrigin, credentials: true }));
   app.use(express.json());
+  app.use(httpTelemetryMetrics());
 
   app.get('/health', (_req, res) => {
     const body: HealthResponse = { ok: true };
