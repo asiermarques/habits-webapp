@@ -4,6 +4,7 @@ import { Header } from '@/components/Header';
 import { Home } from '@/pages/Home';
 import { Metrics } from '@/pages/Metrics';
 import { Settings } from '@/pages/Settings';
+import { NotFound } from '@/pages/NotFound';
 import { UserProvider } from '@/users/UserContext';
 import { LogEntryDialogProvider } from '@/entries/LogEntryDialog';
 import { LocaleProvider } from '@/settings/LocaleProvider';
@@ -26,6 +27,7 @@ export function App() {
               <Route path="/" element={<Home />} />
               <Route path="/metrics" element={<Metrics />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
           <Toaster

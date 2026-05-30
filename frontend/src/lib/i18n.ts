@@ -23,6 +23,12 @@ const en = {
   'home.filter.all': 'All habits',
   'home.filter.aria': 'Filter by habit',
 
+  // Not found (404)
+  'notFound.eyebrow': 'off the path',
+  'notFound.title': 'Nothing here.',
+  'notFound.subtitle': "This page doesn't exist — or never did. Let's get back to what you're tracking.",
+  'notFound.back': 'Back home',
+
   // Common actions
   'action.cancel': 'Cancel',
   'action.delete': 'Delete',
@@ -210,6 +216,11 @@ const es: Record<keyof typeof en, string> = {
   'home.recentEntries': 'entradas recientes',
   'home.filter.all': 'Todos los hábitos',
   'home.filter.aria': 'Filtrar por hábito',
+
+  'notFound.eyebrow': 'fuera de ruta',
+  'notFound.title': 'Aquí no hay nada.',
+  'notFound.subtitle': 'Esta página no existe — o nunca existió. Volvamos a lo que registras.',
+  'notFound.back': 'Volver al inicio',
 
   'action.cancel': 'Cancelar',
   'action.delete': 'Eliminar',
