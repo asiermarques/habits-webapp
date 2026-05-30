@@ -138,12 +138,14 @@ See [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) for the full telemetry setu
 
 #### Frontend (build-time — `frontend/.env`)
 
-Baked into the bundle at `vite build`, so a change requires a **rebuild** to take effect (not just a restart).
+Baked into the bundle at `vite build`, so a change requires a **rebuild** to take effect (not just a restart). The defaults below apply to local dev (`frontend/.env`); the production Docker image overrides them via build args (see note).
 
-| Variable | Default | Description |
+| Variable | Default (dev) | Description |
 |---|---|---|
-| `VITE_API_URL` | `http://localhost:3001` | Base URL of the backend API the SPA calls |
+| `VITE_API_URL` | `http://localhost:3001` | Base URL of the backend API the SPA calls. The Docker image builds it as `""` so calls are **relative to the same origin** (Express serves the SPA); only set it when the SPA is hosted on a different origin than the API |
 | `GATE_OFFLINE_GRACE_MINUTES` | `120` (2h) | How long a gated instance stays readable offline after the last online unlock; past it the unlock screen is shown. A missing/non-numeric/non-positive value falls back to the default |
+
+> **Single-service / Railway:** the app deploys as one image (Express serves both the API and the built SPA), so only the **backend** variables above are read at runtime. The two frontend variables are baked at image-build time and exposed as Docker build args — pass them with `docker build --build-arg GATE_OFFLINE_GRACE_MINUTES=30 …`. On Railway, a matching service variable is forwarded to the build automatically; changing it requires a redeploy that rebuilds the image, not just a restart.
 
 ### Testing
 

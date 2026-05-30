@@ -10,11 +10,22 @@ COPY frontend/package.json ./frontend/
 RUN npm ci
 
 # Stage 2: Build the Vite frontend.
-# VITE_API_URL="" makes all API calls relative to the same origin (served by Express).
+# Build-time frontend config, overridable via --build-arg (Railway passes
+# matching service variables as build args once the ARG is declared):
+#   VITE_API_URL               default "" → API calls are relative to the same
+#                              origin (Express serves the SPA in production).
+#                              Only override when deploying the SPA on a
+#                              different origin than the API.
+#   GATE_OFFLINE_GRACE_MINUTES default "" → the app falls back to 120 (2h);
+#                              how long a gated instance stays readable offline.
 FROM deps AS frontend-build
+ARG VITE_API_URL=""
+ARG GATE_OFFLINE_GRACE_MINUTES=""
 COPY shared/src ./shared/src
 COPY frontend/ ./frontend/
-RUN VITE_API_URL="" npm run build -w frontend
+RUN VITE_API_URL="$VITE_API_URL" \
+    GATE_OFFLINE_GRACE_MINUTES="$GATE_OFFLINE_GRACE_MINUTES" \
+    npm run build -w frontend
 
 # Stage 3: Compile the backend TypeScript.
 FROM deps AS backend-build
