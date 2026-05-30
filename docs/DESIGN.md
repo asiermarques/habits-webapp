@@ -72,6 +72,8 @@ Opacity modifiers (`bg-ember/90`, `text-moss-deep/80`, `border-ember/25`) are th
 3. **Zero-states are neutral.** `cost = 0` is ink, not ember. `activeHabits = 0` is ink, not moss. Color only fires when there's something to say.
 4. **User-chosen habit colors** (per habit definition) are kept as raw hex but **rendered as 2px dots, never as filled chip backgrounds.** They are markers in the user's vocabulary, not part of the system palette.
 5. **Never introduce a new color without a new token.** If you need a new accent, add a `--token` to `index.css` and `@theme inline` — don't inline a hex.
+6. **Charts mirror tokens by value, never by foreign hex.** Nivo applies some `theme`/`colors` values as SVG *attributes* (e.g. `<line stroke>`), where `var(--token)` does **not** resolve. So inside chart config, use the token's OKLCH literal with a comment naming the token (e.g. `const INK_SOFT = 'oklch(0.42 0.010 65)'; // --ink-soft`). Where a color lands in an inline `style` (a CSS property — heatmap cells, dot markers), prefer `var(--token)` directly. Either way, the value must come from the palette — never `#525252`, `#e5e5e5`, `#ef4444`, or a stray `#999` fallback. The negative-habit color in the heatmap is `--ember`, matching rule §2.
+7. **Color-dot fallbacks are `var(--ink-faint)`.** When a habit color is somehow missing, dots/bars fall back to ink-faint — not a neutral gray.
 
 ## 3. Typography
 
@@ -115,7 +117,7 @@ There is no global content width. Each page sets its own:
 - Settings (form-heavy): `max-w-3xl`
 - Metrics (data-dense): `max-w-5xl`
 
-The header (`components/Header.tsx`) deliberately spans the full viewport — it adopts the visual width of whichever page is showing rather than fighting it.
+The header (`components/Header.tsx`) deliberately spans the full viewport — it adopts the visual width of whichever page is showing rather than fighting it. It reads as its own surface: `bg-card/90` (the warm off-white, never a cold `#fff`) with `backdrop-blur-md` and a 1px `--hairline` bottom border. At the top of the page that's all — the bar stays flat, true to the system. A soft elevation shadow (in the `surface` shadow language) fades in via `transition-shadow` **only once the page scrolls** (`window.scrollY > 8`), so the lift appears exactly when there's content sliding beneath the bar and never as idle decoration. This is the one sanctioned per-element shadow; don't make it static, and don't add shadows to other surfaces (§5).
 
 ### Section divider pattern
 
@@ -130,6 +132,10 @@ The recurring rhythm across the app:
 ```
 
 Variants flip the eyebrow and title between sides, or replace the title with a mono date range. Use this; don't invent new section chrome.
+
+**Data-viz sections use this same divider** — `SummaryCards`, `ByTypeChartSection`, and `HeatmapSection` all open with eyebrow + hairline + Fraunces `text-2xl`, so the Metrics page reads as one rhythm. The exception is the Home week chart (`WeekChartSection`): it carries **no heading of its own** because the page's "this week" eyebrow divider (which also holds the habit filter) already titles it. Don't stack a second heading on a chart the page has already introduced.
+
+Settings sub-sections and collapsibles use the lighter tier-2 heading — Fraunces `text-lg font-semibold` (still Fraunces, inherited from the base layer) with an ink-soft helper line. Reserve the full divider for top-level data/metric groupings.
 
 ## 5. Background atmosphere
 

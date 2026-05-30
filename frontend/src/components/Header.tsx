@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BarChart3, PlusCircle, Settings as SettingsIcon } from 'lucide-react';
 import { UserSwitcher } from '@/users/UserSwitcher';
 import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useLogEntryDialog } from '@/entries/LogEntryDialog';
+import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
 
 export function Header() {
@@ -16,11 +18,28 @@ export function Header() {
   const { openLog } = useLogEntryDialog();
   const canLog = !!activeUser && habits.length > 0;
 
+  // Lift the bar only once there's content scrolling beneath it — at the top of
+  // the page the flat hairline + blur carry the separation, keeping the
+  // editorial system flat (see docs/DESIGN.md §4–§5). The shadow earns its keep.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const iconBtn =
     'flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition hover:bg-moss-tint hover:text-moss-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50';
 
   return (
-    <header className="sticky top-0 z-10 border-b border-hairline/80 bg-paper/75 backdrop-blur-md">
+    <header
+      className={cn(
+        'sticky top-0 z-10 border-b border-hairline/80 bg-card/90 backdrop-blur-md transition-shadow duration-300',
+        scrolled &&
+          'shadow-[0_1px_2px_oklch(0.20_0.01_60/0.04),0_10px_28px_-20px_oklch(0.20_0.01_60/0.18)]',
+      )}
+    >
       <div className="flex h-16 items-center justify-between px-5 sm:px-8">
         {isHome ? (
           <Link to="/" className="group flex items-baseline gap-2">

@@ -6,11 +6,16 @@ import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useByHabitMetrics } from './queries';
 import { t } from '@/lib/i18n';
 
+// Nivo applies theme colors as SVG attributes where CSS var() can't resolve, so
+// we mirror the index.css token values here. Keep these in sync with the tokens.
+const INK_SOFT = 'oklch(0.42 0.010 65)'; // --ink-soft
+const HAIRLINE = 'oklch(0.88 0.012 75)'; // --hairline
+const FALLBACK_COLOR = 'oklch(0.62 0.008 70)'; // --ink-faint
 const CHART_THEME = {
   axis: {
-    ticks: { text: { fontSize: 10, fill: '#525252' } },
+    ticks: { text: { fontSize: 10, fill: INK_SOFT } },
   },
-  grid: { line: { stroke: '#e5e5e5', strokeDasharray: '2 4' } },
+  grid: { line: { stroke: HAIRLINE, strokeDasharray: '2 4' } },
 };
 
 export function ByTypeChartSection() {
@@ -31,8 +36,12 @@ export function ByTypeChartSection() {
   if (!activeUser) return null;
 
   return (
-    <section className="space-y-2">
-      <h2 className="text-lg font-semibold">{t('metrics.byHabit')}</h2>
+    <section className="space-y-4">
+      <div className="flex items-baseline gap-3">
+        <span className="eyebrow">{t('metrics.byHabit.eyebrow')}</span>
+        <div className="h-px flex-1 bg-hairline" />
+        <h2 className="font-display text-2xl tracking-tight">{t('metrics.byHabit')}</h2>
+      </div>
 
       <div className="rounded-md border border-hairline bg-card p-2">
         {isLoading || !data ? (
@@ -55,7 +64,7 @@ export function ByTypeChartSection() {
                 margin={{ top: 16, right: 8, bottom: 40, left: 28 }}
                 padding={0.25}
                 theme={CHART_THEME}
-                colors={({ id }) => habitsById.get(Number(id))?.color ?? '#999'}
+                colors={({ id }) => habitsById.get(Number(id))?.color ?? FALLBACK_COLOR}
                 borderRadius={2}
                 enableGridX={false}
                 enableGridY
@@ -74,7 +83,7 @@ export function ByTypeChartSection() {
                         <span
                           aria-hidden
                           className="inline-block h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: habit?.color ?? '#999' }}
+                          style={{ backgroundColor: habit?.color ?? 'var(--ink-faint)' }}
                         />
                         <span className="font-medium">{habit?.name ?? t('metrics.unknown')}</span>
                       </div>
@@ -96,7 +105,7 @@ export function ByTypeChartSection() {
                     <span
                       aria-hidden
                       className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
-                      style={{ backgroundColor: habit?.color ?? '#999' }}
+                      style={{ backgroundColor: habit?.color ?? 'var(--ink-faint)' }}
                     />
                     {habit?.name ?? k}
                   </div>

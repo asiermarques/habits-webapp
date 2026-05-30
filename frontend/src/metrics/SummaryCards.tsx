@@ -139,7 +139,7 @@ function HabitCardBody({
         <span
           aria-hidden
           className="inline-block h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: def?.color ?? '#999' }}
+          style={{ backgroundColor: def?.color ?? 'var(--ink-faint)' }}
         />
         <span className="truncate text-sm font-semibold">
           {def?.name ?? t('metrics.unknown')}

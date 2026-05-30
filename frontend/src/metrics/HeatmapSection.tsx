@@ -5,8 +5,10 @@ import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useHeatmapMetrics } from './queries';
 import { t } from '@/lib/i18n';
 
-const NEGATIVE_COLOR = '#ef4444';
-const EMPTY_CELL = 'oklch(0.93 0.012 75)';
+// Negative habits and empty cells reference the design tokens (index.css).
+// These are used only in inline `style` (CSS properties), so var() resolves.
+const NEGATIVE_COLOR = 'var(--ember)';
+const EMPTY_CELL = 'var(--paper-deep)';
 
 // Opacity ramp by count bucket (0..4). The base color is the habit's color
 // (or red for negative habits).
@@ -86,7 +88,7 @@ function HabitHeatmapCard({ habit, definition, rangeStart }: CardProps) {
   } as const;
 
   return (
-    <div className="surface p-5 sm:p-6">
+    <div className="surface p-4 sm:p-6">
       <div className="mb-4 flex items-baseline justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span
@@ -102,7 +104,7 @@ function HabitHeatmapCard({ habit, definition, rangeStart }: CardProps) {
       </div>
 
       <div
-        className="grid gap-[5px]"
+        className="grid gap-[3px] sm:gap-[5px]"
         style={gridStyle}
         role="grid"
         aria-label={`${definition.name} heatmap`}

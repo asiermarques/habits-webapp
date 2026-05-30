@@ -12,11 +12,15 @@ const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as cons
 // only styles the totals shown above each bar (fontWeight: "bold" is hardcoded in
 // @nivo/bar's BarTotals component).
 const TICK_FONT_SIZE = 11;
+// Nivo applies theme colors as SVG attributes where CSS var() can't resolve, so
+// we mirror the index.css token values here. Keep these in sync with --ink-soft.
+const INK_SOFT = 'oklch(0.42 0.010 65)'; // --ink-soft
+const FALLBACK_COLOR = 'oklch(0.62 0.008 70)'; // --ink-faint
 const CHART_THEME = {
   labels: {
     text: {
       fontSize: TICK_FONT_SIZE * 2,
-      fill: '#434141', 
+      fill: INK_SOFT,
     },
   },
 };
@@ -46,9 +50,7 @@ export function WeekChartSection({ habitDefinitionId }: WeekChartSectionProps) {
   if (!activeUser) return null;
 
   return (
-    <section className="space-y-2">
-      <h2 className="text-lg font-semibold">{t('metrics.weekly')}</h2>
-
+    <section>
       <div className="rounded-md border border-hairline bg-card p-2">
         {isLoading || !weekly ? (
           <p className="px-2 py-12 text-center text-sm text-ink-soft">
@@ -69,7 +71,7 @@ export function WeekChartSection({ habitDefinitionId }: WeekChartSectionProps) {
               margin={{ top: 36, right: 8, bottom: 28, left: 8 }}
               padding={0.3}
               theme={CHART_THEME}
-              colors={({ id }) => habitsById.get(Number(id))?.color ?? '#999'}
+              colors={({ id }) => habitsById.get(Number(id))?.color ?? FALLBACK_COLOR}
               borderRadius={2}
               enableGridX={false}
               enableGridY={false}

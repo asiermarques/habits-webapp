@@ -96,7 +96,7 @@ describe('HeatmapSection', () => {
     );
   });
 
-  it('paints positive habits with their color and negative habits red', async () => {
+  it('paints positive habits with their color and negative habits with the ember token', async () => {
     vi.stubGlobal('fetch', makeFetch(heatmap));
 
     render(
@@ -117,7 +117,8 @@ describe('HeatmapSection', () => {
     const negativeHit = within(screen.getByLabelText('Fast food heatmap')).getByLabelText(
       '2026-04-01: 2 entries',
     );
-    expect(negativeHit.style.backgroundColor).toBe('rgb(239, 68, 68)'); // #ef4444
+    // Negative habits use the --ember design token rather than a raw red.
+    expect(negativeHit.style.backgroundColor).toBe('var(--ember)');
   });
 
   it('shows a friendly message when no habits exist', async () => {
