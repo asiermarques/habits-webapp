@@ -12,8 +12,8 @@ test.describe('CSV export feature', () => {
 
   // ── CSV export ────────────────────────────────────────────────────────────
 
-  test('shows "Export CSV" toggle button at the top of the metrics page', async ({ page }) => {
-    await page.goto('/metrics');
+  test('shows "Export CSV" toggle button in the "Your data" section of settings', async ({ page }) => {
+    await page.goto('/settings');
 
     await expect(
       page.getByRole('button', { name: /Export CSV/i }),
@@ -21,7 +21,7 @@ test.describe('CSV export feature', () => {
   });
 
   test('"Export CSV" toggle is collapsed by default (form not visible)', async ({ page }) => {
-    await page.goto('/metrics');
+    await page.goto('/settings');
 
     // The panel is hidden until the toggle is clicked.
     // The "From" label only exists inside the expanded panel.
@@ -30,7 +30,7 @@ test.describe('CSV export feature', () => {
   });
 
   test('clicking the toggle expands the export panel', async ({ page }) => {
-    await page.goto('/metrics');
+    await page.goto('/settings');
 
     await page.getByRole('button', { name: /Export CSV/i }).click();
 
@@ -39,7 +39,7 @@ test.describe('CSV export feature', () => {
   });
 
   test('expanded panel shows the "Export" submit button', async ({ page }) => {
-    await page.goto('/metrics');
+    await page.goto('/settings');
 
     await page.getByRole('button', { name: /Export CSV/i }).click();
 
@@ -47,7 +47,7 @@ test.describe('CSV export feature', () => {
   });
 
   test('expanded panel shows From and To date fields with pre-filled values', async ({ page }) => {
-    await page.goto('/metrics');
+    await page.goto('/settings');
 
     await page.getByRole('button', { name: /Export CSV/i }).click();
 
@@ -58,7 +58,7 @@ test.describe('CSV export feature', () => {
   });
 
   test('clicking the toggle again collapses the export panel', async ({ page }) => {
-    await page.goto('/metrics');
+    await page.goto('/settings');
 
     const toggleButton = page.getByRole('button', { name: /Export CSV/i });
     await toggleButton.click();
@@ -69,7 +69,7 @@ test.describe('CSV export feature', () => {
   });
 
   test('clicking Export triggers a file download', async ({ page }) => {
-    await page.goto('/metrics');
+    await page.goto('/settings');
 
     await page.getByRole('button', { name: /Export CSV/i }).click();
 
@@ -82,7 +82,7 @@ test.describe('CSV export feature', () => {
   });
 
   test('downloaded file has a csv filename with the user slug and date range', async ({ page }) => {
-    await page.goto('/metrics');
+    await page.goto('/settings');
 
     await page.getByRole('button', { name: /Export CSV/i }).click();
 

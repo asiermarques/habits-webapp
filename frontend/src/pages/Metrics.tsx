@@ -1,7 +1,6 @@
 import { ByTypeChartSection } from '@/metrics/ByTypeChartSection';
 import { HeatmapSection } from '@/metrics/HeatmapSection';
 import { SummaryCards } from '@/metrics/SummaryCards';
-import { ExportSection } from '@/export/ExportSection';
 import { t } from '@/lib/i18n';
 
 export function Metrics() {
@@ -16,7 +15,6 @@ export function Metrics() {
           {t('metrics.subtitle')}
         </p>
       </header>
-      <ExportSection />
       <SummaryCards />
       <ByTypeChartSection />
       <HeatmapSection />

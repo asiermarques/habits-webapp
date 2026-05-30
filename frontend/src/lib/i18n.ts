@@ -99,8 +99,13 @@ const en = {
   'entryForm.costSpent': 'Cost spent',
   'entryForm.submit': 'Log entry',
 
+  // Your data section
+  'data.title': 'Your data',
+  'data.eyebrow': 'export & backup',
+
   // Export section
   'export.title': 'Export CSV',
+  'export.description': 'Download entries as a spreadsheet for analysis. Not a backup — habit definitions are not included and the file cannot be re-imported.',
   'export.from': 'From',
   'export.to': 'To',
   'export.exporting': 'Exporting…',
@@ -285,7 +290,11 @@ const es: Record<keyof typeof en, string> = {
   'entryForm.costSpent': 'Coste',
   'entryForm.submit': 'Registrar entrada',
 
+  'data.title': 'Tus datos',
+  'data.eyebrow': 'exportar y copia',
+
   'export.title': 'Exportar CSV',
+  'export.description': 'Descarga las entradas como hoja de cálculo para análisis. No es una copia de seguridad — las definiciones de hábitos no se incluyen y el archivo no se puede reimportar.',
   'export.from': 'Desde',
   'export.to': 'Hasta',
   'export.exporting': 'Exportando…',

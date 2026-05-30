@@ -97,6 +97,7 @@ export function ExportSection() {
           onSubmit={onSubmit}
           className="mt-2 space-y-3 rounded-md border border-hairline bg-card p-3"
         >
+          <p className="text-sm text-ink-soft">{t('export.description')}</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="export-from">{t('export.from')}</Label>

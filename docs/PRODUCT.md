@@ -22,7 +22,9 @@ The visual identity is **"Quiet Discipline"** — an editorial, warm-paper aesth
 - **Currency**: curated dropdown (EUR, USD, GBP, JPY, CHF, CAD, AUD) — shared across all users, default EUR. Used for the "Cost spent" field on negative custom habits
 - **Habit definitions**: per-user list grouped by archetype. Add/edit/delete via modal. The "positive" toggle is only meaningful for Custom habits; the type selector is locked once entries exist
 - **Per-user seeding**: each new user starts with eight example habits (running, rowing, writing, reading, meat consuming, fast food consuming, cooking, social interactions), using rotating positive-palette colors (red is reserved for negative habits)
-- **Backup & restore**, collapsed behind a chevron toggle: **export** the active user's habit definitions and entries as a single JSON file, or **import** one back. Import merges — it adds definitions/entries that aren't already present and skips duplicates (a definition matching by name, an entry matching by habit + date), so re-importing the same file is safe. Colors round-trip; ids do not (entries reference their definition by name, so a backup restores cleanly into a different instance)
+- **Your data** area, shown only when an Active User is selected, groups two data-egress controls:
+  - **Backup & restore**, collapsed behind a chevron toggle: **export** the active user's habit definitions and entries as a single JSON file, or **import** one back. Import merges — it adds definitions/entries that aren't already present and skips duplicates (a definition matching by name, an entry matching by habit + date), so re-importing the same file is safe. Colors round-trip; ids do not (entries reference their definition by name, so a backup restores cleanly into a different instance)
+  - **Export CSV**, collapsed behind a chevron toggle: pick a date range, then download `habits-{user}-{from}-{to}.csv` with one row per entry (columns not applicable to the archetype are blank). For analysis only — not a backup, habit definitions are not included, and the file cannot be re-imported
 
 ## Logging entries
 
@@ -48,7 +50,7 @@ The button stays disabled until there is an active user **and** at least one hab
 - **Summary score cards** for the last 30 days: most-logged habit, least-logged habit (zero-entry habits can win this), total cost across negative habits, and number of active habits (with an "of N total" hint). Two cards per row on mobile, four on larger screens
 - **Stacked bar chart** of entries by individual habit over the last 13 weeks, using each habit's color
 - **One heatmap per habit** over the last 26 weeks — a 26×7 grid where opacity reflects per-day count. Positive habits use their assigned color, negative habits use ember. Habits with no entries still render an empty grid. Habits are ordered by their most recent in-range entry (empty habits sink to the bottom)
-- **CSV export**, collapsed behind a chevron toggle: pick user and date range, then download `habits-{user}-{from}-{to}.csv` with one row per entry (columns not applicable to the archetype are blank)
+
 
 ## Counting rules
 
