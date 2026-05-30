@@ -46,9 +46,7 @@ test.describe('Metrics page', () => {
     test('navigating to /metrics renders the page', async ({ page }) => {
       await page.goto('/metrics');
 
-      // The page renders multiple sections — the export toggle is always visible
-      // because it renders before SummaryCards checks for an active user.
-      await expect(page.getByText('Export CSV')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Metrics' })).toBeVisible();
     });
   });
 
@@ -112,11 +110,11 @@ test.describe('Metrics page', () => {
   // ── By-habit 13-week bar chart ────────────────────────────────────────────
 
   test.describe('By habit bar chart (last 3 months)', () => {
-    test('shows "By habit (last 3 months)" section heading', async ({ page }) => {
+    test('shows "By habit" section heading', async ({ page }) => {
       await page.goto('/metrics');
 
       await expect(
-        page.getByRole('heading', { name: 'By habit (last 3 months)' }),
+        page.getByRole('heading', { name: 'By habit' }),
       ).toBeVisible();
     });
 
@@ -126,7 +124,7 @@ test.describe('Metrics page', () => {
       // The chart section wraps its content in a bordered card. We assert the
       // section heading is present — asserting SVG internals would be fragile.
       const chartSection = page.locator('section').filter({
-        has: page.getByRole('heading', { name: 'By habit (last 3 months)' }),
+        has: page.getByRole('heading', { name: 'By habit' }),
       });
       await expect(chartSection).toBeVisible();
     });

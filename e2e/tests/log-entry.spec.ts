@@ -24,14 +24,18 @@ test.describe('Log entry feature', () => {
 
   test.describe('Log entry button state', () => {
     test('button is disabled when there is no active user', async ({ browser }) => {
-      // Open a fresh context with no localStorage so there is no active user.
+      // Open a fresh context with no localStorage so there is no stored active user.
+      // The UserProvider auto-selects a fallback once the users query resolves, so
+      // we assert the button is disabled before that network round-trip completes.
       const ctx = await browser.newContext({ storageState: undefined });
       const page = await ctx.newPage();
       page.setViewportSize(MOBILE_VIEWPORT);
 
+      // Block the users API so the provider never resolves a fallback.
+      await page.route('**/api/users', (route) => route.abort());
+
       await page.goto('/');
 
-      // The Log entry button (aria-label) should be rendered but disabled.
       await expect(page.getByRole('button', { name: 'Log entry' })).toBeDisabled();
 
       await ctx.close();
