@@ -31,6 +31,20 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       refetchOnWindowFocus: false,
+      // Retries that can't succeed only add latency. Offline (the request never
+      // reached the server) and client errors (4xx — a locked gate's 401, a
+      // validation 400) won't recover by retrying, so bail immediately. This
+      // matters most for the gate status call (excluded from the SW cache by
+      // RISK-G1): without this, an offline refresh retried it 3× over ~7s while
+      // GateGuard rendered nothing, so the cached shell appeared to hang before
+      // the offline fallback kicked in. Transient/5xx errors still retry.
+      retry: (failureCount, error) => {
+        if (error instanceof OfflineError) return false;
+        if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+          return false;
+        }
+        return failureCount < 3;
+      },
     },
   },
   queryCache: new QueryCache({ onError: handleError }),
