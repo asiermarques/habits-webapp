@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -7,7 +7,21 @@ import path from 'node:path';
 // Brand tokens from docs/DESIGN.md ("Quiet Discipline" palette).
 const PAPER = '#F4F0E8'; // --paper: app background / splash background
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  // Load all env vars (third arg '' = no prefix filter) so we can expose a few
+  // un-prefixed, build-tool-agnostic names through `define` below, rather than
+  // forcing a VITE_ prefix onto app config. See GateGuard for the consumer.
+  const env = loadEnv(mode, process.cwd(), '');
+
+  return {
+  define: {
+    // GATE_OFFLINE_GRACE_MINUTES: how long a gated instance stays readable
+    // offline after the last online unlock. Exposed un-prefixed (Vite only
+    // auto-exposes VITE_*; `define` is the documented escape hatch).
+    'import.meta.env.GATE_OFFLINE_GRACE_MINUTES': JSON.stringify(
+      env.GATE_OFFLINE_GRACE_MINUTES ?? '',
+    ),
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -106,4 +120,5 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 5173,
   },
-}));
+  };
+});

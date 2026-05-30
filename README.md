@@ -111,18 +111,39 @@ docker run --rm \
   alpine cp /src/habits.db /data/habits.db
 ```
 
-Environment variables (all optional, have defaults):
+### Environment variables
+
+Templates live in `backend/.env.example` and `frontend/.env.example` — copy them as shown in [Setup](#setup). Every variable is optional and has a default (the one exception: `SESSION_SECRET` becomes **required** once `GATE_PASSWORD` is set).
+
+#### Backend (runtime — `backend/.env`)
+
+Read by the Node server at startup, so a change takes effect on the next restart.
 
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `3001` | HTTP port the server listens on |
-| `DATABASE_URL` | `./habits.db` | Path to the SQLite file |
-| `CORS_ORIGIN` | `*` | Allowed CORS origin |
-| `FRONTEND_DIST_DIR` | `/app/frontend-dist` | Path to the compiled frontend assets |
+| `DATABASE_URL` | `./habits.db` | Path to the SQLite file (also used by `drizzle-kit` for migrations) |
+| `CORS_ORIGIN` | `http://localhost:5173` | Allowed CORS origin for the API |
+| `NODE_ENV` | _(unset)_ | Set to `production` to serve the built frontend, sign the gate cookie as `Secure`, and emit JSON logs. Also disables seeding under `test` |
+| `FRONTEND_DIST_DIR` | `../../frontend/dist` (relative to the compiled backend) | Production only — path to the built frontend assets the server serves |
 | `GATE_PASSWORD` | _(unset)_ | Shared password for the instance gate. **Unset = no gate (fully open).** Set it to require an unlock screen before the app |
 | `SESSION_SECRET` | _(unset)_ | Random secret used to sign the gate session cookie. **Required when `GATE_PASSWORD` is set** — the server refuses to start gated without it |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | _(unset)_ | OTLP endpoint for traces/metrics/logs. **Unset = telemetry off** (fail-open). Signal-specific overrides `OTEL_EXPORTER_OTLP_{TRACES,METRICS,LOGS}_ENDPOINT` are also honored |
+| `OTEL_EXPORTER_OTLP_HEADERS` | _(unset)_ | Headers sent to the OTLP endpoint, e.g. `api-key=…` (secret — never commit a real value) |
+| `OTEL_SERVICE_NAME` | `habits-backend` | Service name reported to the telemetry backend |
+
+See [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) for the full telemetry setup.
 
 > ⚠️ **Deploying publicly?** The instance has **no gate by default** — anyone with the URL can read and write every user's data. Before exposing a public URL (Railway, a free tier, etc.), set **both** `GATE_PASSWORD` and `SESSION_SECRET` in the host's dashboard. This adds a single shared-password unlock screen (a ~24h session per browser); it is a deployment safeguard, not per-user authentication. Both are set in the environment only — no rebuild, nothing committed to the repo.
+
+#### Frontend (build-time — `frontend/.env`)
+
+Baked into the bundle at `vite build`, so a change requires a **rebuild** to take effect (not just a restart).
+
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_API_URL` | `http://localhost:3001` | Base URL of the backend API the SPA calls |
+| `GATE_OFFLINE_GRACE_MINUTES` | `120` (2h) | How long a gated instance stays readable offline after the last online unlock; past it the unlock screen is shown. A missing/non-numeric/non-positive value falls back to the default |
 
 ### Testing
 
