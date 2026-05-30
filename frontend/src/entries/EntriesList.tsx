@@ -139,7 +139,13 @@ function EntryCard({ entry, habit, currency, onEdit, onDelete }: EntryCardProps)
         <EntrySummary entry={entry} currency={currency} />
       </div>
       <div className="flex shrink-0 items-center">
-        <Button size="icon" variant="ghost" onClick={onEdit} aria-label={t('entries.editAria')}>
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={onEdit}
+          aria-label={t('entries.editAria')}
+          className="text-ink-faint hover:text-moss-deep focus-visible:text-moss-deep"
+        >
           <Pencil className="h-4 w-4" />
         </Button>
         <Button
@@ -147,7 +153,7 @@ function EntryCard({ entry, habit, currency, onEdit, onDelete }: EntryCardProps)
           variant="ghost"
           onClick={onDelete}
           aria-label={t('entries.deleteAria')}
-          className="text-ember hover:text-ember/80"
+          className="text-ink-faint hover:bg-ember-tint hover:text-ember focus-visible:text-ember"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
