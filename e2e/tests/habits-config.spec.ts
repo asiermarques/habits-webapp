@@ -455,10 +455,10 @@ test.describe('Habits configuration feature', () => {
       await page.getByRole('button', { name: 'New', exact: true }).click();
       await page.getByRole('dialog').getByLabel('Name').fill('Colored Habit');
 
-      // Click the second swatch (index 1)
+      // Click the second swatch (index 1). Radio inputs are sr-only; force to bypass visibility.
       const colorGroup = page.getByRole('group', { name: 'Color' });
       const secondSwatch = colorGroup.getByRole('radio').nth(1);
-      await secondSwatch.click();
+      await secondSwatch.click({ force: true });
 
       await page.getByRole('button', { name: 'Add habit' }).click();
       await expect(page.getByRole('dialog')).not.toBeVisible();

@@ -147,7 +147,8 @@ Global; `id`, `name`, `isDefault`, `createdAt`. Invariants in `users/domain/User
 ### HabitDefinition
 Per-user; `id`, `userId` (FK, cascade), `name`, `type` (`workout` | `writing` | `custom`), `positive`, `color`, `createdAt`. Plus a response-only `hasEntries` computed via `EntryRepository.hasEntriesForDefinition` (drives the UI's type-lock and delete-block affordances). Invariants in `habit-definitions/domain/HabitDefinition.ts`:
 - Workout and Writing are forced to `positive: true`
-- Color is auto-assigned: negative → red (`#ef4444`); positive → next in a rotating 8-color palette, counted **per user**
+- Color is user-selectable from a curated 8-color set (`CURATED_COLORS` in `habit-definitions/domain/Color.ts`, also exported as `HABIT_CURATED_COLORS` from `shared`). Red (`HABIT_NEGATIVE_COLOR = #ef4444`) is excluded for Positive Habits; it is the default for Negative Habits. If no color is provided, the server auto-assigns (rotating palette for Positive, red for Negative). `validateColor` enforces set membership and the red-reservation rule; it is called in the Drizzle adapter for the create and update paths. Backup import bypasses this check intentionally.
+- Color is always editable — unlike type, it is not locked once entries exist
 - Type cannot change once entries reference the definition (HTTP 409)
 - Cannot be deleted while entries exist (HTTP 409)
 
