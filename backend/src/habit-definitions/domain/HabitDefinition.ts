@@ -13,6 +13,7 @@ export type HabitPatch = {
   name?: string;
   type?: HabitType;
   positive?: boolean;
+  color?: string;
 };
 
 // Returns the computed field updates to persist. An empty object means no change.
@@ -32,6 +33,7 @@ export function applyPatch(
   if (patch.name !== undefined) updates.name = patch.name;
   if (patch.type !== undefined) updates.type = patch.type;
   if (newPositive !== existing.positive) updates.positive = newPositive;
+  if (patch.color !== undefined && patch.color !== existing.color) updates.color = patch.color;
 
   return updates;
 }

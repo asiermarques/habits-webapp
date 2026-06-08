@@ -17,6 +17,7 @@ export const createHabitDefinitionSchema = z.object({
     errorMap: () => ({ message: 'type must be one of: workout, writing, custom' }),
   }),
   positive: z.boolean().optional(),
+  color: z.string().optional(),
 });
 
 export const updateHabitDefinitionSchema = z.object({
@@ -32,4 +33,5 @@ export const updateHabitDefinitionSchema = z.object({
     })
     .optional(),
   positive: z.boolean().optional(),
+  color: z.string().optional(),
 });

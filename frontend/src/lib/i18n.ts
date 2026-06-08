@@ -146,7 +146,7 @@ const en = {
   'settings.habits.negative': 'negative',
   'settings.habits.editTitle': 'Edit habit',
   'settings.habits.newTitle': 'New habit',
-  'settings.habits.editDescription': 'Update the habit name, type, or whether it is positive.',
+  'settings.habits.editDescription': 'Update the habit name, type, color, or whether it is positive.',
   'settings.habits.newDescription': 'Add a new habit for',
   'settings.habits.addSubmit': 'Add habit',
   'settings.habits.deleteTitle': 'Delete {name}?',
@@ -178,6 +178,7 @@ const en = {
   'habitForm.typeLocked': 'Type is locked because entries already exist for this habit.',
   'habitForm.positive': 'Positive habit',
   'habitForm.positiveHelp': 'Off = something you want less of (e.g. fast food).',
+  'habitForm.color': 'Color',
 
   // User switcher
   'userSwitcher.aria': 'Switch user',
@@ -334,7 +335,7 @@ const es: Record<keyof typeof en, string> = {
   'settings.habits.negative': 'negativo',
   'settings.habits.editTitle': 'Editar hábito',
   'settings.habits.newTitle': 'Nuevo hábito',
-  'settings.habits.editDescription': 'Actualiza el nombre, tipo o dirección del hábito.',
+  'settings.habits.editDescription': 'Actualiza el nombre, tipo, color o dirección del hábito.',
   'settings.habits.newDescription': 'Añadir un nuevo hábito para',
   'settings.habits.addSubmit': 'Añadir hábito',
   'settings.habits.deleteTitle': '¿Eliminar {name}?',
@@ -364,6 +365,7 @@ const es: Record<keyof typeof en, string> = {
   'habitForm.typeLocked': 'El tipo está bloqueado porque ya existen entradas para este hábito.',
   'habitForm.positive': 'Hábito positivo',
   'habitForm.positiveHelp': 'Desactivado = algo que quieres hacer menos (p.ej. comida rápida).',
+  'habitForm.color': 'Color',
 
   'userSwitcher.aria': 'Cambiar usuario',
 

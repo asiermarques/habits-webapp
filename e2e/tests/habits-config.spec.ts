@@ -365,7 +365,7 @@ test.describe('Habits configuration feature', () => {
       await page.getByRole('button', { name: `Edit ${WORKOUT_HABITS[0]}` }).click();
 
       await expect(
-        page.getByText('Update the habit name, type, or whether it is positive.'),
+        page.getByText('Update the habit name, type, color, or whether it is positive.'),
       ).toBeVisible();
     });
 
@@ -425,6 +425,65 @@ test.describe('Habits configuration feature', () => {
       // Use the edit button as a proxy — avoids strict-mode clash between the "Writing"
       // section heading and the "Writing" habit name both being in the DOM.
       await expect(page.getByRole('button', { name: `Edit ${WRITING_HABITS[0]}` })).toBeVisible();
+    });
+  });
+
+  // ── Color selection ───────────────────────────────────────────────────────
+
+  test.describe('Color selection', () => {
+    test('new habit dialog shows a color selector', async ({ page }) => {
+      await page.goto('/settings');
+
+      await page.getByRole('button', { name: 'New', exact: true }).click();
+
+      await expect(page.getByRole('group', { name: 'Color' })).toBeVisible();
+    });
+
+    test('color selector has at least two radio options for a positive habit', async ({ page }) => {
+      await page.goto('/settings');
+
+      await page.getByRole('button', { name: 'New', exact: true }).click();
+
+      const colorGroup = page.getByRole('group', { name: 'Color' });
+      const radios = colorGroup.getByRole('radio');
+      await expect(radios).toHaveCount(8); // 8 curated non-red colors
+    });
+
+    test('adding a habit with a custom color persists the chosen color', async ({ page }) => {
+      await page.goto('/settings');
+
+      await page.getByRole('button', { name: 'New', exact: true }).click();
+      await page.getByRole('dialog').getByLabel('Name').fill('Colored Habit');
+
+      // Click the second swatch (index 1)
+      const colorGroup = page.getByRole('group', { name: 'Color' });
+      const secondSwatch = colorGroup.getByRole('radio').nth(1);
+      await secondSwatch.click();
+
+      await page.getByRole('button', { name: 'Add habit' }).click();
+      await expect(page.getByRole('dialog')).not.toBeVisible();
+
+      // The habit should appear in the list
+      await expect(page.getByText('Colored Habit')).toBeVisible();
+
+      // Clean up.
+      await page.getByRole('button', { name: 'Delete Colored Habit' }).click();
+      await expect(page.getByRole('alertdialog')).toBeVisible();
+      await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
+      await expect(page.getByRole('alertdialog')).not.toBeVisible();
+    });
+
+    test('edit dialog pre-selects the existing habit color', async ({ page }) => {
+      await page.goto('/settings');
+
+      await page.getByRole('button', { name: `Edit ${WORKOUT_HABITS[0]}` }).click();
+
+      const colorGroup = page.getByRole('group', { name: 'Color' });
+      // At least one swatch should be checked
+      const checkedSwatch = colorGroup.getByRole('radio', { checked: true });
+      await expect(checkedSwatch).toBeVisible();
+
+      await page.getByRole('button', { name: 'Cancel' }).click();
     });
   });
 

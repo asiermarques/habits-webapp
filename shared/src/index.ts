@@ -45,6 +45,13 @@ export type HabitType = 'workout' | 'writing' | 'custom';
 
 export const HABIT_TYPES: HabitType[] = ['workout', 'writing', 'custom'];
 
+export const HABIT_CURATED_COLORS = [
+  '#3b82f6', '#10b981', '#a855f7', '#f97316',
+  '#14b8a6', '#ec4899', '#6366f1', '#eab308',
+] as const;
+
+export const HABIT_NEGATIVE_COLOR = '#ef4444';
+
 export type HabitDefinition = {
   id: number;
   userId: number;
@@ -61,12 +68,14 @@ export type CreateHabitDefinitionBody = {
   name: string;
   type: HabitType;
   positive?: boolean;
+  color?: string;
 };
 
 export type UpdateHabitDefinitionBody = {
   name?: string;
   type?: HabitType;
   positive?: boolean;
+  color?: string;
 };
 
 // --- Entries ---

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { resolvePositive, applyPatch } from '../domain/HabitDefinition.js';
 import { TypeLockedError } from '../domain/errors.js';
-import { pickColor, POSITIVE_COLORS, NEGATIVE_COLOR } from '../domain/Color.js';
+import { pickColor, POSITIVE_COLORS, NEGATIVE_COLOR, CURATED_COLORS, validateColor } from '../domain/Color.js';
+import { ValidationError } from '../../shared/domain/errors/DomainError.js';
 import type { HabitDefinition } from '../domain/HabitDefinition.js';
 
 const makeHabit = (overrides: Partial<HabitDefinition> = {}): HabitDefinition => ({
@@ -82,5 +83,61 @@ describe('pickColor', () => {
     expect(pickColor(true, 0)).toBe(POSITIVE_COLORS[0]);
     expect(pickColor(true, 1)).toBe(POSITIVE_COLORS[1]);
     expect(pickColor(true, POSITIVE_COLORS.length)).toBe(POSITIVE_COLORS[0]);
+  });
+});
+
+describe('CURATED_COLORS', () => {
+  it('does not include NEGATIVE_COLOR', () => {
+    expect(CURATED_COLORS as string[]).not.toContain(NEGATIVE_COLOR);
+  });
+
+  it('has at least 2 distinct colors', () => {
+    expect(CURATED_COLORS.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('validateColor', () => {
+  it('accepts a curated color for a positive habit', () => {
+    expect(() => validateColor(CURATED_COLORS[0], true)).not.toThrow();
+  });
+
+  it('rejects NEGATIVE_COLOR for a positive habit', () => {
+    expect(() => validateColor(NEGATIVE_COLOR, true)).toThrow(ValidationError);
+  });
+
+  it('rejects an out-of-set color for a positive habit', () => {
+    expect(() => validateColor('#000000', true)).toThrow(ValidationError);
+  });
+
+  it('accepts NEGATIVE_COLOR for a negative habit', () => {
+    expect(() => validateColor(NEGATIVE_COLOR, false)).not.toThrow();
+  });
+
+  it('accepts a curated color for a negative habit', () => {
+    expect(() => validateColor(CURATED_COLORS[0], false)).not.toThrow();
+  });
+
+  it('rejects an out-of-set color for a negative habit', () => {
+    expect(() => validateColor('#000000', false)).toThrow(ValidationError);
+  });
+});
+
+describe('applyPatch with color', () => {
+  it('includes a color change in updates', () => {
+    const habit = makeHabit({ color: CURATED_COLORS[0] });
+    const updates = applyPatch(habit, { color: CURATED_COLORS[1] }, false);
+    expect(updates.color).toBe(CURATED_COLORS[1]);
+  });
+
+  it('omits color from updates when unchanged', () => {
+    const habit = makeHabit({ color: CURATED_COLORS[0] });
+    const updates = applyPatch(habit, { color: CURATED_COLORS[0] }, false);
+    expect(updates.color).toBeUndefined();
+  });
+
+  it('omits color from updates when not in patch', () => {
+    const habit = makeHabit({ color: CURATED_COLORS[0] });
+    const updates = applyPatch(habit, { name: 'New name' }, false);
+    expect(updates.color).toBeUndefined();
   });
 });

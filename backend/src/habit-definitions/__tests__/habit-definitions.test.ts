@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../app.js';
 import { seedHabitDefinitionsForUser } from '../seed.js';
-import { POSITIVE_COLORS, NEGATIVE_COLOR } from '../domain/Color.js';
+import { POSITIVE_COLORS, NEGATIVE_COLOR, CURATED_COLORS } from '../domain/Color.js';
 import type { HabitDefinition, User } from '@habitsapp/shared';
 
 const app = createApp();
@@ -185,6 +185,91 @@ describe('Habit Definitions API', () => {
     it('returns 404 for an unknown id', async () => {
       const res = await request(app).delete('/api/habit-definitions/9999');
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe('color selection', () => {
+    it('persists an explicit curated color on create (positive habit)', async () => {
+      const user = await createUser('Alice');
+      const targetColor = CURATED_COLORS[1];
+      const res = await request(app)
+        .post('/api/habit-definitions')
+        .send({ userId: user.id, name: 'Reading', type: 'custom', color: targetColor });
+      expect(res.status).toBe(201);
+      expect(res.body.color).toBe(targetColor);
+    });
+
+    it('rejects an out-of-set color on create', async () => {
+      const user = await createUser('Alice');
+      const res = await request(app)
+        .post('/api/habit-definitions')
+        .send({ userId: user.id, name: 'Reading', type: 'custom', color: '#000000' });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects NEGATIVE_COLOR for a positive habit on create', async () => {
+      const user = await createUser('Alice');
+      const res = await request(app)
+        .post('/api/habit-definitions')
+        .send({ userId: user.id, name: 'Reading', type: 'custom', positive: true, color: NEGATIVE_COLOR });
+      expect(res.status).toBe(400);
+    });
+
+    it('accepts NEGATIVE_COLOR for a negative habit on create', async () => {
+      const user = await createUser('Alice');
+      const res = await request(app)
+        .post('/api/habit-definitions')
+        .send({ userId: user.id, name: 'Junk food', type: 'custom', positive: false, color: NEGATIVE_COLOR });
+      expect(res.status).toBe(201);
+      expect(res.body.color).toBe(NEGATIVE_COLOR);
+    });
+
+    it('accepts a curated (non-red) color for a negative habit on create', async () => {
+      const user = await createUser('Alice');
+      const res = await request(app)
+        .post('/api/habit-definitions')
+        .send({ userId: user.id, name: 'Junk food', type: 'custom', positive: false, color: CURATED_COLORS[0] });
+      expect(res.status).toBe(201);
+      expect(res.body.color).toBe(CURATED_COLORS[0]);
+    });
+
+    it('updates the color via PUT', async () => {
+      const user = await createUser('Alice');
+      const habit = await createHabit(user.id, { name: 'Reading', type: 'custom' });
+      const newColor = CURATED_COLORS.find((c) => c !== habit.color)!;
+      const res = await request(app)
+        .put(`/api/habit-definitions/${habit.id}`)
+        .send({ color: newColor });
+      expect(res.status).toBe(200);
+      expect(res.body.color).toBe(newColor);
+    });
+
+    it('rejects an out-of-set color on PUT', async () => {
+      const user = await createUser('Alice');
+      const habit = await createHabit(user.id, { name: 'Reading', type: 'custom' });
+      const res = await request(app)
+        .put(`/api/habit-definitions/${habit.id}`)
+        .send({ color: '#000000' });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects NEGATIVE_COLOR for a positive habit on PUT', async () => {
+      const user = await createUser('Alice');
+      const habit = await createHabit(user.id, { name: 'Reading', type: 'custom', positive: true });
+      const res = await request(app)
+        .put(`/api/habit-definitions/${habit.id}`)
+        .send({ color: NEGATIVE_COLOR });
+      expect(res.status).toBe(400);
+    });
+
+    it('keeps existing color when no color is provided on PUT', async () => {
+      const user = await createUser('Alice');
+      const habit = await createHabit(user.id, { name: 'Reading', type: 'custom' });
+      const res = await request(app)
+        .put(`/api/habit-definitions/${habit.id}`)
+        .send({ name: 'Books' });
+      expect(res.status).toBe(200);
+      expect(res.body.color).toBe(habit.color);
     });
   });
 

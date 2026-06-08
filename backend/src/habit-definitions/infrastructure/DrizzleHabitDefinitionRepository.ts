@@ -2,11 +2,10 @@ import { and, asc, eq } from 'drizzle-orm';
 import { db } from '../../shared/db/index.js';
 import { entries, habitDefinitions, users, type DbHabitDefinition } from '../../shared/db/schema.js';
 import type { HabitDefinition } from '../domain/HabitDefinition.js';
-import { resolvePositive, applyPatch } from '../domain/HabitDefinition.js';
-import { pickColor } from '../domain/Color.js';
+import { resolvePositive, applyPatch, type HabitPatch } from '../domain/HabitDefinition.js';
+import { pickColor, validateColor } from '../domain/Color.js';
 import { HabitDefinitionNotFoundError, HasEntriesError, UserNotFoundError } from '../domain/errors.js';
 import type { HabitDefinitionRepository, InsertInput } from '../domain/HabitDefinitionRepository.js';
-import type { HabitPatch } from '../domain/HabitDefinition.js';
 import type { EntryRepository } from '../../entries/domain/EntryRepository.js';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -68,7 +67,9 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
       if (!user) throw new UserNotFoundError(input.userId);
 
       const positive = resolvePositive(input.type, input.positive);
-      // Honor an explicit color (backup restore); otherwise auto-assign from the palette.
+      // Validate explicit color against the curated set; bypass for backup restore handled in backup slice.
+      if (input.color !== undefined) validateColor(input.color, positive);
+      // Honor an explicit color (backup restore / user selection); otherwise auto-assign from the palette.
       const color = input.color ?? pickColor(positive, this.countPositiveByUserInTx(input.userId, tx));
 
       const inserted = tx
@@ -88,6 +89,13 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
 
       const hasEntries = this.entryRepo?.hasEntriesForDefinition(id) ?? false;
       const existing = toHabitDefinition(row, hasEntries);
+
+      if (patch.color !== undefined) {
+        const newType = patch.type ?? existing.type;
+        const newPositive = resolvePositive(newType, patch.positive ?? existing.positive);
+        validateColor(patch.color, newPositive);
+      }
+
       const updates = applyPatch(existing, patch, hasEntries);
 
       if (Object.keys(updates).length === 0) {
