@@ -1,4 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="112" fill="#F4F0E8"/>
-  <path d="M138 258 L216 338 L374 168" fill="none" stroke="#335240" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Left stem -->
+  <rect x="102" y="116" width="60" height="280" fill="#1C1B18"/>
+  <!-- Top-left serif -->
+  <rect x="84"  y="116" width="96"  height="16" fill="#1C1B18"/>
+  <!-- Bottom-left serif -->
+  <rect x="84"  y="380" width="96"  height="16" fill="#1C1B18"/>
+
+  <!-- Right stem -->
+  <rect x="270" y="116" width="60" height="280" fill="#1C1B18"/>
+  <!-- Top-right serif -->
+  <rect x="252" y="116" width="96"  height="16" fill="#1C1B18"/>
+  <!-- Bottom-right serif -->
+  <rect x="252" y="380" width="96"  height="16" fill="#1C1B18"/>
+
+  <!-- Crossbar -->
+  <rect x="162" y="238" width="108" height="34" fill="#1C1B18"/>
+
+  <!-- Dot -->
+  <circle cx="402" cy="380" r="26" fill="#3B6CD6"/>
 </svg>
