@@ -446,7 +446,7 @@ test.describe('Habits configuration feature', () => {
 
       const colorGroup = page.getByRole('group', { name: 'Color' });
       const radios = colorGroup.getByRole('radio');
-      await expect(radios).toHaveCount(8); // 8 curated non-red colors
+      await expect(radios).toHaveCount(21); // 21 curated non-red colors
     });
 
     test('adding a habit with a custom color persists the chosen color', async ({ page }) => {
