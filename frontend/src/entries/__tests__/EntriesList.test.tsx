@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import type { Entry, HabitDefinition, User } from '@habitsapp/shared';
 import { EntriesList } from '../EntriesList';
-import { addPendingEntryCreate } from '../offlineStore';
+import { addPendingEntryCreate, addPendingEntryUpdate, addPendingEntryDelete } from '../offlineStore';
 import { TestProviders } from '@/test/test-utils';
 
 function jsonResponse(body: unknown) {
@@ -67,5 +67,42 @@ describe('EntriesList pending overlay', () => {
 
     // No per-row marker distinguishes the pending entry (requisites UX note).
     expect(screen.queryByText(/pending/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a queued offline edit to a synced Entry instead of its server value', async () => {
+    addPendingEntryUpdate({ entryId: 1, userId: 1, date: '2026-08-01', data: { duration: 99 } });
+
+    vi.stubGlobal('fetch', makeFetch());
+
+    render(
+      <TestProviders>
+        <EntriesList onEdit={vi.fn()} />
+      </TestProviders>,
+    );
+
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1));
+    expect(screen.getByRole('listitem')).toHaveTextContent('99');
+  });
+
+  it('suppresses a synced Entry that was deleted offline, even though the cached response still has it', async () => {
+    addPendingEntryDelete({
+      entryId: 1,
+      userId: 1,
+      habitDefinitionId: 11,
+      type: 'workout',
+      date: '2026-08-01',
+      data: { duration: 20 },
+    });
+
+    vi.stubGlobal('fetch', makeFetch());
+
+    render(
+      <TestProviders>
+        <EntriesList onEdit={vi.fn()} />
+      </TestProviders>,
+    );
+
+    await waitFor(() => expect(screen.queryByText(/no entries|empty/i)).toBeInTheDocument());
+    expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
   });
 });

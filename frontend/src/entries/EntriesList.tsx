@@ -17,7 +17,7 @@ import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useSettingsQuery } from '@/settings/queries';
 import { formatCurrency } from '@/lib/currency';
 import { t } from '@/lib/i18n';
-import { useDeleteEntry, useEntriesInfinite, usePendingEntries } from './queries';
+import { useDeleteEntry, useEntriesInfinite, usePendingEntries, usePendingOps } from './queries';
 import { pendingEntryToEntry } from './offlineStore';
 import { formatDate } from './date';
 
@@ -42,6 +42,7 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
       habitDefinitionId,
     });
   const pending = usePendingEntries(activeUser?.id ?? 0);
+  const ops = usePendingOps(activeUser?.id ?? 0);
 
   if (!activeUser) {
     return (
@@ -49,13 +50,24 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
     );
   }
 
+  const opsByEntryId = new Map(ops.map((op) => [op.entryId, op]));
   const serverEntries = data?.pages.flatMap((p) => p.items) ?? [];
+  // A queued offline update/delete overlays the synced Entry at read time —
+  // suppressed if deleted, or shown with its queued values if edited — and
+  // survives reload because it's read straight from the local store, not
+  // TanStack Query's cache (US-004/US-005).
+  const visibleServerEntries = serverEntries
+    .filter((e) => opsByEntryId.get(e.id)?.kind !== 'delete')
+    .map((e) => {
+      const op = opsByEntryId.get(e.id);
+      return op?.kind === 'update' ? { ...e, date: op.date, data: op.data } : e;
+    });
   // Pending entries have no server cursor position, so they're overlaid at
   // read time rather than injected into a page (would break getNextPageParam).
   const pendingEntries = pending
     .filter((p) => habitDefinitionId === undefined || p.habitDefinitionId === habitDefinitionId)
     .map(pendingEntryToEntry);
-  const entries = [...pendingEntries, ...serverEntries].sort(
+  const entries = [...pendingEntries, ...visibleServerEntries].sort(
     (a, b) => b.date.localeCompare(a.date) || b.id - a.id,
   );
 
@@ -109,7 +121,7 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
             <AlertDialogCancel>{t('action.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (pendingDelete) deleteEntry.mutate(pendingDelete.id);
+                if (pendingDelete) deleteEntry.mutate(pendingDelete);
                 setPendingDelete(null);
               }}
               className="bg-ember hover:bg-ember/90"

@@ -8,7 +8,7 @@ import type {
   WeeklyMetrics,
 } from '@habitsapp/shared';
 import { apiFetch } from '@/lib/api';
-import { usePendingEntries } from '@/entries/queries';
+import { usePendingEntries, usePendingOps } from '@/entries/queries';
 import { mergePendingIntoWeekly } from './pendingOverlay';
 
 export const weeklyMetricsKey = (userId: number, habitDefinitionId?: number) =>
@@ -39,10 +39,11 @@ export function useWeeklyMetrics(userId: number, habitDefinitionId?: number) {
     },
   });
   const pending = usePendingEntries(userId);
+  const ops = usePendingOps(userId);
 
   const data = useMemo(
-    () => (query.data ? mergePendingIntoWeekly(query.data, pending, habitDefinitionId) : query.data),
-    [query.data, pending, habitDefinitionId],
+    () => (query.data ? mergePendingIntoWeekly(query.data, pending, ops, habitDefinitionId) : query.data),
+    [query.data, pending, ops, habitDefinitionId],
   );
 
   return { ...query, data };

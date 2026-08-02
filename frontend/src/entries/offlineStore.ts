@@ -28,13 +28,33 @@ export type PendingEntryRecord = {
   createdAt: string;
 };
 
+// A queued change against an Entry that already has a server id (US-004/005).
+// One slot per entryId: queuing a new op for the same entryId replaces
+// whatever was queued before it, which *is* the collapse rule (US-006) —
+// edit->edit nets to the latest update, edit->delete nets to the delete.
+// A create that hasn't synced yet never gets an op; it's amended in place
+// (amendPendingEntryCreate) instead, which is what keeps an update from ever
+// being sent before the create it targets.
+export type PendingEntryOp =
+  | { kind: 'update'; entryId: number; userId: number; date: string; data: EntryData }
+  | {
+      kind: 'delete';
+      entryId: number;
+      userId: number;
+      habitDefinitionId: number;
+      type: HabitType;
+      date: string;
+      data: EntryData;
+    };
+
 type StoredState = {
   nextId: number;
   entries: PendingEntryRecord[];
+  ops: PendingEntryOp[];
 };
 
 function emptyState(): StoredState {
-  return { nextId: -1, entries: [] };
+  return { nextId: -1, entries: [], ops: [] };
 }
 
 function readState(): StoredState {
@@ -45,7 +65,7 @@ function readState(): StoredState {
     if (!Array.isArray(parsed.entries) || typeof parsed.nextId !== 'number') {
       return emptyState();
     }
-    return parsed;
+    return { ...parsed, ops: Array.isArray(parsed.ops) ? parsed.ops : [] };
   } catch {
     return emptyState();
   }
@@ -94,7 +114,7 @@ export function addPendingEntryCreate(input: AddPendingEntryCreateInput): Pendin
     data: input.data,
     createdAt: new Date().toISOString(),
   };
-  writeState({ nextId: state.nextId - 1, entries: [...state.entries, record] });
+  writeState({ ...state, nextId: state.nextId - 1, entries: [...state.entries, record] });
   notify();
   return record;
 }
@@ -105,6 +125,62 @@ export function removePendingEntry(localId: number): void {
   notify();
 }
 
+// Editing a create that hasn't synced yet has no server id to target with an
+// update, so it amends the queued create's values in place (US-004/US-006).
+export function amendPendingEntryCreate(
+  localId: number,
+  patch: { date: string; data: EntryData },
+): void {
+  const state = readState();
+  writeState({
+    ...state,
+    entries: state.entries.map((e) =>
+      e.localId === localId ? { ...e, date: patch.date, data: patch.data } : e,
+    ),
+  });
+  notify();
+}
+
+export function getPendingOps(): PendingEntryOp[] {
+  return readState().ops;
+}
+
+function upsertOp(op: PendingEntryOp): void {
+  const state = readState();
+  writeState({ ...state, ops: [...state.ops.filter((o) => o.entryId !== op.entryId), op] });
+  notify();
+}
+
+export type AddPendingEntryUpdateInput = {
+  entryId: number;
+  userId: number;
+  date: string;
+  data: EntryData;
+};
+
+export function addPendingEntryUpdate(input: AddPendingEntryUpdateInput): void {
+  upsertOp({ kind: 'update', ...input });
+}
+
+export type AddPendingEntryDeleteInput = {
+  entryId: number;
+  userId: number;
+  habitDefinitionId: number;
+  type: HabitType;
+  date: string;
+  data: EntryData;
+};
+
+export function addPendingEntryDelete(input: AddPendingEntryDeleteInput): void {
+  upsertOp({ kind: 'delete', ...input });
+}
+
+export function removePendingOp(entryId: number): void {
+  const state = readState();
+  writeState({ ...state, ops: state.ops.filter((o) => o.entryId !== entryId) });
+  notify();
+}
+
 // useSyncExternalStore requires getSnapshot to return a referentially stable
 // value when nothing changed, or React re-renders forever comparing new
 // array instances. `version` bumps on every store mutation; the filtered
@@ -112,6 +188,8 @@ export function removePendingEntry(localId: number): void {
 let version = 0;
 const filteredCache = new Map<number, { version: number; entries: PendingEntryRecord[] }>();
 let allCache: { version: number; entries: PendingEntryRecord[] } | null = null;
+const filteredOpsCache = new Map<number, { version: number; ops: PendingEntryOp[] }>();
+let allOpsCache: { version: number; ops: PendingEntryOp[] } | null = null;
 
 export function getPendingEntriesForUser(userId: number): PendingEntryRecord[] {
   const cached = filteredCache.get(userId);
@@ -129,6 +207,21 @@ export function getAllPendingEntries(): PendingEntryRecord[] {
   const entries = getPendingEntries();
   allCache = { version, entries };
   return entries;
+}
+
+export function getPendingOpsForUser(userId: number): PendingEntryOp[] {
+  const cached = filteredOpsCache.get(userId);
+  if (cached && cached.version === version) return cached.ops;
+  const ops = getPendingOps().filter((o) => o.userId === userId);
+  filteredOpsCache.set(userId, { version, ops });
+  return ops;
+}
+
+export function getAllPendingOps(): PendingEntryOp[] {
+  if (allOpsCache && allOpsCache.version === version) return allOpsCache.ops;
+  const ops = getPendingOps();
+  allOpsCache = { version, ops };
+  return ops;
 }
 
 export function pendingEntryToEntry(record: PendingEntryRecord): Entry {

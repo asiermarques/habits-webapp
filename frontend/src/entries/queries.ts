@@ -5,15 +5,21 @@ import {
 } from '@tanstack/react-query';
 import type {
   Entry,
+  EntryData,
   CreateEntryBody,
-  UpdateEntryBody,
 } from '@habitsapp/shared';
 import { apiFetch, OfflineError } from '@/lib/api';
 import {
   addPendingEntryCreate,
+  addPendingEntryDelete,
+  addPendingEntryUpdate,
+  amendPendingEntryCreate,
   getAllPendingEntries,
+  getAllPendingOps,
   getPendingEntriesForUser,
+  getPendingOpsForUser,
   pendingEntryToEntry,
+  removePendingEntry,
   subscribePendingEntries,
 } from './offlineStore';
 import { useSyncExternalStore } from 'react';
@@ -100,29 +106,82 @@ export function usePendingEntries(userId: number) {
   );
 }
 
-// One net change per still-pending Entry today; will diverge once local
-// edits/deletes collapse into a single change (US-006) — the count should
-// track "changes to push", not "pending Entries".
+export function usePendingOps(userId: number) {
+  return useSyncExternalStore(
+    subscribePendingEntries,
+    () => getPendingOpsForUser(userId),
+  );
+}
+
+// Net changes still to push: one per still-pending create, plus one per
+// synced Entry with a queued update/delete. Collapse (US-006) keeps this at
+// "changes to push", not "user actions taken".
 export function usePendingChangesCount() {
   return useSyncExternalStore(
     subscribePendingEntries,
-    () => getAllPendingEntries().length,
+    () => getAllPendingEntries().length + getAllPendingOps().length,
   );
 }
+
+type UpdateEntryInput = { id: number; userId: number; date: string; data: EntryData };
 
 export function useUpdateEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: UpdateEntryBody & { id: number }) =>
-      apiFetch<Entry>(`/entries/${id}`, { method: 'PUT', body }),
-    onSuccess: () => invalidateEntries(qc),
+    // See useCreateEntry's comment: 'always' lets the offline branch run.
+    networkMode: 'always',
+    mutationFn: async ({ id, userId, date, data }: UpdateEntryInput) => {
+      // A negative id is a create that hasn't reached the server yet — there
+      // is nothing to PUT against, so the queued create is amended in place
+      // (US-004's "two genuinely different cases" note).
+      if (id < 0) {
+        amendPendingEntryCreate(id, { date, data });
+        return { synced: false as const };
+      }
+      try {
+        const entry = await apiFetch<Entry>(`/entries/${id}`, { method: 'PUT', body: { date, data } });
+        return { synced: true as const, entry };
+      } catch (err) {
+        if (!(err instanceof OfflineError)) throw err;
+        addPendingEntryUpdate({ entryId: id, userId, date, data });
+        return { synced: false as const };
+      }
+    },
+    onSuccess: (result) => {
+      if (result.synced) invalidateEntries(qc);
+    },
   });
 }
 
 export function useDeleteEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => apiFetch<void>(`/entries/${id}`, { method: 'DELETE' }),
-    onSuccess: () => invalidateEntries(qc),
+    networkMode: 'always',
+    mutationFn: async (entry: Entry) => {
+      // A negative id is a still-pending create: deleting it removes the
+      // queued create outright, nothing to send (US-005).
+      if (entry.id < 0) {
+        removePendingEntry(entry.id);
+        return { synced: false as const };
+      }
+      try {
+        await apiFetch<void>(`/entries/${entry.id}`, { method: 'DELETE' });
+        return { synced: true as const };
+      } catch (err) {
+        if (!(err instanceof OfflineError)) throw err;
+        addPendingEntryDelete({
+          entryId: entry.id,
+          userId: entry.userId,
+          habitDefinitionId: entry.habitDefinitionId,
+          type: entry.type,
+          date: entry.date,
+          data: entry.data,
+        });
+        return { synced: false as const };
+      }
+    },
+    onSuccess: (result) => {
+      if (result.synced) invalidateEntries(qc);
+    },
   });
 }

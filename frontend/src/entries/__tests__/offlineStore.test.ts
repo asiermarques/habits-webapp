@@ -1,8 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   addPendingEntryCreate,
+  addPendingEntryUpdate,
+  addPendingEntryDelete,
+  amendPendingEntryCreate,
   getPendingEntries,
+  getPendingOps,
+  getAllPendingOps,
+  getPendingOpsForUser,
   removePendingEntry,
+  removePendingOp,
   subscribePendingEntries,
   pendingEntryToEntry,
   OfflineStoreWriteError,
@@ -141,5 +148,161 @@ describe('offlineStore', () => {
       data: { duration: 30 },
     });
     expect(entry.id).toBeLessThan(0);
+  });
+});
+
+describe('amendPendingEntryCreate', () => {
+  it('mutates a still-pending create in place instead of queuing a separate update', () => {
+    const record = addPendingEntryCreate({
+      userId: 1,
+      habitDefinitionId: 2,
+      type: 'workout',
+      date: '2026-08-01',
+      data: { duration: 30 },
+    });
+
+    amendPendingEntryCreate(record.localId, { date: '2026-08-02', data: { duration: 45 } });
+
+    const entries = getPendingEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      localId: record.localId,
+      date: '2026-08-02',
+      data: { duration: 45 },
+    });
+  });
+
+  it('keeps only the latest values after amending the same create twice (collapse)', () => {
+    const record = addPendingEntryCreate({
+      userId: 1,
+      habitDefinitionId: 2,
+      type: 'workout',
+      date: '2026-08-01',
+      data: { duration: 30 },
+    });
+
+    amendPendingEntryCreate(record.localId, { date: '2026-08-02', data: { duration: 45 } });
+    amendPendingEntryCreate(record.localId, { date: '2026-08-03', data: { duration: 60 } });
+
+    const entries = getPendingEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ date: '2026-08-03', data: { duration: 60 } });
+  });
+
+  it('notifies subscribers on amend', () => {
+    const record = addPendingEntryCreate({
+      userId: 1,
+      habitDefinitionId: 2,
+      type: 'workout',
+      date: '2026-08-01',
+      data: { duration: 30 },
+    });
+    const listener = vi.fn();
+    subscribePendingEntries(listener);
+
+    amendPendingEntryCreate(record.localId, { date: '2026-08-02', data: { duration: 45 } });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('pending ops (updates and deletes against synced Entries)', () => {
+  it('queues an update against a synced Entry id', () => {
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+
+    const ops = getPendingOps();
+    expect(ops).toEqual([
+      { kind: 'update', entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } },
+    ]);
+  });
+
+  it('queues a delete against a synced Entry id, carrying enough of a snapshot to subtract it from metrics', () => {
+    addPendingEntryDelete({
+      entryId: 10,
+      userId: 1,
+      habitDefinitionId: 2,
+      type: 'workout',
+      date: '2026-08-02',
+      data: { duration: 45 },
+    });
+
+    const ops = getPendingOps();
+    expect(ops).toEqual([
+      {
+        kind: 'delete',
+        entryId: 10,
+        userId: 1,
+        habitDefinitionId: 2,
+        type: 'workout',
+        date: '2026-08-02',
+        data: { duration: 45 },
+      },
+    ]);
+  });
+
+  it('collapses a second update on the same Entry into a single net update (edit->edit)', () => {
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-03', data: { duration: 60 } });
+
+    const ops = getPendingOps();
+    expect(ops).toHaveLength(1);
+    expect(ops[0]).toMatchObject({ kind: 'update', date: '2026-08-03', data: { duration: 60 } });
+  });
+
+  it('collapses an update followed by a delete into just the delete (edit->delete)', () => {
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryDelete({
+      entryId: 10,
+      userId: 1,
+      habitDefinitionId: 2,
+      type: 'workout',
+      date: '2026-08-01',
+      data: { duration: 30 },
+    });
+
+    const ops = getPendingOps();
+    expect(ops).toHaveLength(1);
+    expect(ops[0].kind).toBe('delete');
+  });
+
+  it('does not let an op on one Entry affect the op queued for another', () => {
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 11, userId: 1, date: '2026-08-03', data: { duration: 60 } });
+
+    expect(getPendingOps()).toHaveLength(2);
+  });
+
+  it('removes a pending op by entry id', () => {
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    removePendingOp(10);
+
+    expect(getPendingOps()).toEqual([]);
+  });
+
+  it('survives a simulated reload', () => {
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+
+    const raw = window.localStorage.getItem('habits.pendingEntries.v1');
+    const parsed = JSON.parse(raw!);
+    expect(parsed.ops).toHaveLength(1);
+  });
+
+  it('filters ops by user', () => {
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 20, userId: 2, date: '2026-08-02', data: { duration: 45 } });
+
+    expect(getPendingOpsForUser(1)).toHaveLength(1);
+    expect(getAllPendingOps()).toHaveLength(2);
+  });
+
+  it('notifies subscribers when an op is added or removed', () => {
+    const listener = vi.fn();
+    subscribePendingEntries(listener);
+
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    removePendingOp(10);
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });
