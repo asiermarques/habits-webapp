@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { HabitDefinition, User } from '@habitsapp/shared';
 import { Header } from '../Header';
 import { addPendingEntryCreate } from '@/entries/offlineStore';
+import { recordDrainFailure, recordDrainSuccess } from '@/entries/syncStatus';
 import { TestProviders } from '@/test/test-utils';
 
 function jsonResponse(body: unknown) {
@@ -36,6 +37,8 @@ describe('Header', () => {
     vi.restoreAllMocks();
     localStorage.clear();
     stubFetch({ users: [], habits: [] });
+    recordDrainSuccess(); // reset any failure streak left over from a previous test
+    vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
   });
 
   it('shows the app title and nav icons on home', async () => {
@@ -172,5 +175,60 @@ describe('Header', () => {
     expect(screen.getByRole('status')).toHaveTextContent('3');
     // Doesn't crowd out the still-required back arrow on a non-nav route.
     expect(screen.getByLabelText('Back to home')).toBeInTheDocument();
+  });
+
+  it('shows a failing state with a manual retry once sync has failed repeatedly (US-007)', () => {
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 10, type: 'custom', date: '2026-08-01', data: {} });
+    recordDrainFailure();
+    recordDrainFailure();
+    recordDrainFailure();
+
+    render(
+      <TestProviders initialPath="/">
+        <Header />
+      </TestProviders>,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(/failing|couldn't sync/i);
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+  });
+
+  it('stays in the neutral pending state while offline, even if sync was failing before connectivity dropped (US-007)', () => {
+    vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 10, type: 'custom', date: '2026-08-01', data: {} });
+    recordDrainFailure();
+    recordDrainFailure();
+    recordDrainFailure();
+
+    render(
+      <TestProviders initialPath="/">
+        <Header />
+      </TestProviders>,
+    );
+
+    expect(screen.getByRole('status')).not.toHaveTextContent(/failing|couldn't sync/i);
+    expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
+  });
+
+  it('re-triggers a drain when the manual retry is clicked', async () => {
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 10, type: 'custom', date: '2026-08-01', data: {} });
+    recordDrainFailure();
+    recordDrainFailure();
+    recordDrainFailure();
+    const user = userEvent.setup();
+    const fetchSpy = vi.mocked(window.fetch);
+
+    render(
+      <TestProviders initialPath="/">
+        <Header />
+      </TestProviders>,
+    );
+
+    fetchSpy.mockClear();
+    await user.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() =>
+      expect(fetchSpy.mock.calls.some(([input]) => String(input).includes('/entries'))).toBe(true),
+    );
   });
 });

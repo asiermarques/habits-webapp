@@ -206,9 +206,27 @@ const en = {
   // Pending changes indicator (header)
   'pendingChanges.one': '{count} change pending',
   'pendingChanges.other': '{count} changes pending',
+  'pendingChanges.failing': "Sync failing — couldn't reach the server",
+  'pendingChanges.retry': 'Retry',
 
   // Errors
   'error.offline': "You're offline — changes can't be saved right now.",
+
+  // Sync (offline drain)
+  'sync.rejected': "{entry} couldn't be saved and was discarded: {reason}",
+  'sync.entryFallback': 'Entry',
+
+  // Discard pending changes (Settings > Your data)
+  'data.discardPending.title': 'Discard pending changes',
+  'data.discardPending.description':
+    "Permanently clear every change waiting to sync. Use this if changes are stuck and won't go through.",
+  'data.discardPending.button.one': 'Discard {count} pending change',
+  'data.discardPending.button.other': 'Discard {count} pending changes',
+  'data.discardPending.confirmTitle': 'Discard all pending changes?',
+  'data.discardPending.confirmDescription':
+    'This permanently destroys every unsynced change on this device. They were never saved to the server and cannot be recovered.',
+  'data.discardPending.confirmAction': 'Discard all pending changes',
+  'data.discardPending.success': 'Pending changes discarded.',
 } as const;
 
 const es: Record<keyof typeof en, string> = {
@@ -396,9 +414,27 @@ const es: Record<keyof typeof en, string> = {
   // Pending changes indicator (header)
   'pendingChanges.one': '{count} cambio pendiente',
   'pendingChanges.other': '{count} cambios pendientes',
+  'pendingChanges.failing': 'Sincronización fallida: no se pudo contactar con el servidor',
+  'pendingChanges.retry': 'Reintentar',
 
   // Errors
   'error.offline': 'Estás sin conexión: ahora mismo no se pueden guardar los cambios.',
+
+  // Sync (offline drain)
+  'sync.rejected': 'No se pudo guardar {entry} y se descartó: {reason}',
+  'sync.entryFallback': 'Entrada',
+
+  // Discard pending changes (Settings > Your data)
+  'data.discardPending.title': 'Descartar cambios pendientes',
+  'data.discardPending.description':
+    'Borra permanentemente cualquier cambio a la espera de sincronizarse. Útil si los cambios se han quedado atascados y no se envían.',
+  'data.discardPending.button.one': 'Descartar {count} cambio pendiente',
+  'data.discardPending.button.other': 'Descartar {count} cambios pendientes',
+  'data.discardPending.confirmTitle': '¿Descartar todos los cambios pendientes?',
+  'data.discardPending.confirmDescription':
+    'Esto destruye permanentemente todos los cambios sin sincronizar de este dispositivo. Nunca se guardaron en el servidor y no se pueden recuperar.',
+  'data.discardPending.confirmAction': 'Descartar todos los cambios pendientes',
+  'data.discardPending.success': 'Cambios pendientes descartados.',
 };
 
 const dictionaries: Record<LocaleCode, Record<string, string>> = { en, es };

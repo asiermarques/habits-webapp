@@ -4,6 +4,7 @@ import { CurrencySection } from '@/settings/CurrencySection';
 import { LocaleSection } from '@/settings/LocaleSection';
 import { BackupSection } from '@/backup/BackupSection';
 import { ExportSection } from '@/export/ExportSection';
+import { DiscardPendingSection } from '@/entries/DiscardPendingSection';
 import { GateSection } from '@/gate/GateSection';
 import { useUserContext } from '@/users/UserContext';
 import { t } from '@/lib/i18n';
@@ -35,6 +36,7 @@ export function Settings() {
           </div>
           <ExportSection />
           <BackupSection />
+          <DiscardPendingSection />
         </section>
       )}
       <GateSection />

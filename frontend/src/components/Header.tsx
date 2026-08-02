@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, BarChart3, PlusCircle, Settings as SettingsIcon } from 'lucide-react';
 import { UserSwitcher } from '@/users/UserSwitcher';
 import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useLogEntryDialog } from '@/entries/LogEntryDialog';
-import { usePendingChangesCount } from '@/entries/queries';
+import { usePendingChangesCount, useIsSyncFailing } from '@/entries/queries';
+import { drainPendingEntries } from '@/entries/sync';
 import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
 
@@ -19,6 +21,9 @@ export function Header() {
   const { openLog } = useLogEntryDialog();
   const canLog = !!activeUser && habits.length > 0;
   const pendingCount = usePendingChangesCount();
+  const failing = useIsSyncFailing();
+  const qc = useQueryClient();
+  const retry = () => void drainPendingEntries(qc);
 
   // Lift the bar only once there's content scrolling beneath it — at the top of
   // the page the flat hairline + blur carry the separation, keeping the
@@ -63,7 +68,23 @@ export function Header() {
         )}
 
         <div className="flex items-center gap-1">
-          {pendingCount > 0 && (
+          {pendingCount > 0 && failing && (
+            <span
+              role="status"
+              className="mr-1 flex h-7 items-center gap-1.5 rounded-full border border-ember/40 bg-ember-tint px-2.5 text-xs font-medium text-ember"
+            >
+              <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-ember" />
+              {t('pendingChanges.failing')}
+              <button
+                type="button"
+                onClick={retry}
+                className="font-semibold underline underline-offset-2 hover:text-ember/80"
+              >
+                {t('pendingChanges.retry')}
+              </button>
+            </span>
+          )}
+          {pendingCount > 0 && !failing && (
             <span
               role="status"
               className="mr-1 flex h-7 items-center gap-1.5 rounded-full border border-clay/40 bg-clay/10 px-2.5 text-xs font-medium text-ink-soft"

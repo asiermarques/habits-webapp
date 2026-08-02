@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { GateGuard, offlineGraceMs } from '../GateGuard';
 import { rememberGate } from '../storage';
 import { apiFetch, ApiError } from '@/lib/api';
+import { addPendingEntryCreate, getPendingEntries } from '@/entries/offlineStore';
 
 vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
@@ -129,6 +130,60 @@ describe('GateGuard', () => {
     renderGuard();
 
     expect(await screen.findByText('protected content')).toBeInTheDocument();
+  });
+
+  // US-010 (OQ-002, resolved "hidden but retained"): pending offline changes
+  // must survive every re-lock trigger and stay unreachable from the lock
+  // screen, without the app ever mounting anything that could read them.
+  it('keeps pending changes in storage, and inaccessible, when locked by a 401 gate re-check', async () => {
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: {} });
+    mockedFetch.mockImplementation((async (path: string) => {
+      if (path === '/auth/status') return { gated: true, authenticated: false };
+      return undefined;
+    }) as typeof apiFetch);
+
+    renderGuard();
+
+    expect(await screen.findByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.queryByText('protected content')).not.toBeInTheDocument();
+    expect(getPendingEntries()).toHaveLength(1);
+  });
+
+  it('keeps pending changes in storage, and inaccessible, when the offline grace window has expired', async () => {
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: {} });
+    const realNow = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(realNow - (2 * 60 * 60 * 1000 + 1));
+    rememberGate({ gated: true, authenticated: true });
+    vi.mocked(Date.now).mockRestore();
+    mockedFetch.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    renderGuard();
+
+    expect(await screen.findByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.queryByText('protected content')).not.toBeInTheDocument();
+    expect(getPendingEntries()).toHaveLength(1);
+  });
+
+  it('makes pending changes reachable again once the instance is unlocked', async () => {
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: {} });
+    let authenticated = false;
+    mockedFetch.mockImplementation((async (path: string) => {
+      if (path === '/auth/status') return { gated: true, authenticated };
+      if (path === '/auth/login') {
+        authenticated = true;
+        return { authenticated: true };
+      }
+      return undefined;
+    }) as typeof apiFetch);
+
+    renderGuard();
+    expect(await screen.findByLabelText(/password/i)).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/password/i), 'open-sesame');
+    await userEvent.click(screen.getByRole('button', { name: /unlock/i }));
+
+    expect(await screen.findByText('protected content')).toBeInTheDocument();
+    expect(getPendingEntries()).toHaveLength(1);
   });
 
   it('remembers the gate snapshot so a later offline load can decide', async () => {

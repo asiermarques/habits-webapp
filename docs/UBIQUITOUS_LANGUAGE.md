@@ -28,7 +28,10 @@ Canonical vocabulary for the habits app. Bootstrapped from `PRODUCT.md` and `ARC
 | **Repetitions**   | The `number` field on Workout and Custom **Entry Data**. Summed in metrics; an **Entry** without it counts as one.                           | Reps, count, times         |
 | **Cost Spent**    | The `amount` field on Custom **Entry Data**, denominated in the global **Currency**. Drives the **Bad Habit Total Cost** card.               | Price, money, expense      |
 | **Backfill**      | Creating an **Entry** with a **Date** earlier than today.                                                                                    | Retro log, late entry      |
-| **Pending change**| An **Entry** create logged offline that hasn't yet reached the backend. Held in the client-only local store; counted (not per-row) by the header indicator. | Unsynced entry, offline entry |
+| **Pending change**| An **Entry** create, edit, or delete made offline that hasn't yet reached the backend. Held in the client-only local store; counted (not per-row) by the header indicator. | Unsynced entry, offline entry |
+| **Failing sync**  | The header indicator's problem state: online, but the drain has failed three or more times in a row against a reachable server. Distinct from the neutral "pending" state, which covers both waiting-while-online and being offline. Offers a manual retry. | Sync error, broken sync    |
+| **Rejected change** | A **Pending change** the server refuses on its own merits (e.g. its **Habit Definition** was deleted elsewhere) rather than failing to arrive. Discarded automatically with a notice — not retried, not held for editing. | Failed entry, invalid change |
+| **Discard pending changes** | The explicit, confirmed, all-or-nothing Settings action that clears every **Pending change** on the device. The one deliberate exception to "no local change is dropped without explicit user action." | Clear queue, reset sync    |
 
 ## Metrics & periods
 

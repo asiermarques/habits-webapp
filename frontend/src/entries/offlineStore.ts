@@ -224,6 +224,20 @@ export function getAllPendingOps(): PendingEntryOp[] {
   return ops;
 }
 
+// The one sanctioned exception to BR-005 ("no local change is dropped
+// without either reaching the backend or being explicitly discarded by the
+// user") — an explicit, user-confirmed escape hatch for a backlog that will
+// never sync (US-009, OQ-003). All-or-nothing: clears every pending create
+// and op across every User on this device in one shot. Returns how many
+// items were discarded so the caller can confirm what just happened.
+export function discardAllPending(): number {
+  const state = readState();
+  const count = state.entries.length + state.ops.length;
+  writeState({ ...state, entries: [], ops: [] });
+  notify();
+  return count;
+}
+
 export function pendingEntryToEntry(record: PendingEntryRecord): Entry {
   return {
     id: record.localId,

@@ -12,6 +12,7 @@ import {
   removePendingOp,
   subscribePendingEntries,
   pendingEntryToEntry,
+  discardAllPending,
   OfflineStoreWriteError,
 } from '../offlineStore';
 
@@ -304,5 +305,34 @@ describe('pending ops (updates and deletes against synced Entries)', () => {
 
     removePendingOp(10);
     expect(listener).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('discardAllPending (US-009)', () => {
+  it('clears every pending create and op in one shot', () => {
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 30 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+
+    discardAllPending();
+
+    expect(getPendingEntries()).toEqual([]);
+    expect(getPendingOps()).toEqual([]);
+  });
+
+  it('returns how many items were discarded', () => {
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 30 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+
+    expect(discardAllPending()).toBe(2);
+  });
+
+  it('notifies subscribers once', () => {
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 30 } });
+    const listener = vi.fn();
+    subscribePendingEntries(listener);
+
+    discardAllPending();
+
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });

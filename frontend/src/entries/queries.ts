@@ -24,6 +24,7 @@ import {
 } from './offlineStore';
 import { useSyncExternalStore } from 'react';
 import { habitDefinitionsKey } from '@/habits/queries';
+import { isSyncFailing, subscribeSyncStatus } from './syncStatus';
 
 export type EntriesPageResponse = {
   items: Entry[];
@@ -120,6 +121,27 @@ export function usePendingChangesCount() {
   return useSyncExternalStore(
     subscribePendingEntries,
     () => getAllPendingEntries().length + getAllPendingOps().length,
+  );
+}
+
+// Failing means "the drain has been failing repeatedly against a reachable
+// server" — offline is a different, non-failing state (US-007's UX rule), so
+// this reports false whenever the browser itself is offline regardless of
+// the underlying failure streak, and re-renders on the online/offline
+// transition as well as on a streak change.
+export function useIsSyncFailing(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      const unsubscribe = subscribeSyncStatus(listener);
+      window.addEventListener('online', listener);
+      window.addEventListener('offline', listener);
+      return () => {
+        unsubscribe();
+        window.removeEventListener('online', listener);
+        window.removeEventListener('offline', listener);
+      };
+    },
+    () => isSyncFailing() && navigator.onLine,
   );
 }
 
