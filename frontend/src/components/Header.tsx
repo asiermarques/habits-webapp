@@ -5,6 +5,7 @@ import { UserSwitcher } from '@/users/UserSwitcher';
 import { useUserContext } from '@/users/UserContext';
 import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useLogEntryDialog } from '@/entries/LogEntryDialog';
+import { usePendingChangesCount } from '@/entries/queries';
 import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
 
@@ -17,6 +18,7 @@ export function Header() {
   const { data: habits = [] } = useHabitDefinitionsQuery(activeUser?.id ?? 0);
   const { openLog } = useLogEntryDialog();
   const canLog = !!activeUser && habits.length > 0;
+  const pendingCount = usePendingChangesCount();
 
   // Lift the bar only once there's content scrolling beneath it — at the top of
   // the page the flat hairline + blur carry the separation, keeping the
@@ -61,6 +63,17 @@ export function Header() {
         )}
 
         <div className="flex items-center gap-1">
+          {pendingCount > 0 && (
+            <span
+              role="status"
+              className="mr-1 flex h-7 items-center gap-1.5 rounded-full border border-clay/40 bg-clay/10 px-2.5 text-xs font-medium text-ink-soft"
+            >
+              <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-clay" />
+              {t(pendingCount === 1 ? 'pendingChanges.one' : 'pendingChanges.other', {
+                count: String(pendingCount),
+              })}
+            </span>
+          )}
           <UserSwitcher />
           {(isHome || isMetrics) && (
             <nav className="ml-1 flex items-center gap-0.5 border-l border-hairline pl-1">

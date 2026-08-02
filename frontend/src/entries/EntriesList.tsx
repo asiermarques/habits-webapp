@@ -17,7 +17,8 @@ import { useHabitDefinitionsQuery } from '@/habits/queries';
 import { useSettingsQuery } from '@/settings/queries';
 import { formatCurrency } from '@/lib/currency';
 import { t } from '@/lib/i18n';
-import { useDeleteEntry, useEntriesInfinite } from './queries';
+import { useDeleteEntry, useEntriesInfinite, usePendingEntries } from './queries';
+import { pendingEntryToEntry } from './offlineStore';
 import { formatDate } from './date';
 
 type EntriesListProps = {
@@ -40,6 +41,7 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
       userId: activeUser?.id ?? 0,
       habitDefinitionId,
     });
+  const pending = usePendingEntries(activeUser?.id ?? 0);
 
   if (!activeUser) {
     return (
@@ -47,7 +49,15 @@ export function EntriesList({ onEdit, habitDefinitionId }: EntriesListProps) {
     );
   }
 
-  const entries = data?.pages.flatMap((p) => p.items) ?? [];
+  const serverEntries = data?.pages.flatMap((p) => p.items) ?? [];
+  // Pending entries have no server cursor position, so they're overlaid at
+  // read time rather than injected into a page (would break getNextPageParam).
+  const pendingEntries = pending
+    .filter((p) => habitDefinitionId === undefined || p.habitDefinitionId === habitDefinitionId)
+    .map(pendingEntryToEntry);
+  const entries = [...pendingEntries, ...serverEntries].sort(
+    (a, b) => b.date.localeCompare(a.date) || b.id - a.id,
+  );
 
   return (
     <section className="space-y-3">

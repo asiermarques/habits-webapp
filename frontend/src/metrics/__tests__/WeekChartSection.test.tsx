@@ -6,6 +6,7 @@ import type {
   WeeklyMetrics,
 } from '@habitsapp/shared';
 import { WeekChartSection } from '../WeekChartSection';
+import { addPendingEntryCreate } from '@/entries/offlineStore';
 import { TestProviders } from '@/test/test-utils';
 
 // Capture the props Nivo's ResponsiveBar receives so we can assert on the chart model
@@ -185,5 +186,30 @@ describe('WeekChartSection', () => {
     const calls = fetchMock.mock.calls.map((c) => String(c[0]));
     const weeklyCall = calls.find((u) => u.includes('/metrics/weekly'));
     expect(weeklyCall).toContain('habitDefinitionId=11');
+  });
+
+  it('counts a pending offline entry in the same day it was logged for', async () => {
+    addPendingEntryCreate({
+      userId: 1,
+      habitDefinitionId: 11,
+      type: 'workout',
+      date: '2026-05-05',
+      data: { duration: 20 },
+    });
+
+    vi.stubGlobal('fetch', makeFetch(weeklyAll));
+
+    render(
+      <TestProviders>
+        <WeekChartSection />
+      </TestProviders>,
+    );
+
+    await waitFor(() => expect(barProps.current).not.toBeNull());
+
+    const data = barProps.current?.data as Array<Record<string, unknown>>;
+    // 2026-05-05 (Tue) has no server entries in `weeklyAll`; the pending
+    // workout entry (no `number` field) contributes 1.
+    expect(data[1]).toMatchObject({ day: 'Tue', date: '2026-05-05', '11': 1 });
   });
 });

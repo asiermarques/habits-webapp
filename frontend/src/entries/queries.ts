@@ -8,7 +8,16 @@ import type {
   CreateEntryBody,
   UpdateEntryBody,
 } from '@habitsapp/shared';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, OfflineError } from '@/lib/api';
+import {
+  addPendingEntryCreate,
+  getAllPendingEntries,
+  getPendingEntriesForUser,
+  pendingEntryToEntry,
+  subscribePendingEntries,
+} from './offlineStore';
+import { useSyncExternalStore } from 'react';
+import { habitDefinitionsKey } from '@/habits/queries';
 
 export type EntriesPageResponse = {
   items: Entry[];
@@ -46,10 +55,59 @@ function invalidateEntries(qc: ReturnType<typeof useQueryClient>) {
 export function useCreateEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: CreateEntryBody) =>
-      apiFetch<Entry>('/entries', { method: 'POST', body }),
-    onSuccess: () => invalidateEntries(qc),
+    // TanStack Query's default networkMode ('online') *pauses* mutations
+    // entirely while the browser reports offline — mutationFn never runs, so
+    // our own OfflineError handling below would never get a chance to fire.
+    // 'always' lets it run unconditionally and treats apiFetch's real
+    // fetch() failure as the offline signal instead.
+    networkMode: 'always',
+    mutationFn: async (body: CreateEntryBody) => {
+      try {
+        return await apiFetch<Entry>('/entries', { method: 'POST', body });
+      } catch (err) {
+        if (!(err instanceof OfflineError)) throw err;
+        // The request never reached the server: hold it in the durable local
+        // store instead (requisites FR-001). addPendingEntryCreate throws on
+        // its own if the local write fails, so a create only "succeeds" here
+        // once it is actually durable (BR-001).
+        const habits = qc.getQueryData<{ id: number; type: Entry['type'] }[]>(
+          habitDefinitionsKey(body.userId),
+        );
+        const type = habits?.find((h) => h.id === body.habitDefinitionId)?.type ?? 'custom';
+        const record = addPendingEntryCreate({
+          userId: body.userId,
+          habitDefinitionId: body.habitDefinitionId,
+          type,
+          date: body.date,
+          data: body.data,
+        });
+        return pendingEntryToEntry(record);
+      }
+    },
+    // A pending create isn't server data — it's already reflected via the
+    // pending-store overlay (usePendingEntries), so invalidating here would
+    // just trigger a refetch that fails offline and toasts unnecessarily.
+    onSuccess: (entry) => {
+      if (entry.id > 0) invalidateEntries(qc);
+    },
   });
+}
+
+export function usePendingEntries(userId: number) {
+  return useSyncExternalStore(
+    subscribePendingEntries,
+    () => getPendingEntriesForUser(userId),
+  );
+}
+
+// One net change per still-pending Entry today; will diverge once local
+// edits/deletes collapse into a single change (US-006) — the count should
+// track "changes to push", not "pending Entries".
+export function usePendingChangesCount() {
+  return useSyncExternalStore(
+    subscribePendingEntries,
+    () => getAllPendingEntries().length,
+  );
 }
 
 export function useUpdateEntry() {

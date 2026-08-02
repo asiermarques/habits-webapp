@@ -7,6 +7,7 @@ import { Settings } from '@/pages/Settings';
 import { NotFound } from '@/pages/NotFound';
 import { UserProvider } from '@/users/UserContext';
 import { LogEntryDialogProvider } from '@/entries/LogEntryDialog';
+import { EntrySync } from '@/entries/EntrySync';
 import { LocaleProvider } from '@/settings/LocaleProvider';
 import { GateGuard } from '@/gate/GateGuard';
 import { PwaUpdatePrompt } from '@/pwa/PwaUpdatePrompt';
@@ -19,6 +20,7 @@ export function App() {
     <UserProvider>
       <LogEntryDialogProvider>
         <div className="min-h-full text-ink">
+          <EntrySync />
           <Header />
           <PwaUpdatePrompt />
           <InstallPrompt />

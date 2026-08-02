@@ -203,6 +203,10 @@ const en = {
   'pwa.install.iosTitle': 'Add to Home Screen',
   'pwa.install.iosDescription': 'Tap the Share button below, then choose “Add to Home Screen”.',
 
+  // Pending changes indicator (header)
+  'pendingChanges.one': '{count} change pending',
+  'pendingChanges.other': '{count} changes pending',
+
   // Errors
   'error.offline': "You're offline — changes can't be saved right now.",
 } as const;
@@ -388,6 +392,10 @@ const es: Record<keyof typeof en, string> = {
   'pwa.install.close': 'Descartar el aviso de instalación',
   'pwa.install.iosTitle': 'Añadir a la pantalla de inicio',
   'pwa.install.iosDescription': 'Pulsa el botón Compartir de abajo y elige «Añadir a pantalla de inicio».',
+
+  // Pending changes indicator (header)
+  'pendingChanges.one': '{count} cambio pendiente',
+  'pendingChanges.other': '{count} cambios pendientes',
 
   // Errors
   'error.offline': 'Estás sin conexión: ahora mismo no se pueden guardar los cambios.',

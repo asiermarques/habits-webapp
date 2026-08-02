@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { HabitDefinition, User } from '@habitsapp/shared';
 import { Header } from '../Header';
+import { addPendingEntryCreate } from '@/entries/offlineStore';
 import { TestProviders } from '@/test/test-utils';
 
 function jsonResponse(body: unknown) {
@@ -145,5 +146,31 @@ describe('Header', () => {
 
     await waitFor(() => expect(screen.getByLabelText('Switch user')).toBeInTheDocument());
     expect(screen.getByText('Alice')).toBeInTheDocument();
+  });
+
+  it('shows no pending indicator when nothing is pending', () => {
+    render(
+      <TestProviders initialPath="/">
+        <Header />
+      </TestProviders>,
+    );
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('shows how many changes are pending, and it survives the back-arrow route', async () => {
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 10, type: 'custom', date: '2026-08-01', data: {} });
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 10, type: 'custom', date: '2026-08-02', data: {} });
+    addPendingEntryCreate({ userId: 1, habitDefinitionId: 10, type: 'custom', date: '2026-08-03', data: {} });
+
+    render(
+      <TestProviders initialPath="/settings">
+        <Header />
+      </TestProviders>,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('3');
+    // Doesn't crowd out the still-required back arrow on a non-nav route.
+    expect(screen.getByLabelText('Back to home')).toBeInTheDocument();
   });
 });

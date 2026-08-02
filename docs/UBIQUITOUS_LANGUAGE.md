@@ -28,6 +28,7 @@ Canonical vocabulary for the habits app. Bootstrapped from `PRODUCT.md` and `ARC
 | **Repetitions**   | The `number` field on Workout and Custom **Entry Data**. Summed in metrics; an **Entry** without it counts as one.                           | Reps, count, times         |
 | **Cost Spent**    | The `amount` field on Custom **Entry Data**, denominated in the global **Currency**. Drives the **Bad Habit Total Cost** card.               | Price, money, expense      |
 | **Backfill**      | Creating an **Entry** with a **Date** earlier than today.                                                                                    | Retro log, late entry      |
+| **Pending change**| An **Entry** create logged offline that hasn't yet reached the backend. Held in the client-only local store; counted (not per-row) by the header indicator. | Unsynced entry, offline entry |
 
 ## Metrics & periods
 
