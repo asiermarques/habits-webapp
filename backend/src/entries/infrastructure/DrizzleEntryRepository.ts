@@ -24,6 +24,7 @@ import { EntryNotFoundError, DefinitionNotFoundError } from '../domain/errors.js
 import { enforceOwnership } from '../domain/Entry.js';
 import { validateEntryData } from '../domain/EntryData.js';
 import { UserNotFoundError } from '../../users/domain/errors.js';
+import { bumpDataVersion, userScope } from '../../shared/db/dataVersion.js';
 
 export const PAGE_SIZE = 15;
 
@@ -263,6 +264,8 @@ export class DrizzleEntryRepository implements EntryRepository {
         recordIdempotency(tx, input.idempotencyKey, entry.id, JSON.stringify(entry));
       }
 
+      bumpDataVersion(tx, userScope(entry.userId));
+
       return entry;
     });
   }
@@ -308,6 +311,8 @@ export class DrizzleEntryRepository implements EntryRepository {
         recordIdempotency(tx, patch.idempotencyKey, id, JSON.stringify(entry));
       }
 
+      bumpDataVersion(tx, userScope(entry.userId));
+
       return entry;
     });
   }
@@ -327,6 +332,8 @@ export class DrizzleEntryRepository implements EntryRepository {
       if (idempotencyKey) {
         recordIdempotency(tx, idempotencyKey, id, null);
       }
+
+      bumpDataVersion(tx, userScope(existing.userId));
     });
   }
 

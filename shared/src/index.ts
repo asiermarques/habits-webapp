@@ -289,3 +289,11 @@ export type ImportResult = {
   entriesCreated: number;
   entriesSkipped: number;
 };
+
+// Response of GET /api/sync/version — an opaque change token for one User's
+// view of the instance (their data plus the instance-wide bits). Clients hold
+// the last value they saw and compare for equality to decide whether anything
+// needs refetching; the format is not part of the contract, so never parse it.
+export type DataVersionResponse = {
+  version: string;
+};

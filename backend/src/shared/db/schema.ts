@@ -98,3 +98,20 @@ export const appliedIdempotencyKeys = sqliteTable('applied_idempotency_keys', {
 });
 
 export type DbAppliedIdempotencyKey = typeof appliedIdempotencyKeys.$inferSelect;
+
+// Monotonic change counters, one row per scope ('global', 'user:<id>'), bumped
+// inside the same transaction as every write another device could need to see.
+// `GET /api/sync/version` reads them so a client can ask "has anything changed?"
+// in one tiny request instead of periodically refetching entries and metrics.
+//
+// A counter rather than a timestamp: it moves for updates and deletes too,
+// which a max(created_at) over the data tables would miss entirely (an edited
+// Entry keeps its created_at; a deleted one leaves nothing behind). It is
+// bookkeeping, not data — nothing references it, and it is never exported,
+// backed up, or shown to the user.
+export const dataVersions = sqliteTable('data_versions', {
+  scope: text('scope').primaryKey(),
+  version: integer('version').notNull().default(0),
+});
+
+export type DbDataVersion = typeof dataVersions.$inferSelect;

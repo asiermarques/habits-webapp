@@ -46,11 +46,12 @@ habitsapp/
 │   ├── settings/          command slice
 │   ├── metrics/           read-model slice
 │   ├── export/            read-model slice
+│   ├── sync/              read-model slice — data-version token
 │   └── backup/            JSON export (read) + import orchestration over injected ports
 ├── frontend/src/
 │   ├── pages/             Home, Metrics, Settings
 │   ├── components/        Header + shadcn ui/ primitives
-│   ├── users/ habits/ entries/ metrics/ export/ backup/ settings/
+│   ├── users/ habits/ entries/ metrics/ export/ backup/ settings/ sync/
 │   └── lib/               apiFetch, currency formatter, i18n, locale, cn()
 ├── shared/src/index.ts    shared types (no build step)
 ├── e2e/                   Playwright tests
@@ -71,7 +72,7 @@ The backend is split into **vertical slices**. Each slice owns its domain, persi
 └── __tests__/       Vitest + supertest integration tests
 ```
 
-**Read-model slices** (`metrics/`, `export/`) — no domain layer:
+**Read-model slices** (`metrics/`, `export/`, `sync/`) — no domain layer:
 
 ```
 <slice>/
@@ -199,6 +200,7 @@ All data-bearing endpoints are mounted under an **`/api`** prefix (an `express.R
 | `GET /api/export/csv?userId=&from=&to=` | `text/csv; charset=utf-8`, attachment. Columns: `date, habit_name, type, positive, duration, distance, weight, amount, notes, words, time, number`. RFC-4180 escaped; unused archetype columns are blank |
 | `GET /api/backup?userId=` | `application/json`, attachment. Full round-trippable bundle `{ version, exportedAt, habitDefinitions[], entries[] }` for one user; entries reference their definition by `habitName` |
 | `POST /api/backup/import` | body `{ userId, version, habitDefinitions[], entries[] }` → `ImportResult { habitsCreated, habitsSkipped, entriesCreated, entriesSkipped }`. Merge-skip (definition by name, entry by habit+date); whole bundle is Zod-validated up-front, then applied via the habit-definition + entry repository ports |
+| `GET /api/sync/version?userId=` | `{ version }` — opaque change token for one User's view of the instance (their data plus the instance-wide bits). Two indexed lookups, no scan. Clients compare for equality only; the format is not part of the contract |
 | `GET /api/settings`, `PUT /api/settings/currency`, `PUT /api/settings/locale` | global singleton; currency validated against `SUPPORTED_CURRENCIES`, locale against `SUPPORTED_LOCALES` (`en`, `es`) |
 
 The frontend never hardcodes the prefix per call: `apiFetch` prepends `/api` once (`frontend/src/lib/api.ts`), and feature hooks pass bare paths like `/entries`.
@@ -246,15 +248,36 @@ An optional OpenTelemetry layer that exports backend traces/metrics/logs to a ma
 
 Transport-level in `src/main.tsx` (outer → inner):
 1. `React.StrictMode`
-2. `QueryClientProvider` — TanStack Query with `staleTime: 30s`, `refetchOnWindowFocus: false`, and a `MutationCache` whose `onError` surfaces toasts via `sonner` (every mutation error becomes a toast for free)
+2. `QueryClientProvider` — TanStack Query with `refetchOnWindowFocus: true`, a retry predicate that gives up immediately on `OfflineError` and 4xx, and a `MutationCache` whose `onError` surfaces toasts via `sonner` (every mutation error becomes a toast for free)
 3. `BrowserRouter`
 4. `<App />`
+
+### How reads stay fresh without polling
+
+Three mechanisms, in order of who handles what:
+
+1. **Local writes** invalidate their own query keys in `onSuccess`. Instant, no network guesswork.
+2. **Remote writes** (another device) are caught by `DataVersionSync` — see below.
+3. **`staleTime: 30 min` + `refetchOnWindowFocus`** is only a *backstop*, bounding how long the app could sit on old data if (2) were failing silently.
+
+The default in `main.tsx` is deliberately long and uniform: no `queries.ts` overrides it except the gate (`Infinity` — it changes only via login/logout or a 401, each of which invalidates the key explicitly, and it is the one resource with no cross-device path). Per-resource staleness tuning would just be guessing at how often data changes; the token *knows*.
+
+**`DataVersionSync`** (`frontend/src/sync/`, mounted once in `App.tsx`) is the mirror image of `EntrySync`: that one pushes local changes out, this one pulls remote ones in. It calls `GET /api/sync/version?userId=` and, only when the token differs from the last one it saw, invalidates `users`, `settings`, `habit-definitions`, `entries` and `metrics`. It runs on mount, on `visibilitychange` to visible, on `online`, and on a 60s interval **while the document is visible** — a backgrounded tab polls nothing, and the foreground transition covers the catch-up. That transition is the load-bearing one on mobile: returning to an installed PWA remounts nothing and reconnects nothing, so without it a phone would sit on stale data until a reload it rarely gets.
+
+Two deliberate details: the first check for a user only records a baseline (invalidating there would refetch data the app has just loaded, on every cold start), and it uses `apiFetch` directly rather than a `useQuery` — like `drainPendingEntries`, it is a background signal that is never rendered and whose failures must stay silent, where a `useQuery` would route every offline foreground through the global `QueryCache.onError` toast.
+
+**The token** (`backend/src/shared/db/dataVersion.ts`, table `data_versions`) is a counter per scope — `global` for the User list and instance settings, `user:<id>` for that User's Habit Definitions and Entries — bumped **inside the same transaction as the write it describes**, which is what the "infrastructure owns transactions" rule buys: a bump outside the transaction could be observed without its change, or survive a rollback and advertise one that never happened. A counter rather than a timestamp because it moves for updates and deletes too, which a `max(created_at)` over the data tables would miss entirely. Paths that apply nothing don't bump: an idempotency-key replay, a no-op `PUT`. The per-user scope is why one person logging on a shared instance doesn't make everyone else's devices refetch.
+
+Reading it is two indexed primary-key lookups, so a check that answers "nothing changed" — the overwhelmingly common case — costs a fraction of the entries + metrics refetch it replaces.
+
+Metrics reads are additionally keyed by — and send — `today`, the user's **local** calendar day (`entries/date.ts`'s `todayIso`). Entries are logged against the local day, so metrics must be windowed the same way or a late-evening Entry falls outside "this week" for users whose offset differs from the server's. Keying by it also means a session left open across midnight rolls to the new day's window instead of serving the previous one indefinitely.
 
 App-level in `src/App.tsx` (outer → inner):
 1. `UserProvider` — active user state + `localStorage` persistence
 2. `LogEntryDialogProvider` — owns the shared Log/Edit modal opened from the header and the entries list
 3. `LocaleProvider` — calls `setActiveLocale()` and re-keys its subtree so static `t(...)` calls re-evaluate on locale change
-4. `Header` + `Routes` + `<Toaster richColors position="top-center" />`
+4. `EntrySync` + `DataVersionSync` — headless, render nothing; the outbound and inbound halves of staying in sync (see "How reads stay fresh without polling")
+5. `Header` + `Routes` + `<Toaster richColors position="top-center" />`
 
 ### Routing
 
@@ -312,7 +335,7 @@ The app is an installable PWA with read-only offline support, configured through
 
 - **Registration / updates** — `registerType: 'prompt'`; `injectRegister: false`. `PwaUpdatePrompt` (`frontend/src/pwa/PwaUpdatePrompt.tsx`) calls `useRegisterSW` from `virtual:pwa-register/react`, which registers the worker and exposes `needRefresh`. When a new build is waiting it shows a persistent Sonner toast whose action calls `updateServiceWorker(true)` to skip-waiting and reload — so installed users never pin to a stale worker.
 - **App shell** — `globPatterns` precache the built JS/CSS/HTML/icons; `navigateFallback: 'index.html'` serves the SPA offline for `/`, `/metrics`, `/settings` (with `/api/` denied). Google Fonts are runtime-cached (`CacheFirst`/`StaleWhileRevalidate`) so type stays legible offline.
-- **Runtime API cache** — `GET /api/*` responses are cached `NetworkFirst` in the `habits-api-cache` (keyed by full URL, only 200s, `maxAgeSeconds` 1 day). Online always prefers fresh data; offline falls back to the last-fetched response. Non-GET methods are never cached.
+- **Runtime API cache** — `GET /api/*` responses are cached `NetworkFirst` in the `habits-api-cache` (keyed by full URL, only 200s, `maxAgeSeconds` 1 day). Online always prefers fresh data; offline falls back to the last-fetched response. Non-GET methods are never cached. One normalisation: a `cacheKeyWillBeUsed` plugin strips the `today` param from the **cache key** (the network request still carries it). Without it, the first launch of a new day would request a URL that was never cached and the offline fallback would find nothing where yesterday's copy sits. The plugin is serialised into `sw.js` by `workbox-build`, so it must stay self-contained — no closing over anything in `vite.config.ts`.
 - **Gate × cache policy (RISK-G1)** — `/api/auth/*` is **deliberately excluded** from the runtime cache, so an expired gate can never be satisfied from cache. The last gate status confirmed online — `{ gated, authenticated, at }` — is persisted by the gate module (`frontend/src/gate/storage.ts`); when the gate status can't be fetched (typically offline), `GateGuard` opens a gated instance **only within a 2-hour grace window** (`OFFLINE_GRACE_MS`) of the last online unlock, and **fails closed** past that window (or when last known locked) by showing the unlock screen rather than serving cached data. Known-open instances pass through so the offline shell still works. On logout, `clearApiCache()` (`frontend/src/pwa/cache.ts`) evicts the whole API cache. **Residual limitation:** because there is no server to consult offline, a gate session that expires purely by server-side timeout cannot be enforced while offline — the privacy guarantee holds for explicit lock/logout and for online expiry (401 → locked), and offline access is bounded to the 2-hour grace window, but an unattended device unlocked within that window can still read cached data offline.
   - **Pending offline Entry changes are hidden but retained across a re-lock, not evicted (`001-offline-entry-logging.md` OQ-002).** `GateGuard` renders either `<GateScreen>` or `{children}` — never both — so when it shows the lock screen, everything mounted under it (`EntrySync`, `Header`, every page) unmounts too: the drain stops, the pending-count indicator disappears, and nothing reads the local pending store. `clearApiCache()` only evicts the Service Worker's `GET` response cache; it never touches the `localStorage`-backed pending-Entry store (`frontend/src/entries/offlineStore.ts`), so a logout, a 401, or an expired grace window all leave pending changes on the device, invisible until the next successful unlock remounts the app and the drain resumes. This is a materially larger residual privacy claim than the read-cache limitation above: unsynced **Entry Data**, including **Cost Spent**, can now sit at rest on a locked device indefinitely, not just within the bounded grace window. It's a deliberate trade (`001-offline-entry-logging.md` BR-005: no local change is dropped without either reaching the backend or being explicitly discarded by the user) — losing data the user believed was saved was judged worse than this exposure. The only way to clear it is the explicit "Discard pending changes" action in Settings (see below), which the user must trigger themselves.
 - **Offline mutations** — scoped to **Entries** only; **Habit Definitions**, **Users** and **Settings** stay online-only. `apiFetch` (`frontend/src/lib/api.ts`) wraps `fetch` and, when the request never reaches the server (a network-level `TypeError`), throws a distinct `OfflineError` rather than a generic failure. The global `MutationCache.onError`/`QueryCache.onError` handler in `frontend/src/main.tsx` maps it to a clear "you're offline" Sonner toast for every mutation still covered by that non-goal. Those mutations carry no optimistic updates (they only invalidate `onSuccess`), so a failed offline write never appears saved.

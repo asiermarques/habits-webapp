@@ -64,6 +64,28 @@ export default defineConfig(({ mode }) => {
               networkTimeoutSeconds: 3,
               cacheableResponse: { statuses: [200] },
               expiration: { maxEntries: 64, maxAgeSeconds: 60 * 60 * 24 },
+              plugins: [
+                {
+                  // Metrics reads carry `today` (the user's local calendar day)
+                  // so the server windows "this week" in the user's time zone
+                  // rather than its own. That param must not reach the *cache
+                  // key*, though: it changes at midnight, so the first launch
+                  // of a new day would ask for a URL that was never cached and
+                  // an offline read would find nothing where yesterday's copy
+                  // sits. Stripping it keeps one entry per query — the response
+                  // stored is whatever the last successful fetch returned, and
+                  // the day-old window it describes is exactly what an offline
+                  // fallback is meant to be.
+                  //
+                  // Must stay self-contained: workbox-build serialises this
+                  // function into sw.js, so it cannot close over anything here.
+                  cacheKeyWillBeUsed: async ({ request }: { request: Request }) => {
+                    const url = new URL(request.url);
+                    url.searchParams.delete('today');
+                    return url.href;
+                  },
+                },
+              ],
             },
           },
           // RISK-G3: keep the shell's type legible offline by caching the

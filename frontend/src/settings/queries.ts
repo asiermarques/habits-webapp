@@ -4,6 +4,10 @@ import { apiFetch } from '@/lib/api';
 
 export const settingsKey = ['settings'] as const;
 
+// Instance-wide settings (locale, currency). The mutations below write the
+// fresh value straight into the cache with setQueryData; a change made on
+// another device arrives via DataVersionSync, which is why the token covers
+// the global scope and not just the active User's data.
 export function useSettingsQuery() {
   return useQuery({
     queryKey: settingsKey,

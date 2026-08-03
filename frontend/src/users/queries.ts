@@ -4,6 +4,9 @@ import { apiFetch } from '@/lib/api';
 
 const usersKey = ['users'] as const;
 
+// No staleTime override: the mutations below invalidate this key on success,
+// and a User created on another device arrives via DataVersionSync. The long
+// default in main.tsx is only the backstop.
 export function useUsersQuery() {
   return useQuery({
     queryKey: usersKey,

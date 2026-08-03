@@ -9,6 +9,8 @@ import { apiFetch } from '@/lib/api';
 export const habitDefinitionsKey = (userId: number) =>
   ['habit-definitions', userId] as const;
 
+// Changes through the mutations below (plus a backup import, which invalidates
+// the same key) or on another device, where DataVersionSync picks them up.
 export function useHabitDefinitionsQuery(userId: number) {
   return useQuery({
     queryKey: habitDefinitionsKey(userId),

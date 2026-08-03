@@ -188,6 +188,32 @@ describe('WeekChartSection', () => {
     expect(weeklyCall).toContain('habitDefinitionId=11');
   });
 
+  it('anchors the weekly request to the browser\'s current calendar day', async () => {
+    // Midday UTC so the local calendar day matches the UTC one under any
+    // plausible test-runner time zone.
+    // Only Date is faked — leaving timers real keeps RTL's waitFor working.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-05-06T12:00:00Z'));
+    try {
+      const fetchMock = makeFetch(weeklyAll);
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(
+        <TestProviders>
+          <WeekChartSection />
+        </TestProviders>,
+      );
+
+      await waitFor(() => expect(barProps.current).not.toBeNull());
+
+      const calls = fetchMock.mock.calls.map((c) => String(c[0]));
+      const weeklyCall = calls.find((u) => u.includes('/metrics/weekly'));
+      expect(weeklyCall).toContain('today=2026-05-06');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('counts a pending offline entry in the same day it was logged for', async () => {
     addPendingEntryCreate({
       userId: 1,

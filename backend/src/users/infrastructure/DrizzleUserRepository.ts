@@ -5,6 +5,7 @@ import type { User } from '../domain/User.js';
 import { resolveIsDefault, pickNextDefaultAfter } from '../domain/User.js';
 import { UserNotFoundError, OnlyUserError } from '../domain/errors.js';
 import type { UserRepository } from '../domain/UserRepository.js';
+import { GLOBAL_SCOPE, bumpDataVersion } from '../../shared/db/dataVersion.js';
 
 export interface HabitDefinitionSeedPort {
   seedFor(userId: number): void;
@@ -35,7 +36,9 @@ export class DrizzleUserRepository implements UserRepository {
     const inserted = db.transaction((tx) => {
       const existing = tx.select().from(users).all();
       const isDefault = resolveIsDefault(existing.length);
-      return tx.insert(users).values({ name, isDefault }).returning().get();
+      const row = tx.insert(users).values({ name, isDefault }).returning().get();
+      bumpDataVersion(tx, GLOBAL_SCOPE);
+      return row;
     });
 
     if (process.env.NODE_ENV !== 'test' && this.seedPort) {
@@ -58,13 +61,15 @@ export class DrizzleUserRepository implements UserRepository {
       if (patch.name !== undefined) updates.name = patch.name;
       if (patch.isDefault !== undefined) updates.isDefault = patch.isDefault;
 
+      // A no-op patch changes nothing, so it must not bump — an unchanged
+      // instance advertising a new version would make every device refetch.
       if (Object.keys(updates).length === 0) {
         return toUser(existing);
       }
 
-      return toUser(
-        tx.update(users).set(updates).where(eq(users.id, id)).returning().get(),
-      );
+      const updated = tx.update(users).set(updates).where(eq(users.id, id)).returning().get();
+      bumpDataVersion(tx, GLOBAL_SCOPE);
+      return toUser(updated);
     });
   }
 
@@ -83,6 +88,8 @@ export class DrizzleUserRepository implements UserRepository {
       if (nextDefault) {
         tx.update(users).set({ isDefault: true }).where(eq(users.id, nextDefault.id)).run();
       }
+
+      bumpDataVersion(tx, GLOBAL_SCOPE);
     });
   }
 }

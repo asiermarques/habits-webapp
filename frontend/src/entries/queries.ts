@@ -41,6 +41,10 @@ export function useEntriesInfinite({ userId, habitDefinitionId }: Filters) {
   return useInfiniteQuery({
     queryKey: entriesKey(userId, habitDefinitionId),
     enabled: userId > 0,
+    // No staleTime override, and this is the query that benefits most from the
+    // long default: a refetch replays *every* page loaded so far, not just the
+    // first, so it must fire only when something actually changed —
+    // DataVersionSync's token — never on a timer.
     initialPageParam: null as string | null,
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams();

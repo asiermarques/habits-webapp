@@ -13,6 +13,7 @@ import { createMetricsRouter } from './metrics/http/routes.js';
 import { createExportRouter } from './export/http/routes.js';
 import { createBackupRouter } from './backup/http/routes.js';
 import { createSettingsRouter } from './settings/http/routes.js';
+import { createSyncRouter } from './sync/http/routes.js';
 import { DrizzleSettingsRepository } from './settings/infrastructure/DrizzleSettingsRepository.js';
 import { domainErrorHandler } from './shared/middleware/errorHandler.js';
 import { NotFoundError } from './shared/domain/errors/DomainError.js';
@@ -64,6 +65,7 @@ export function createApp() {
   api.use('/export', createExportRouter());
   api.use('/backup', createBackupRouter(habitRepo, entryRepo));
   api.use('/settings', createSettingsRouter(new DrizzleSettingsRepository()));
+  api.use('/sync', createSyncRouter());
   // Unknown API routes must 404 as JSON. Without this they'd fall through to the
   // SPA index.html fallback below and answer 200/HTML for a non-existent endpoint.
   api.use((req, _res, next) => {

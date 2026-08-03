@@ -29,8 +29,21 @@ function handleError(error: unknown) {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
-      refetchOnWindowFocus: false,
+      // Long, and uniform on purpose. Staleness here doesn't mean "this might
+      // be out of date": local writes invalidate their own keys, and a change
+      // made on another device is caught by DataVersionSync, which asks the
+      // backend for a change token and invalidates only when it actually
+      // moved. So this is a *backstop* — it bounds how long the app could sit
+      // on old data if that check were failing silently — not the convergence
+      // mechanism. A short value here buys nothing but periodic refetches of
+      // data that hasn't changed, which is what 30s across the board was
+      // doing: revalidating most of the app on every navigation.
+      staleTime: 30 * 60_000,
+      // Pairs with the backstop above: on the one event an installed PWA
+      // reliably reaches — returning to the foreground — revalidate whatever
+      // has aged past it. Free on a quick app switch, since a refetch on focus
+      // only touches queries that are already stale.
+      refetchOnWindowFocus: true,
       // Retries that can't succeed only add latency. Offline (the request never
       // reached the server) and client errors (4xx — a locked gate's 401, a
       // validation 400) won't recover by retrying, so bail immediately. This

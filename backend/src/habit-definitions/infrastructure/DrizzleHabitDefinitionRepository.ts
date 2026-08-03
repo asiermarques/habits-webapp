@@ -7,6 +7,7 @@ import { pickColor, validateColor } from '../domain/Color.js';
 import { HabitDefinitionNotFoundError, HasEntriesError, UserNotFoundError } from '../domain/errors.js';
 import type { HabitDefinitionRepository, InsertInput } from '../domain/HabitDefinitionRepository.js';
 import type { EntryRepository } from '../../entries/domain/EntryRepository.js';
+import { bumpDataVersion, userScope } from '../../shared/db/dataVersion.js';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -78,6 +79,8 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
         .returning()
         .get();
 
+      bumpDataVersion(tx, userScope(input.userId));
+
       return toHabitDefinition(inserted, false);
     });
   }
@@ -98,6 +101,8 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
 
       const updates = applyPatch(existing, patch, hasEntries);
 
+      // Nothing to write means nothing to announce — see the same guard in
+      // DrizzleUserRepository.update.
       if (Object.keys(updates).length === 0) {
         return existing;
       }
@@ -108,6 +113,10 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
         .where(eq(habitDefinitions.id, id))
         .returning()
         .get();
+
+      // userId is nullable in the schema; a definition with no owner belongs to
+      // no per-user scope, so there is nothing for another device to converge on.
+      if (updated.userId !== null) bumpDataVersion(tx, userScope(updated.userId));
 
       return toHabitDefinition(updated, hasEntries);
     });
@@ -121,6 +130,8 @@ export class DrizzleHabitDefinitionRepository implements HabitDefinitionReposito
       if (this.entryRepo?.hasEntriesForDefinition(id)) throw new HasEntriesError();
 
       tx.delete(habitDefinitions).where(eq(habitDefinitions.id, id)).run();
+
+      if (row.userId !== null) bumpDataVersion(tx, userScope(row.userId));
     });
   }
 

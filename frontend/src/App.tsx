@@ -8,6 +8,7 @@ import { NotFound } from '@/pages/NotFound';
 import { UserProvider } from '@/users/UserContext';
 import { LogEntryDialogProvider } from '@/entries/LogEntryDialog';
 import { EntrySync } from '@/entries/EntrySync';
+import { DataVersionSync } from '@/sync/DataVersionSync';
 import { LocaleProvider } from '@/settings/LocaleProvider';
 import { GateGuard } from '@/gate/GateGuard';
 import { PwaUpdatePrompt } from '@/pwa/PwaUpdatePrompt';
@@ -21,6 +22,7 @@ export function App() {
       <LogEntryDialogProvider>
         <div className="min-h-full text-ink">
           <EntrySync />
+          <DataVersionSync />
           <Header />
           <PwaUpdatePrompt />
           <InstallPrompt />
