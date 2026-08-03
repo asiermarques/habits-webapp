@@ -44,13 +44,20 @@ export const createEntrySchema = z.object({
     .string({ required_error: 'date is required' })
     .regex(ISO_DATE_RE, 'date must be YYYY-MM-DD'),
   data: z.object({}).passthrough(),
+  // Opaque, client-generated (002-entry-sync-protocol). Optional so a
+  // pre-upgrade client's queued backlog still drains keyless.
+  idempotencyKey: z.string().optional(),
 });
 
 export const updateEntrySchema = z
   .object({
     date: z.string().regex(ISO_DATE_RE, 'date must be YYYY-MM-DD').optional(),
     data: z.object({}).passthrough().optional(),
+    idempotencyKey: z.string().optional(),
   })
   .refine((v) => v.date !== undefined || v.data !== undefined, {
     message: 'at least one of date or data must be provided',
   });
+
+// DELETE carries no required body; a pre-upgrade client sends none at all.
+export const deleteEntrySchema = z.object({ idempotencyKey: z.string().optional() }).default({});

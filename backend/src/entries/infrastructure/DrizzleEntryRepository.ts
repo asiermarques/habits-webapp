@@ -7,6 +7,7 @@ import {
   entryCustomData,
   habitDefinitions,
   users,
+  appliedIdempotencyKeys,
 } from '../../shared/db/schema.js';
 import type {
   Entry,
@@ -149,6 +150,37 @@ function insertChild(tx: Tx, entryId: number, type: HabitType, data: EntryData) 
   }
 }
 
+// Idempotency dedupe (002-entry-sync-protocol, GRISK-001). Looked up first
+// thing inside the same transaction as the write it guards, so a crash
+// between applying a change and recording its key can't happen.
+function findIdempotencyRecord(tx: Tx, key: string) {
+  return tx.select().from(appliedIdempotencyKeys).where(eq(appliedIdempotencyKeys.key, key)).get();
+}
+
+// A unique-index collision here means another writer recorded this exact key
+// between our lookup and this insert (EDGE-002). SQLite serializes writers,
+// so within this single-process app that's only reachable in theory — but we
+// map it defensively per .claude/rules/backend.md rather than let a raw
+// driver error escape. The record that won the race is already correct;
+// there's nothing further to do.
+function isUniqueConstraintError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    typeof (err as { code: unknown }).code === 'string' &&
+    (err as { code: string }).code.startsWith('SQLITE_CONSTRAINT')
+  );
+}
+
+function recordIdempotency(tx: Tx, key: string, entryId: number | null, responseBody: string | null): void {
+  try {
+    tx.insert(appliedIdempotencyKeys).values({ key, entryId, responseBody }).run();
+  } catch (err) {
+    if (!isUniqueConstraintError(err)) throw err;
+  }
+}
+
 function replaceChild(tx: Tx, entryId: number, type: HabitType, data: EntryData) {
   if (type === 'workout') {
     tx.delete(entryWorkoutData).where(eq(entryWorkoutData.entryId, entryId)).run();
@@ -187,6 +219,11 @@ export class DrizzleEntryRepository implements EntryRepository {
 
   insert(input: InsertInput): Entry {
     return db.transaction((tx) => {
+      if (input.idempotencyKey) {
+        const existing = findIdempotencyRecord(tx, input.idempotencyKey);
+        if (existing) return JSON.parse(existing.responseBody!) as Entry;
+      }
+
       const definition = tx
         .select()
         .from(habitDefinitions)
@@ -212,7 +249,7 @@ export class DrizzleEntryRepository implements EntryRepository {
 
       insertChild(tx, inserted.id, definition.type, input.data);
 
-      return {
+      const entry: Entry = {
         id: inserted.id,
         habitDefinitionId: inserted.habitDefinitionId,
         userId: inserted.userId,
@@ -221,11 +258,22 @@ export class DrizzleEntryRepository implements EntryRepository {
         type: definition.type,
         data: input.data,
       };
+
+      if (input.idempotencyKey) {
+        recordIdempotency(tx, input.idempotencyKey, entry.id, JSON.stringify(entry));
+      }
+
+      return entry;
     });
   }
 
   update(id: number, patch: UpdateInput): Entry {
     return db.transaction((tx) => {
+      if (patch.idempotencyKey) {
+        const replay = findIdempotencyRecord(tx, patch.idempotencyKey);
+        if (replay) return JSON.parse(replay.responseBody!) as Entry;
+      }
+
       const existing = tx
         .select({
           id: entries.id,
@@ -254,16 +302,31 @@ export class DrizzleEntryRepository implements EntryRepository {
         replaceChild(tx, id, existing.type, patch.data);
       }
 
-      return this.findById(id)!;
+      const entry = this.findById(id)!;
+
+      if (patch.idempotencyKey) {
+        recordIdempotency(tx, patch.idempotencyKey, id, JSON.stringify(entry));
+      }
+
+      return entry;
     });
   }
 
-  delete(id: number): void {
+  delete(id: number, idempotencyKey?: string): void {
     db.transaction((tx) => {
+      if (idempotencyKey) {
+        const replay = findIdempotencyRecord(tx, idempotencyKey);
+        if (replay) return;
+      }
+
       const existing = tx.select().from(entries).where(eq(entries.id, id)).get();
       if (!existing) throw new EntryNotFoundError(id);
 
       tx.delete(entries).where(eq(entries.id, id)).run();
+
+      if (idempotencyKey) {
+        recordIdempotency(tx, idempotencyKey, id, null);
+      }
     });
   }
 

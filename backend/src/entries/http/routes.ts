@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { EntryCursor } from '@habitsapp/shared';
 import { validateBody, validateQuery } from '../../shared/middleware/validate.js';
-import { listQuerySchema, createEntrySchema, updateEntrySchema } from './schemas.js';
+import { listQuerySchema, createEntrySchema, updateEntrySchema, deleteEntrySchema } from './schemas.js';
 import type { EntryRepository } from '../domain/EntryRepository.js';
 
 function encodeCursor(cursor: EntryCursor | null): string | null {
@@ -32,7 +32,8 @@ export function createEntriesRouter(entryRepo: EntryRepository): Router {
 
   router.delete('/:id', (req, res) => {
     const id = Number(req.params.id);
-    entryRepo.delete(id);
+    const { idempotencyKey } = validateBody(req, deleteEntrySchema);
+    entryRepo.delete(id, idempotencyKey);
     res.status(204).end();
   });
 

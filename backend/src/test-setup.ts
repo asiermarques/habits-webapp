@@ -8,6 +8,7 @@ import {
   entryWritingData,
   entryCustomData,
   appSettings,
+  appliedIdempotencyKeys,
 } from './shared/db/schema.js';
 import { runMigrations } from './shared/db/migrate.js';
 
@@ -21,6 +22,7 @@ beforeEach(() => {
   db.delete(entries).run();
   db.delete(habitDefinitions).run();
   db.delete(users).run();
+  db.delete(appliedIdempotencyKeys).run();
   // Reset app_settings to the migration default so tests start with EUR.
   db.delete(appSettings).run();
   db.insert(appSettings).values({ key: 'currency', value: 'EUR' }).run();

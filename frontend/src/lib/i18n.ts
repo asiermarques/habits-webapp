@@ -215,6 +215,8 @@ const en = {
   // Sync (offline drain)
   'sync.rejected': "{entry} couldn't be saved and was discarded: {reason}",
   'sync.entryFallback': 'Entry',
+  'sync.recreated': '{habit} ({date}) was recreated: it had been deleted elsewhere while your edit was offline.',
+  'sync.vanishedEntryReason': 'its entry no longer exists and this device can\'t recreate it',
 
   // Discard pending changes (Settings > Your data)
   'data.discardPending.title': 'Discard pending changes',
@@ -423,6 +425,8 @@ const es: Record<keyof typeof en, string> = {
   // Sync (offline drain)
   'sync.rejected': 'No se pudo guardar {entry} y se descartó: {reason}',
   'sync.entryFallback': 'Entrada',
+  'sync.recreated': '{habit} ({date}) se recreó: se había eliminado en otro dispositivo mientras tu edición estaba sin conexión.',
+  'sync.vanishedEntryReason': 'su entrada ya no existe y este dispositivo no puede recrearla',
 
   // Discard pending changes (Settings > Your data)
   'data.discardPending.title': 'Descartar cambios pendientes',

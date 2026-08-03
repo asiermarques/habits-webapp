@@ -18,6 +18,13 @@ export class OfflineStoreWriteError extends Error {
 // Client-only identity (requisites "Risks / Implementation notes"): negative
 // so it can never collide with a server-assigned id, and is never sent to the
 // server. Kept stable across reloads via the persisted `nextId` counter.
+// `idempotencyKey` is generated once, here, at queue time (002-entry-sync-
+// protocol, GRISK-001) and persisted with the change so it survives a
+// reload and is stable across every retry. Optional because a change queued
+// by a pre-upgrade build won't have one on disk — it must keep draining
+// keyless (at-least-once, exactly as before) rather than break. It
+// identifies the *change*, never the Entry (BR-003): never derived from
+// Entry Data, Cost Spent, or any name.
 export type PendingEntryRecord = {
   localId: number;
   userId: number;
@@ -26,6 +33,7 @@ export type PendingEntryRecord = {
   date: string;
   data: EntryData;
   createdAt: string;
+  idempotencyKey?: string;
 };
 
 // A queued change against an Entry that already has a server id (US-004/005).
@@ -35,8 +43,22 @@ export type PendingEntryRecord = {
 // A create that hasn't synced yet never gets an op; it's amended in place
 // (amendPendingEntryCreate) instead, which is what keeps an update from ever
 // being sent before the create it targets.
+// The update variant's `habitDefinitionId`/`type` (US-004) let the drain
+// re-create the Entry if its target has vanished by the time it's pushed —
+// optional because a pre-upgrade build's stored op won't have them, and such
+// an op can't be re-created (falls back to the Rejected change path instead
+// of crashing the drain).
 export type PendingEntryOp =
-  | { kind: 'update'; entryId: number; userId: number; date: string; data: EntryData }
+  | {
+      kind: 'update';
+      entryId: number;
+      userId: number;
+      date: string;
+      data: EntryData;
+      habitDefinitionId?: number;
+      type?: HabitType;
+      idempotencyKey?: string;
+    }
   | {
       kind: 'delete';
       entryId: number;
@@ -45,6 +67,7 @@ export type PendingEntryOp =
       type: HabitType;
       date: string;
       data: EntryData;
+      idempotencyKey?: string;
     };
 
 type StoredState = {
@@ -113,6 +136,7 @@ export function addPendingEntryCreate(input: AddPendingEntryCreateInput): Pendin
     date: input.date,
     data: input.data,
     createdAt: new Date().toISOString(),
+    idempotencyKey: crypto.randomUUID(),
   };
   writeState({ ...state, nextId: state.nextId - 1, entries: [...state.entries, record] });
   notify();
@@ -154,12 +178,14 @@ function upsertOp(op: PendingEntryOp): void {
 export type AddPendingEntryUpdateInput = {
   entryId: number;
   userId: number;
+  habitDefinitionId: number;
+  type: HabitType;
   date: string;
   data: EntryData;
 };
 
 export function addPendingEntryUpdate(input: AddPendingEntryUpdateInput): void {
-  upsertOp({ kind: 'update', ...input });
+  upsertOp({ kind: 'update', ...input, idempotencyKey: crypto.randomUUID() });
 }
 
 export type AddPendingEntryDeleteInput = {
@@ -172,7 +198,7 @@ export type AddPendingEntryDeleteInput = {
 };
 
 export function addPendingEntryDelete(input: AddPendingEntryDeleteInput): void {
-  upsertOp({ kind: 'delete', ...input });
+  upsertOp({ kind: 'delete', ...input, idempotencyKey: crypto.randomUUID() });
 }
 
 export function removePendingOp(entryId: number): void {

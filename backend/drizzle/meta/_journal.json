@@ -50,6 +50,13 @@
       "when": 1778518887560,
       "tag": "0006_cloudy_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1785744408057,
+      "tag": "0007_light_vanisher",
+      "breakpoints": true
     }
   ]
 }

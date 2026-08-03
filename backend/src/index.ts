@@ -4,8 +4,10 @@ import 'dotenv/config';
 import './shared/observability/instrument.js';
 import { createApp } from './app.js';
 import { runMigrations } from './shared/db/migrate.js';
+import { startIdempotencyKeyCleanup } from './entries/infrastructure/idempotencyKeyRetention.js';
 
 runMigrations();
+startIdempotencyKeyCleanup();
 
 const app = createApp();
 const port = Number(process.env.PORT ?? 3001);

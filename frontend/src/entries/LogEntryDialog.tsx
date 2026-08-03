@@ -88,7 +88,14 @@ export function LogEntryDialogProvider({ children }: { children: ReactNode }) {
               pending={updateEntry.isPending}
               onSubmit={(values) => {
                 updateEntry.mutate(
-                  { id: state.entry.id, userId: activeUser.id, date: values.date, data: values.data },
+                  {
+                    id: state.entry.id,
+                    userId: activeUser.id,
+                    habitDefinitionId: state.entry.habitDefinitionId,
+                    type: state.entry.type,
+                    date: values.date,
+                    data: values.data,
+                  },
                   { onSuccess: close },
                 );
               }}

@@ -224,6 +224,123 @@ describe('Entries API', () => {
   });
 });
 
+describe('Idempotency Key (US-001)', () => {
+  it('never duplicates an Entry when a create is pushed twice with the same key', async () => {
+    const { user, workout } = await seedUserAndHabits();
+    const body = {
+      habitDefinitionId: workout.id,
+      userId: user.id,
+      date: '2026-05-09',
+      data: { duration: 20 },
+      idempotencyKey: 'key-create-1',
+    };
+
+    const first = await logEntry(body);
+    const second = await logEntry(body);
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(second.body.id).toBe(first.body.id);
+
+    const list = await request(app).get(`/api/entries?userId=${user.id}`);
+    expect(list.body.items).toHaveLength(1);
+  });
+
+  it('returns the recorded outcome, not the new payload, when the same key arrives with different data', async () => {
+    const { user, workout } = await seedUserAndHabits();
+    const first = await logEntry({
+      habitDefinitionId: workout.id,
+      userId: user.id,
+      date: '2026-05-09',
+      data: { duration: 20 },
+      idempotencyKey: 'key-create-2',
+    });
+
+    const second = await logEntry({
+      habitDefinitionId: workout.id,
+      userId: user.id,
+      date: '2026-05-10',
+      data: { duration: 99 },
+      idempotencyKey: 'key-create-2',
+    });
+
+    expect(second.body).toEqual(first.body);
+
+    const list = await request(app).get(`/api/entries?userId=${user.id}`);
+    expect(list.body.items).toHaveLength(1);
+    expect((list.body.items[0].data as WorkoutData).duration).toBe(20);
+  });
+
+  it('creates two separate Entries for the same Habit Definition and Date when pushed without a shared key', async () => {
+    const { user, workout } = await seedUserAndHabits();
+    const body = {
+      habitDefinitionId: workout.id,
+      userId: user.id,
+      date: '2026-05-09',
+      data: { duration: 20 },
+    };
+
+    await logEntry(body);
+    await logEntry(body);
+
+    const list = await request(app).get(`/api/entries?userId=${user.id}`);
+    expect(list.body.items).toHaveLength(2);
+  });
+
+  it('still accepts and applies a create carrying no Idempotency Key (pre-upgrade backlog)', async () => {
+    const { user, workout } = await seedUserAndHabits();
+    const res = await logEntry({
+      habitDefinitionId: workout.id,
+      userId: user.id,
+      date: '2026-05-09',
+      data: { duration: 20 },
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it('replays the original outcome for a retried update instead of re-applying it', async () => {
+    const { user, workout } = await seedUserAndHabits();
+    const created = await logEntry({
+      habitDefinitionId: workout.id,
+      userId: user.id,
+      date: '2026-05-09',
+      data: { duration: 20 },
+    });
+
+    const patch = { date: '2026-05-10', data: { duration: 45 }, idempotencyKey: 'key-update-1' };
+    const first = await request(app).put(`/api/entries/${created.body.id}`).send(patch);
+    const second = await request(app).put(`/api/entries/${created.body.id}`).send(patch);
+
+    expect(first.status).toBe(200);
+    expect(second.body).toEqual(first.body);
+  });
+
+  it('settles a retried delete without a 404 when the same key arrives again', async () => {
+    const { user, workout } = await seedUserAndHabits();
+    const created = await logEntry({
+      habitDefinitionId: workout.id,
+      userId: user.id,
+      date: '2026-05-09',
+      data: { duration: 20 },
+    });
+
+    const first = await request(app)
+      .delete(`/api/entries/${created.body.id}`)
+      .send({ idempotencyKey: 'key-delete-1' });
+    const second = await request(app)
+      .delete(`/api/entries/${created.body.id}`)
+      .send({ idempotencyKey: 'key-delete-1' });
+
+    expect(first.status).toBe(204);
+    expect(second.status).toBe(204);
+  });
+
+  it('still 404s a delete for an unknown id when no Idempotency Key has ever been recorded', async () => {
+    const res = await request(app).delete('/api/entries/9999').send({ idempotencyKey: 'never-seen' });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('Habit definition entry-protection (now wired)', () => {
   beforeEach(() => {});
 

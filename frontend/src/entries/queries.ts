@@ -7,6 +7,7 @@ import type {
   Entry,
   EntryData,
   CreateEntryBody,
+  HabitType,
 } from '@habitsapp/shared';
 import { apiFetch, OfflineError } from '@/lib/api';
 import {
@@ -145,14 +146,21 @@ export function useIsSyncFailing(): boolean {
   );
 }
 
-type UpdateEntryInput = { id: number; userId: number; date: string; data: EntryData };
+type UpdateEntryInput = {
+  id: number;
+  userId: number;
+  habitDefinitionId: number;
+  type: HabitType;
+  date: string;
+  data: EntryData;
+};
 
 export function useUpdateEntry() {
   const qc = useQueryClient();
   return useMutation({
     // See useCreateEntry's comment: 'always' lets the offline branch run.
     networkMode: 'always',
-    mutationFn: async ({ id, userId, date, data }: UpdateEntryInput) => {
+    mutationFn: async ({ id, userId, habitDefinitionId, type, date, data }: UpdateEntryInput) => {
       // A negative id is a create that hasn't reached the server yet — there
       // is nothing to PUT against, so the queued create is amended in place
       // (US-004's "two genuinely different cases" note).
@@ -165,7 +173,9 @@ export function useUpdateEntry() {
         return { synced: true as const, entry };
       } catch (err) {
         if (!(err instanceof OfflineError)) throw err;
-        addPendingEntryUpdate({ entryId: id, userId, date, data });
+        // habitDefinitionId/type ride along so a vanished target can be
+        // re-created later (002-entry-sync-protocol US-004).
+        addPendingEntryUpdate({ entryId: id, userId, habitDefinitionId, type, date, data });
         return { synced: false as const };
       }
     },

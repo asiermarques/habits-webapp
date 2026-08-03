@@ -79,3 +79,22 @@ export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
+
+// Dedupe store for the Entry sync protocol (002-entry-sync-protocol,
+// GRISK-001): one row per applied Idempotency Key, so a retried push replays
+// the recorded outcome instead of re-applying. `entryId` is a plain column,
+// not an FK — the record must outlive the Entry it describes (a delete
+// mustn't cascade-erase the very key that dedupes its own retry), and it is
+// opaque bookkeeping, not a relational reference. `responseBody` is the
+// JSON-serialized Entry for create/update replay; null for a delete (whose
+// only recorded outcome is "already gone, done").
+export const appliedIdempotencyKeys = sqliteTable('applied_idempotency_keys', {
+  key: text('key').primaryKey(),
+  entryId: integer('entry_id'),
+  responseBody: text('response_body'),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+export type DbAppliedIdempotencyKey = typeof appliedIdempotencyKeys.$inferSelect;

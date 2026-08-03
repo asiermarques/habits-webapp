@@ -131,6 +131,29 @@ describe('offlineStore', () => {
     setItem.mockRestore();
   });
 
+  it('assigns a stable, opaque Idempotency Key to a queued create (US-001)', () => {
+    const record = addPendingEntryCreate({
+      userId: 1,
+      habitDefinitionId: 2,
+      type: 'workout',
+      date: '2026-08-01',
+      data: { duration: 30 },
+    });
+
+    expect(record.idempotencyKey).toBeTypeOf('string');
+    expect(record.idempotencyKey!.length).toBeGreaterThan(0);
+
+    const raw = window.localStorage.getItem('habits.pendingEntries.v1');
+    expect(JSON.parse(raw!).entries[0].idempotencyKey).toBe(record.idempotencyKey);
+  });
+
+  it('assigns distinct Idempotency Keys to successive creates', () => {
+    const a = addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 30 } });
+    const b = addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 45 } });
+
+    expect(a.idempotencyKey).not.toBe(b.idempotencyKey);
+  });
+
   it('converts a pending record into an Entry-shaped object for rendering', () => {
     const record = addPendingEntryCreate({
       userId: 1,
@@ -209,12 +232,13 @@ describe('amendPendingEntryCreate', () => {
 
 describe('pending ops (updates and deletes against synced Entries)', () => {
   it('queues an update against a synced Entry id', () => {
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
 
     const ops = getPendingOps();
-    expect(ops).toEqual([
+    expect(ops).toMatchObject([
       { kind: 'update', entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } },
     ]);
+    expect((ops[0] as { idempotencyKey: string }).idempotencyKey).toBeTypeOf('string');
   });
 
   it('queues a delete against a synced Entry id, carrying enough of a snapshot to subtract it from metrics', () => {
@@ -228,7 +252,7 @@ describe('pending ops (updates and deletes against synced Entries)', () => {
     });
 
     const ops = getPendingOps();
-    expect(ops).toEqual([
+    expect(ops).toMatchObject([
       {
         kind: 'delete',
         entryId: 10,
@@ -239,11 +263,12 @@ describe('pending ops (updates and deletes against synced Entries)', () => {
         data: { duration: 45 },
       },
     ]);
+    expect((ops[0] as { idempotencyKey: string }).idempotencyKey).toBeTypeOf('string');
   });
 
   it('collapses a second update on the same Entry into a single net update (edit->edit)', () => {
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-03', data: { duration: 60 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-03', data: { duration: 60 } });
 
     const ops = getPendingOps();
     expect(ops).toHaveLength(1);
@@ -251,7 +276,7 @@ describe('pending ops (updates and deletes against synced Entries)', () => {
   });
 
   it('collapses an update followed by a delete into just the delete (edit->delete)', () => {
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
     addPendingEntryDelete({
       entryId: 10,
       userId: 1,
@@ -267,21 +292,21 @@ describe('pending ops (updates and deletes against synced Entries)', () => {
   });
 
   it('does not let an op on one Entry affect the op queued for another', () => {
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
-    addPendingEntryUpdate({ entryId: 11, userId: 1, date: '2026-08-03', data: { duration: 60 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 11, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-03', data: { duration: 60 } });
 
     expect(getPendingOps()).toHaveLength(2);
   });
 
   it('removes a pending op by entry id', () => {
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
     removePendingOp(10);
 
     expect(getPendingOps()).toEqual([]);
   });
 
   it('survives a simulated reload', () => {
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
 
     const raw = window.localStorage.getItem('habits.pendingEntries.v1');
     const parsed = JSON.parse(raw!);
@@ -289,8 +314,8 @@ describe('pending ops (updates and deletes against synced Entries)', () => {
   });
 
   it('filters ops by user', () => {
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
-    addPendingEntryUpdate({ entryId: 20, userId: 2, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 20, userId: 2, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
 
     expect(getPendingOpsForUser(1)).toHaveLength(1);
     expect(getAllPendingOps()).toHaveLength(2);
@@ -300,7 +325,7 @@ describe('pending ops (updates and deletes against synced Entries)', () => {
     const listener = vi.fn();
     subscribePendingEntries(listener);
 
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
     expect(listener).toHaveBeenCalledTimes(1);
 
     removePendingOp(10);
@@ -311,7 +336,7 @@ describe('pending ops (updates and deletes against synced Entries)', () => {
 describe('discardAllPending (US-009)', () => {
   it('clears every pending create and op in one shot', () => {
     addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 30 } });
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
 
     discardAllPending();
 
@@ -321,7 +346,7 @@ describe('discardAllPending (US-009)', () => {
 
   it('returns how many items were discarded', () => {
     addPendingEntryCreate({ userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 30 } });
-    addPendingEntryUpdate({ entryId: 10, userId: 1, date: '2026-08-02', data: { duration: 45 } });
+    addPendingEntryUpdate({ entryId: 10, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
 
     expect(discardAllPending()).toBe(2);
   });

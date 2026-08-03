@@ -131,11 +131,19 @@ export type CreateEntryBody = {
   userId: number;
   date: string;
   data: EntryData;
+  // Opaque, client-generated (002-entry-sync-protocol, GRISK-001). Identifies
+  // the *change*, never the Entry — never derived from Entry Data.
+  idempotencyKey?: string;
 };
 
 export type UpdateEntryBody = {
   date?: string;
   data?: EntryData;
+  idempotencyKey?: string;
+};
+
+export type DeleteEntryBody = {
+  idempotencyKey?: string;
 };
 
 // --- Metrics ---

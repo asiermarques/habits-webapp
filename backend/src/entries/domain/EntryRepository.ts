@@ -12,11 +12,16 @@ export type InsertInput = {
   userId: number;
   date: string;
   data: EntryData;
+  // Opaque, client-generated (002-entry-sync-protocol, GRISK-001). When set
+  // and already recorded, the repository replays the original outcome
+  // instead of re-applying the push.
+  idempotencyKey?: string;
 };
 
 export type UpdateInput = {
   date?: string;
   data?: EntryData;
+  idempotencyKey?: string;
 };
 
 export interface EntryRepository {
@@ -24,7 +29,7 @@ export interface EntryRepository {
   findById(id: number): Entry | undefined;
   insert(input: InsertInput): Entry;
   update(id: number, patch: UpdateInput): Entry;
-  delete(id: number): void;
+  delete(id: number, idempotencyKey?: string): void;
   hasEntriesForDefinition(id: number): boolean;
   // True when the definition already has any entry on the given date. Used by
   // backup import to skip duplicates (merge semantics).

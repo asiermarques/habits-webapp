@@ -89,7 +89,7 @@ describe('useUpdateEntry offline behaviour', () => {
     apiFetchMock.mockResolvedValueOnce({ ...syncedEntry, data: { duration: 45 } });
 
     const { result } = renderHook(() => useUpdateEntry(), { wrapper });
-    result.current.mutate({ id: 10, userId: 3, date: '2026-08-01', data: { duration: 45 } });
+    result.current.mutate({ id: 10, userId: 3, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 45 } });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(getPendingOps()).toEqual([]);
@@ -99,7 +99,7 @@ describe('useUpdateEntry offline behaviour', () => {
     apiFetchMock.mockRejectedValueOnce(new OfflineError());
 
     const { result } = renderHook(() => useUpdateEntry(), { wrapper });
-    result.current.mutate({ id: 10, userId: 3, date: '2026-08-02', data: { duration: 45 } });
+    result.current.mutate({ id: 10, userId: 3, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     const ops = getPendingOps();
@@ -117,7 +117,7 @@ describe('useUpdateEntry offline behaviour', () => {
     });
 
     const { result } = renderHook(() => useUpdateEntry(), { wrapper });
-    result.current.mutate({ id: pending.localId, userId: 3, date: '2026-08-02', data: { duration: 60 } });
+    result.current.mutate({ id: pending.localId, userId: 3, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 60 } });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(apiFetchMock).not.toHaveBeenCalled();
@@ -205,9 +205,9 @@ describe('US-006 collapse across the mutation hooks', () => {
     const localId = create.result.current.data!.id;
 
     const update = renderHook(() => useUpdateEntry(), { wrapper });
-    update.result.current.mutate({ id: localId, userId: 3, date: '2026-08-02', data: { duration: 45 } });
+    update.result.current.mutate({ id: localId, userId: 3, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 45 } });
     await waitFor(() => expect(update.result.current.isSuccess).toBe(true));
-    update.result.current.mutate({ id: localId, userId: 3, date: '2026-08-03', data: { duration: 60 } });
+    update.result.current.mutate({ id: localId, userId: 3, habitDefinitionId: 2, type: 'workout', date: '2026-08-03', data: { duration: 60 } });
     await waitFor(() => expect(update.result.current.isSuccess).toBe(true));
 
     const del = renderHook(() => useDeleteEntry(), { wrapper });
@@ -233,11 +233,11 @@ describe('US-006 collapse across the mutation hooks', () => {
     apiFetchMock.mockRejectedValue(new OfflineError());
 
     const update = renderHook(() => useUpdateEntry(), { wrapper });
-    update.result.current.mutate({ id: 10, userId: 3, date: '2026-08-01', data: { duration: 10 } });
+    update.result.current.mutate({ id: 10, userId: 3, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 10 } });
     await waitFor(() => expect(update.result.current.isSuccess).toBe(true));
-    update.result.current.mutate({ id: 10, userId: 3, date: '2026-08-02', data: { duration: 20 } });
+    update.result.current.mutate({ id: 10, userId: 3, habitDefinitionId: 2, type: 'workout', date: '2026-08-02', data: { duration: 20 } });
     await waitFor(() => expect(update.result.current.isSuccess).toBe(true));
-    update.result.current.mutate({ id: 10, userId: 3, date: '2026-08-03', data: { duration: 30 } });
+    update.result.current.mutate({ id: 10, userId: 3, habitDefinitionId: 2, type: 'workout', date: '2026-08-03', data: { duration: 30 } });
     await waitFor(() => expect(update.result.current.isSuccess).toBe(true));
 
     const ops = getPendingOps();

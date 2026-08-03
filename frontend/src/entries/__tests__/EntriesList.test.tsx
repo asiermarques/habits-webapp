@@ -70,7 +70,7 @@ describe('EntriesList pending overlay', () => {
   });
 
   it('shows a queued offline edit to a synced Entry instead of its server value', async () => {
-    addPendingEntryUpdate({ entryId: 1, userId: 1, date: '2026-08-01', data: { duration: 99 } });
+    addPendingEntryUpdate({ entryId: 1, userId: 1, habitDefinitionId: 2, type: 'workout', date: '2026-08-01', data: { duration: 99 } });
 
     vi.stubGlobal('fetch', makeFetch());
 

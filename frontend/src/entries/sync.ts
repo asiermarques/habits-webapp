@@ -1,10 +1,12 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { CreateEntryBody, UpdateEntryBody } from '@habitsapp/shared';
+import type { CreateEntryBody, Entry, UpdateEntryBody, DeleteEntryBody } from '@habitsapp/shared';
 import { apiFetch, ApiError, OfflineError } from '@/lib/api';
-import { getPendingEntries, getPendingOps, removePendingEntry, removePendingOp } from './offlineStore';
+import { getPendingEntries, getPendingOps, removePendingEntry, removePendingOp, type PendingEntryOp } from './offlineStore';
 import { recordDrainFailure, recordDrainSuccess } from './syncStatus';
 import { gateKey } from '@/gate/queries';
+import { habitDefinitionsKey } from '@/habits/queries';
+import { formatDate } from './date';
 import { t } from '@/lib/i18n';
 
 // What to do with an item a drain attempt couldn't push, decided by what
@@ -24,11 +26,27 @@ import { t } from '@/lib/i18n';
 //    queued and count it toward the failing-state threshold (US-007).
 type DrainOutcome = 'continue' | 'continue-failure' | 'stop-offline' | 'stop-unauthenticated';
 
-function handleDrainError(err: unknown, qc: QueryClient, discard: () => void, describe: () => string): DrainOutcome {
+// `silentNotFound` (US-003): a delete whose target Entry is already gone is
+// the user's intent already satisfied, not a rejection — settle it like a
+// success (discarded, no notice, no failure-streak effect) rather than
+// routing it through the generic 4xx-discard-with-toast branch below. Only
+// set for delete ops; the same 404 on an update is a real rejection (the
+// re-creation path, US-004, is what a vanished update target gets instead).
+function handleDrainError(
+  err: unknown,
+  qc: QueryClient,
+  discard: () => void,
+  describe: () => string,
+  silentNotFound = false,
+): DrainOutcome {
   if (err instanceof OfflineError) return 'stop-offline';
   if (err instanceof ApiError && err.status === 401) {
     qc.invalidateQueries({ queryKey: gateKey() });
     return 'stop-unauthenticated';
+  }
+  if (silentNotFound && err instanceof ApiError && err.status === 404) {
+    discard();
+    return 'continue';
   }
   if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
     discard();
@@ -36,6 +54,50 @@ function handleDrainError(err: unknown, qc: QueryClient, discard: () => void, de
     return 'continue';
   }
   return 'continue-failure';
+}
+
+// US-004: a queued update whose target Entry has vanished (PUT 404) re-
+// creates it from the values the op carries, rather than discarding the
+// user's edit. Pushed under the *update's own* Idempotency Key (EDGE-003) so
+// a lost re-creation response and a retry can't produce a second Entry — the
+// next drain's PUT 404s the same way and lands back here, where the backend
+// replays the already-recorded outcome instead of re-applying.
+async function attemptVanishedUpdateRecreate(
+  op: Extract<PendingEntryOp, { kind: 'update' }>,
+  qc: QueryClient,
+): Promise<{ outcome: DrainOutcome; pushed: boolean }> {
+  if (op.habitDefinitionId === undefined || op.type === undefined) {
+    // A pre-upgrade stored op predates habitDefinitionId/type and can't be
+    // re-created — fall back to the Rejected change path instead of
+    // crashing the drain (implementation note on US-004).
+    removePendingOp(op.entryId);
+    toast.error(t('sync.rejected', { entry: t('sync.entryFallback'), reason: t('sync.vanishedEntryReason') }));
+    return { outcome: 'continue', pushed: false };
+  }
+
+  const body: CreateEntryBody = {
+    habitDefinitionId: op.habitDefinitionId,
+    userId: op.userId,
+    date: op.date,
+    data: op.data,
+    idempotencyKey: op.idempotencyKey,
+  };
+
+  try {
+    await apiFetch<Entry>('/entries', { method: 'POST', body });
+    removePendingOp(op.entryId);
+    const habits = qc.getQueryData<{ id: number; name: string }[]>(habitDefinitionsKey(op.userId));
+    const habitName = habits?.find((h) => h.id === op.habitDefinitionId)?.name ?? t('sync.entryFallback');
+    toast.success(t('sync.recreated', { habit: habitName, date: formatDate(op.date) }));
+    return { outcome: 'continue', pushed: true };
+  } catch (err) {
+    // The Habit Definition or the User is also gone (EDGE-002/EDGE-003), or
+    // the queued data no longer fits the archetype (EDGE-004): re-creation
+    // itself is refused, so this falls through to the ordinary 4xx-discard
+    // path, same as any other unfixable rejection.
+    const outcome = handleDrainError(err, qc, () => removePendingOp(op.entryId), () => t('sync.entryFallback'));
+    return { outcome, pushed: false };
+  }
 }
 
 // The seam `002-entry-sync-protocol.md` will replace with a real push
@@ -58,6 +120,7 @@ export async function drainPendingEntries(qc: QueryClient): Promise<void> {
       userId: record.userId,
       date: record.date,
       data: record.data,
+      idempotencyKey: record.idempotencyKey,
     };
     try {
       await apiFetch('/entries', { method: 'POST', body });
@@ -86,19 +149,32 @@ export async function drainPendingEntries(qc: QueryClient): Promise<void> {
     for (const op of getPendingOps()) {
       try {
         if (op.kind === 'update') {
-          const body: UpdateEntryBody = { date: op.date, data: op.data };
+          const body: UpdateEntryBody = { date: op.date, data: op.data, idempotencyKey: op.idempotencyKey };
           await apiFetch(`/entries/${op.entryId}`, { method: 'PUT', body });
         } else {
-          await apiFetch(`/entries/${op.entryId}`, { method: 'DELETE' });
+          const body: DeleteEntryBody = { idempotencyKey: op.idempotencyKey };
+          await apiFetch(`/entries/${op.entryId}`, { method: 'DELETE', body });
         }
         removePendingOp(op.entryId);
         pushedAny = true;
       } catch (err) {
+        if (op.kind === 'update' && err instanceof ApiError && err.status === 404) {
+          const result = await attemptVanishedUpdateRecreate(op, qc);
+          if (result.pushed) pushedAny = true;
+          if (result.outcome === 'continue-failure') hadFailure = true;
+          if (result.outcome === 'stop-offline' || result.outcome === 'stop-unauthenticated') {
+            stopped = true;
+            break;
+          }
+          continue;
+        }
+
         const outcome = handleDrainError(
           err,
           qc,
           () => removePendingOp(op.entryId),
           () => (op.kind === 'delete' ? t(`habitType.${op.type}`) : t('sync.entryFallback')),
+          op.kind === 'delete',
         );
         if (outcome === 'continue-failure') hadFailure = true;
         if (outcome === 'stop-offline' || outcome === 'stop-unauthenticated') {
